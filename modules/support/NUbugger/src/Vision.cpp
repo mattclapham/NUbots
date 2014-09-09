@@ -53,20 +53,20 @@ namespace support {
             imageData->mutable_dimensions()->set_y(image.height());
 
             std::string* imageBytes = imageData->mutable_data();
-            if(!image.source().empty()) {
+            if(!image.source.empty()) {
                 imageData->set_format(messages::input::proto::Image::JPEG);
 
                 // Reserve enough space in the image data to store the output
-                imageBytes->reserve(image.source().size());
+                imageBytes->reserve(image.source.size());
 
-                imageBytes->insert(imageBytes->begin(), std::begin(image.source()), std::end(image.source()));
+                imageBytes->insert(imageBytes->begin(), std::begin(image.source), std::end(image.source));
             }
             else {
                 imageData->set_format(messages::input::proto::Image::YCbCr444);
 
-                imageBytes->reserve(image.raw().size() * sizeof(Image::Pixel));
+                imageBytes->reserve(image.data.size() * sizeof(Image::Pixel));
 
-                imageBytes->insert(imageBytes->begin(), reinterpret_cast<const char*>(&image.raw().front()), reinterpret_cast<const char*>(&image.raw().back() + 1));
+                imageBytes->insert(imageBytes->begin(), reinterpret_cast<const char*>(&image.data.front()), reinterpret_cast<const char*>(&image.data.back() + 1));
             }
 
             send(message);

@@ -67,8 +67,8 @@ namespace modules {
             /// @brief this map is used to hold several ioctl wrappers that let us set settings easily
             std::map<std::string, V4L2CameraSetting> settings;
 
-            /// @brief The name of the device to read camera data from
-            std::string deviceID;
+            /// @brief The path of the device to read camera data from
+            std::string devicePath;
 
             /// @brief the format that we are reading in from the camera
             std::string format;
@@ -77,12 +77,8 @@ namespace modules {
             bool streaming;
 
         public:
-
-            /// @brief this enum holds important constants (we are c++ we don't use defines for this kind of thing)
-            enum {
-                /// @brief the framerate we are requesting
-                FRAMERATE = 30
-            };
+            /// @brief the framerate we are requesting
+            static constexpr uint FRAMERATE = 30;
 
             /**
              * @brief Constructs a new DarwinCamera class using the passed string as the device
@@ -129,9 +125,9 @@ namespace modules {
             size_t getHeight() const;
 
             /**
-             * @brief Returns the device id that is currently used as the camera
+             * @brief Returns the device path that is currently used as the camera
              */
-            const std::string& getDeviceID() const;
+            const std::string& getDevicePath() const;
 
             /**
              * @brief returns the format that the camera is currently reading (YUYV or MJPG)

@@ -20,7 +20,6 @@
 #include "LUTClassifier.h"
 
 #include "messages/input/Image.h"
-#include "messages/input/CameraParameters.h"
 #include "messages/input/Sensors.h"
 #include "messages/vision/LookUpTable.h"
 #include "messages/support/Configuration.h"
@@ -35,7 +34,6 @@ namespace modules {
         using messages::input::Image;
         using messages::input::ServoID;
         using messages::input::Sensors;
-        using messages::input::CameraParameters;
         using messages::vision::LookUpTable;
         using messages::vision::SaveLookUpTable;
         using messages::vision::ObjectClass;
@@ -75,7 +73,8 @@ namespace modules {
                 emit(std::make_unique<SaveConfiguration>(SaveConfiguration{ LUTLocation::CONFIGURATION_PATH, YAML::Node(lut) }));
             });
 
-            auto setParams = [this] (const CameraParameters& cam, const Configuration<LUTClassifier>& config) {
+            // Trigger the same function when either update
+            on<Trigger<Configuration<LUTClassifier>>>([this] (const Configuration<LUTClassifier>& config) {
 
                 // Visual horizon detector
                 VISUAL_HORIZON_SPACING = cam.focalLengthPixels * tan(config["visual_horizon"]["spacing"].as<double>());
@@ -99,11 +98,7 @@ namespace modules {
                 // Camera settings
                 ALPHA = cam.pixelsToTanThetaFactor[1];
                 FOCAL_LENGTH_PIXELS = cam.focalLengthPixels;
-            };
-
-            // Trigger the same function when either update
-            on<Trigger<CameraParameters>, With<Configuration<LUTClassifier>>>(setParams);
-            on<With<CameraParameters>, Trigger<Configuration<LUTClassifier>>>(setParams);
+            });
 
             on<Trigger<Raw<Image>>, With<LookUpTable>, With<Raw<Sensors>>, Options<Single>>("Classify Image", [this](
                 const std::shared_ptr<const Image>& rawImage, const LookUpTable& lut, const std::shared_ptr<const Sensors>& sensors) {
@@ -147,7 +142,7 @@ namespace modules {
         }
 
         LUTClassifier::~LUTClassifier() {
-            // TODO work out how to fix pimpl and fix it damnit!!
+            // TODO work out how to fix pimpl and fix it dammit!!
             delete quex;
         }
 

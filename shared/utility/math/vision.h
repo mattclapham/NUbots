@@ -155,7 +155,7 @@ namespace vision {
         return projectCamToPlane(getCamFromScreen(screenPos, camFocalLengthPixels), camToGround, utility::math::geometry::Plane<3>({ 0, 0, 1 }, { 0, 0, 0 }));
     }
 
-    inline double distanceToVerticalObject(const arma::vec2& top, const arma::vec2& base, const double& objectHeight, const double& robotHeight, const double& camFocalLengthPixels) {
+    inline double distanceToVerticalObject(const arma::vec2& top, const arma::vec2& base, const double& objectHeight, const double& camHeight, const double& camFocalLengthPixels) {
 
         // Parallax from top to base
         double theta = getParallaxAngle(top, base, camFocalLengthPixels);
@@ -171,7 +171,7 @@ namespace vision {
         const double H = objectHeight;
         const double H2 = H * H;
         // Robot Height
-        const double h = robotHeight;
+        const double h = camHeight;
         const double h2 = h * h;
 
         double innerExpr = std::abs(c)*sqrt(H2*(4.0*H*h + H2*c2 + 4.0*h2*c2 - 4.0*h2 - 4.0*H*h*c2));

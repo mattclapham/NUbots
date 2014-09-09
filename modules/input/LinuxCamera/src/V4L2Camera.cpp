@@ -36,7 +36,7 @@ namespace modules {
 
         using messages::input::Image;
 
-        V4L2Camera::V4L2Camera() : fd(-1), width(0), height(0), deviceID(""), streaming(false) {
+        V4L2Camera::V4L2Camera() : fd(-1), width(0), height(0), devicePath(""), streaming(false) {
         }
 
         std::unique_ptr<Image> V4L2Camera::getImage() {
@@ -55,7 +55,7 @@ namespace modules {
             }
 
             std::vector<Image::Pixel> data(width * height);
-            std::unique_ptr<Image> image;
+            auto image = std::make_unique<Image>();
 
             // If it is a MJPG
             if(format == "MJPG") {
@@ -102,7 +102,9 @@ namespace modules {
                 jpeg_destroy_decompress(&cinfo);
 
                 // Move this data into the image along with the jpeg source
-                image = std::unique_ptr<Image>(new Image(width, height, std::move(data), std::move(jpegData)));
+                image->dimensions = { width, height };
+                image->data = std::move(data);
+                image->source = std::move(jpegData);
             }
 
             else {
@@ -123,7 +125,8 @@ namespace modules {
                 }
 
                 // Move this data into the image
-                image = std::unique_ptr<Image>(new Image(width, height, std::move(data)));
+                image->dimensions = { width, height };
+                image->data = std::move(data);
             }
 
             // Enqueue our next buffer so it can be written to
@@ -140,16 +143,16 @@ namespace modules {
             closeCamera();
 
             // Store our new state
-            deviceID = device;
+            devicePath = device;
             format = fmt;
             width = w;
             height = h;
 
             // Open the camera device
-            fd = open(deviceID.c_str(), O_RDWR);
+            fd = open(devicePath.c_str(), O_RDWR);
             // Check if we managed to open our file descriptor
             if (fd < 0) {
-                throw std::runtime_error(std::string("We were unable to access the camera device on ") + deviceID);
+                throw std::runtime_error(std::string("We were unable to access the camera device on ") + devicePath);
             }
 
             // Here we set the "Format" of the device (the type of data we are getting)
@@ -226,7 +229,7 @@ namespace modules {
             settings.insert(std::make_pair("gain",                       V4L2CameraSetting(fd, V4L2_CID_GAIN)));
             settings.insert(std::make_pair("contrast",                   V4L2CameraSetting(fd, V4L2_CID_CONTRAST)));
             settings.insert(std::make_pair("saturation",                 V4L2CameraSetting(fd, V4L2_CID_SATURATION)));
-            settings.insert(std::make_pair("power_line_frequency",        V4L2CameraSetting(fd, V4L2_CID_POWER_LINE_FREQUENCY)));
+            settings.insert(std::make_pair("power_line_frequency",       V4L2CameraSetting(fd, V4L2_CID_POWER_LINE_FREQUENCY)));
             settings.insert(std::make_pair("auto_white_balance",         V4L2CameraSetting(fd, V4L2_CID_AUTO_WHITE_BALANCE)));
             settings.insert(std::make_pair("white_balance_temperature",  V4L2CameraSetting(fd, V4L2_CID_WHITE_BALANCE_TEMPERATURE)));
             settings.insert(std::make_pair("auto_exposure",              V4L2CameraSetting(fd, V4L2_CID_EXPOSURE_AUTO)));
@@ -281,8 +284,8 @@ namespace modules {
             return height;
         }
 
-        const std::string& V4L2Camera::getDeviceID() const {
-            return deviceID;
+        const std::string& V4L2Camera::getDevicePath() const {
+            return devicePath;
         }
 
         const std::string& V4L2Camera::getFormat() const {

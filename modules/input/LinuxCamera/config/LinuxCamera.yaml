@@ -1,4 +1,4 @@
-deviceID: /dev/video0
+device_path: /dev/video0
 
 # Picture brightness, or more precisely, the black level.
 # min=0 max=255 step=1 default=128
@@ -81,9 +81,8 @@ absolute_tilt: 0
 # (int): min=0 max=255 step=1 default=128
 sharpness: 128
 
-imageFormat: YUYV
-imageWidth: 640
-imageHeight: 480
-FOV_X: 1.0472
-FOV_Y: 0.785398
-DISTORTION_FACTOR: -0.000018
+image_format: YUYV
+image_width: 640
+image_height: 480
+field_of_view: [1.0472, 0.785398]
+distortion_factor: -0.000018

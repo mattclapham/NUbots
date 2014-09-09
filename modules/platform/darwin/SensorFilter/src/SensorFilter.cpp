@@ -21,7 +21,6 @@
 
 #include "messages/platform/darwin/DarwinSensors.h"
 #include "messages/input/Sensors.h"
-#include "messages/input/CameraParameters.h"
 #include "messages/support/Configuration.h"
 #include "utility/nubugger/NUhelpers.h"
 #include "utility/math/matrix.h"
@@ -39,7 +38,6 @@ namespace modules {
             using messages::platform::darwin::ButtonMiddleDown;
             using messages::platform::darwin::ButtonMiddleUp;
             using messages::input::Sensors;
-            using messages::input::CameraParameters;
             using utility::nubugger::graph;
             using messages::input::ServoID;
             using utility::motion::kinematics::calculateAllPositions;

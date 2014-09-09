@@ -23,45 +23,55 @@
 #include <cstdint>
 #include <cstddef>
 #include <vector>
+#include <nuclear>
+#include <armadillo>
 
 namespace messages {
     namespace input {
 
-        /**
-         * TODO document
-         *
-         * @author Michael Burton
-         */
         class Image {
         public:
+
+            enum class Format {
+                YCbCr422,
+                YCbCr444,
+                RGB
+            };
+
+            struct Camera {
+                std::function<arma::vec2 (const int& x, const int& y)> pixelAngle;
+                std::function<arma::vec3 (const arma::vec2&)> project;
+            };
+
             struct Pixel {
                 uint8_t y;
                 uint8_t cb;
                 uint8_t cr;
             };
 
-            Image(size_t width, size_t height, std::vector<Pixel>&& data);
-            Image(size_t width, size_t height, std::vector<Pixel>&& data, std::vector<uint8_t>&& src);
+            inline Pixel& operator()(uint x, uint y) {
+                return data[x + y * width()];
+            }
 
-            Pixel& operator()(size_t x, size_t y);
+            inline const Pixel& operator()(uint x, uint y) const {
+                return data[x + y * width()];
+            }
 
-            const Pixel& operator()(size_t x, size_t y) const;
-            size_t width() const;
-            size_t height() const;
+            inline uint width() const {
+                return dimensions[0];
+            }
 
-            // raw pixel data row-by-row
-            const std::vector<Pixel>& raw() const;
+            inline uint height() const {
+                return dimensions[1];
+            }
 
-            // apparently often empty (MJPG goes here)
-            const std::vector<uint8_t>& source() const;
-
-        private:
-            size_t imgWidth;
-            size_t imgHeight;
-
+        public:
+            NUClear::clock::time_point timestamp;
+            Format format;
+            arma::uvec2 dimensions;
             std::vector<Pixel> data;
-            std::vector<uint8_t> src;
-
+            std::vector<uint8_t> source;
+            Camera camera;
         };
 
     }  // input

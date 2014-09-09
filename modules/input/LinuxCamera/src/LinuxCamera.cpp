@@ -25,23 +25,26 @@ extern "C" {
 
 #include "V4L2Camera.h"
 #include "messages/input/Image.h"
-#include "messages/input/CameraParameters.h"
 #include "messages/support/Configuration.h"
 
 namespace modules {
     namespace input {
 
         using messages::support::Configuration;
-        using messages::input::CameraParameters;
 
         // We assume that the device will always be video0, if not then change this
         LinuxCamera::LinuxCamera(std::unique_ptr<NUClear::Environment> environment) : Reactor(std::move(environment)) {
 
             // This trigger gets us as close as we can to the frame rate as possible (as high resolution as we can)
-            on<Trigger<Every<NUClear::clock::period::den / V4L2Camera::FRAMERATE, NUClear::clock::duration>>, Options<Single>>("Read Camera", [this](const time_t&) {
+            on<Trigger<Every<V4L2Camera::FRAMERATE, Per<std::chrono::seconds>>>, Options<Single>>("Read Camera", [this](const time_t&) {
 
                 // If the camera is ready, get an image and emit it
                 if (camera.isStreaming()) {
+                    auto image = camera.getImage();
+
+                    // Apply our camera functions to this
+                    image->camera.pixelAngle = pixelAngle;
+                    image->camera.project = project;
                     emit(camera.getImage());
                 }
             });
@@ -53,33 +56,46 @@ namespace modules {
 
             on<Trigger<Configuration<LinuxCamera>>>([this](const Configuration<LinuxCamera>& config) {
 
-                auto cameraParameters = std::make_unique<CameraParameters>();
+                double fovX = config["fov"][0].as<double>();
+                double fovY = config["fov"][1].as<double>();
 
-                cameraParameters->imageSizePixels << config["imageWidth"].as<uint>() << config["imageHeight"].as<uint>();
-                cameraParameters->FOV << config["FOV_X"].as<double>() << config["FOV_Y"].as<double>();
-                cameraParameters->distortionFactor = config["DISTORTION_FACTOR"].as<double>();
-                arma::vec2 tanHalfFOV;
-                tanHalfFOV << std::tan(cameraParameters->FOV[0] * 0.5) << std::tan(cameraParameters->FOV[1] * 0.5);
-                arma::vec2 imageCentre;
-                imageCentre << cameraParameters->imageSizePixels[0] * 0.5 << cameraParameters->imageSizePixels[1] * 0.5;
-                cameraParameters->pixelsToTanThetaFactor << (tanHalfFOV[0] / imageCentre[0]) << (tanHalfFOV[1] / imageCentre[1]);
-                cameraParameters->focalLengthPixels = imageCentre[0] / tanHalfFOV[0];
+                pixelAngle = [](const int& x, const int& y) {
+                    // Return the pixels angle from the camera
+                    return arma::vec2({ 1, 2 });
+                };
 
+                project = [](const arma::vec2& angle) {
+                    // Return the unit vector to the screen
+                    return arma::vec3({ 1, 2, 3 });
+                };
 
-                emit<Scope::DIRECT>(std::move(cameraParameters));
+//                auto cameraParameters = std::make_unique<CameraParameters>();
+//
+//                cameraParameters->imageSizePixels << config["imageWidth"].as<uint>() << config["imageHeight"].as<uint>();
+//                cameraParameters->FOV << config["FOV_X"].as<double>() << config["FOV_Y"].as<double>();
+//                cameraParameters->distortionFactor = config["DISTORTION_FACTOR"].as<double>();
+//                arma::vec2 tanHalfFOV;
+//                tanHalfFOV << std::tan(cameraParameters->FOV[0] * 0.5) << std::tan(cameraParameters->FOV[1] * 0.5);
+//                arma::vec2 imageCentre;
+//                imageCentre << cameraParameters->imageSizePixels[0] * 0.5 << cameraParameters->imageSizePixels[1] * 0.5;
+//                cameraParameters->pixelsToTanThetaFactor << (tanHalfFOV[0] / imageCentre[0]) << (tanHalfFOV[1] / imageCentre[1]);
+//                cameraParameters->focalLengthPixels = imageCentre[0] / tanHalfFOV[0];
+//
+//
+//                emit<Scope::DIRECT>(std::move(cameraParameters));
 
                 try {
                     // Recreate the camera device at the required resolution
-                    int width = config["imageWidth"].as<uint>();
-                    int height = config["imageHeight"].as<uint>();
-                    std::string deviceID = config["deviceID"].as<std::string>();
+                    int width = config["image_width"].as<uint>();
+                    int height = config["image_height"].as<uint>();
+                    std::string devicePath = config["device_path"].as<std::string>();
                     std::string format = config["imageFormat"].as<std::string>();
 
                     if (camera.getWidth() != static_cast<size_t>(width)
                         || camera.getHeight() != static_cast<size_t>(height)
                         || camera.getFormat() != format
-                        || camera.getDeviceID() != deviceID) {
-                        camera.resetCamera(deviceID, format, width, height);
+                        || camera.getDevicePath() != devicePath) {
+                        camera.resetCamera(devicePath, format, width, height);
                     }
 
                     // Set all other camera settings
@@ -98,6 +114,7 @@ namespace modules {
                 }
             });
 
+            // Try to reapply the camera settings every 1 second because sometimes they don't all apply properly
             on<Trigger<Every<1, std::chrono::seconds>>, With<Configuration<LinuxCamera>>>("Camera Setting Applicator", [this] (const time_t&, const Configuration<LinuxCamera>& config) {
                 if(camera.isStreaming()) {
                     // Set all other camera settings
