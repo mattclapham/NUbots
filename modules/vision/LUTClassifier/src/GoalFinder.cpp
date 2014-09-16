@@ -42,10 +42,13 @@ namespace modules {
              */
 
             // Cast lines upward to find the goals
-            for(int y = 0; y < int(image.height() - 1); y += GOAL_LINE_SPACING) {
+            for(double y = -image.cam.fov[1] / 2; y < image.cam.fov[1] / 2; y += GOAL_LINE_SPACING) {
 
-                arma::ivec2 start = { 0, y };
-                arma::ivec2 end = { int(image.width() - 1), y };
+                // Get the y value in pixel space
+                int p = image.cam.pixel({ 0, y })[1];
+
+                arma::ivec2 start = { 0, p };
+                arma::ivec2 end = { int(image.width() - 1), p };
 
                 // Insert our segments
                 auto segments = quex->classify(image, lut, start, end, GOAL_SUBSAMPLING);
