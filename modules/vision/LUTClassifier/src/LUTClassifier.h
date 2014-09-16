@@ -63,9 +63,6 @@ namespace modules {
             double BALL_HORIZONTAL_SUBSAMPLE_FACTOR = 1;
             double BALL_RADIUS = 0.05;
 
-            double FOCAL_LENGTH_PIXELS = 2.0;
-            double ALPHA = 2.0;
-
             void insertSegments(messages::vision::ClassifiedImage<messages::vision::ObjectClass>& image
                 , std::vector<messages::vision::ClassifiedImage<messages::vision::ObjectClass>::Segment>& segments
                 , bool vertical);
