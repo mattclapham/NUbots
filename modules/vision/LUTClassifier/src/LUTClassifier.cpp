@@ -77,14 +77,14 @@ namespace modules {
             on<Trigger<Configuration<LUTClassifier>>>([this] (const Configuration<LUTClassifier>& config) {
 
                 // Visual horizon detector
-                VISUAL_HORIZON_SPACING = cam.focalLengthPixels * tan(config["visual_horizon"]["spacing"].as<double>());
-                VISUAL_HORIZON_BUFFER = cam.focalLengthPixels * tan(config["visual_horizon"]["horizon_buffer"].as<double>());
-                VISUAL_HORIZON_SUBSAMPLING = std::max(1, int(cam.focalLengthPixels * tan(config["visual_horizon"]["subsampling"].as<double>())));
-                VISUAL_HORIZON_MINIMUM_SEGMENT_SIZE = cam.focalLengthPixels * tan(config["visual_horizon"]["minimum_segment_size"].as<double>());
+                VISUAL_HORIZON_SPACING = config["visual_horizon"]["spacing"].as<double>();
+                VISUAL_HORIZON_BUFFER = config["visual_horizon"]["horizon_buffer"].as<double>();
+                VISUAL_HORIZON_SUBSAMPLING = config["visual_horizon"]["subsampling"].as<double>();
+                VISUAL_HORIZON_MINIMUM_SEGMENT_SIZE = config["visual_horizon"]["minimum_segment_size"].as<double>();
 
                 // Goal detector
-                GOAL_LINE_SPACING = cam.focalLengthPixels * tan(config["goals"]["spacing"].as<double>());
-                GOAL_SUBSAMPLING = std::max(1, int(cam.focalLengthPixels * tan(config["goals"]["subsampling"].as<double>())));
+                GOAL_LINE_SPACING = config["goals"]["spacing"].as<double>();
+                GOAL_SUBSAMPLING = config["goals"]["subsampling"].as<double>();
                 GOAL_EXTENSION_SCALE = config["goals"]["extension_scale"].as<double>() / 2;
                 GOAL_LINE_DENSITY = config["goals"]["line_density"].as<int>();
 
@@ -92,12 +92,8 @@ namespace modules {
                 BALL_MINIMUM_INTERSECTIONS_COARSE = config["ball"]["intersections_coarse"].as<double>();
                 BALL_MINIMUM_INTERSECTIONS_FINE = config["ball"]["intersections_fine"].as<double>();
                 BALL_SEARCH_CIRCLE_SCALE = config["ball"]["search_circle_scale"].as<double>();
-                BALL_MAXIMUM_VERTICAL_CLUSTER_SPACING = std::max(1, int(cam.focalLengthPixels * tan(config["ball"]["maximum_vertical_cluster_spacing"].as<double>())));
+                BALL_MAXIMUM_VERTICAL_CLUSTER_SPACING = config["ball"]["maximum_vertical_cluster_spacing"].as<double>();
                 BALL_HORIZONTAL_SUBSAMPLE_FACTOR = config["ball"]["horizontal_subsample_factor"].as<double>();
-
-                // Camera settings
-                ALPHA = cam.pixelsToTanThetaFactor[1];
-                FOCAL_LENGTH_PIXELS = cam.focalLengthPixels;
             });
 
             on<Trigger<Raw<Image>>, With<LookUpTable>, With<Raw<Sensors>>, Options<Single>>("Classify Image", [this](
