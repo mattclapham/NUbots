@@ -43,8 +43,8 @@ namespace modules {
                     auto image = camera.getImage();
 
                     // Apply our camera functions to this
-                    image->camera.pixelAngle = pixelAngle;
-                    image->camera.project = project;
+                    image->cam.pixel = pixel;
+                    image->cam.angle = angle;
                     emit(camera.getImage());
                 }
             });
@@ -59,14 +59,23 @@ namespace modules {
                 double fovX = config["fov"][0].as<double>();
                 double fovY = config["fov"][1].as<double>();
 
-                pixelAngle = [](const int& x, const int& y) {
+                // VISION TODO make this output the angle of the pixel in question
+                angle = [](const arma::ivec2& pixel) {
                     // Return the pixels angle from the camera
+
+                    // VISION TODO get the unit vector to the focal length
+                    // VISION TODO get the angle offset in x and y from 0
+
                     return arma::vec2({ 1, 2 });
                 };
 
-                project = [](const arma::vec2& angle) {
+                // VISION TODO make this output the pixel for the given angle
+                pixel = [](const arma::vec2& angle) {
                     // Return the unit vector to the screen
-                    return arma::vec3({ 1, 2, 3 });
+
+                    // VISION TODO get the intersection of this angle and the virtual screen
+
+                    return arma::ivec2({ 1, 2 });
                 };
 
 //                auto cameraParameters = std::make_unique<CameraParameters>();

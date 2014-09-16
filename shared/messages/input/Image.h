@@ -32,15 +32,16 @@ namespace messages {
         class Image {
         public:
 
-            enum class Format {
+            enum class SourceFormat {
                 YCbCr422,
                 YCbCr444,
-                RGB
+                RGB,
+                JPEG
             };
 
-            struct Camera {
-                std::function<arma::vec2 (const int& x, const int& y)> pixelAngle;
-                std::function<arma::vec3 (const arma::vec2&)> project;
+            struct CameraGeometry {
+                std::function<arma::ivec2 (const arma::vec2&)> pixel;
+                std::function<arma::vec2 (const arma::ivec2&)> angle;
             };
 
             struct Pixel {
@@ -67,11 +68,11 @@ namespace messages {
 
         public:
             NUClear::clock::time_point timestamp;
-            Format format;
+            SourceFormat format;
             arma::uvec2 dimensions;
             std::vector<Pixel> data;
             std::vector<uint8_t> source;
-            Camera camera;
+            CameraGeometry cam;
         };
 
     }  // input
