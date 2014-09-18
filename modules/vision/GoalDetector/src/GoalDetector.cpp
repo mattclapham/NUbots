@@ -33,7 +33,6 @@
 #include "utility/math/ransac/Ransac.h"
 #include "utility/math/vision.h"
 #include "utility/math/coordinates.h"
-#include "messages/input/CameraParameters.h"
 
 namespace modules {
 namespace vision {

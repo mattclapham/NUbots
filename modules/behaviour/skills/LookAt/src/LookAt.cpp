@@ -24,7 +24,6 @@
 #include "messages/behaviour/Action.h"
 #include "messages/input/Sensors.h"
 #include "messages/support/Configuration.h"
-#include "messages/input/CameraParameters.h"
 
 namespace modules {
     namespace behaviour {

@@ -21,7 +21,6 @@
 
 #include "messages/vision/ClassifiedImage.h"
 #include "messages/vision/VisionObjects.h"
-#include "messages/input/CameraParameters.h"
 #include "messages/support/Configuration.h"
 #include "messages/support/FieldDescription.h"
 
