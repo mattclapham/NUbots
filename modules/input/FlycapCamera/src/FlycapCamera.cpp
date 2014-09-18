@@ -36,7 +36,7 @@ namespace modules {
 
         // We assume that the device will always be video0, if not then change this
         FlycapCamera::FlycapCamera(std::unique_ptr<NUClear::Environment> environment) : Reactor(std::move(environment)) {
-
+            cameras.reserve(10);
             // When we shutdown, we must tell our camera class to close (stop streaming)
             on<Trigger<Shutdown>>([this](const Shutdown&) {
                 for (auto& camera: cameras) {
@@ -66,31 +66,53 @@ namespace modules {
                     PtGreyCamera* cameraptr = nullptr;
                     std::cout << "Setting Up Device: " << config["deviceID"].as<int>() << std::endl;
                     for (PtGreyCamera& c : cameras) {
+                        c.stopStreaming();
                         if (c.deviceID == config["deviceID"].as<int>()) {
                             cameraptr = &c;
                             break;
-                        } else if (c.deviceID == -1) {
-                            cameraptr = &c;
-                            break;
                         }
+                    }
+                    if (cameraptr == nullptr) {
+                        cameras.push_back(PtGreyCamera());
+                        cameraptr = &cameras.back();
                     }
                     
                     PtGreyCamera& camera = *cameraptr;
                 
                 try {
+                    
+
+                    FlyCapture2::Camera** camptrs = new FlyCapture2::Camera*[cameras.size()];
+                    FlyCapture2::ImageEventCallback* callbackfuncs = new FlyCapture2::ImageEventCallback[cameras.size()];
+                    void** callbackptrs = new void*[cameras.size()];
+
+                    
                     //if thisisaradialcamera
-                    camera.resetCamera(config["deviceID"].as<uint>(), 1280, 960);
+                    camera.resetCamera(config["deviceID"].as<uint>(), 1280, 960,this);
                     camera.configure(config.config);
                     //camera.startStreaming();
-                    //XXX: we should only StartCapture AFTER all settings are set
-                    camera.startStreaming(this);
+                    int i = 0;
+                    std::cout << "This: " << this << std::endl;
+                    for (PtGreyCamera& c : cameras) {
+                        camptrs[i] = c.camera.get();
+                        callbackptrs[i] = &c.callbackArgs;
+                        std::cout << "Cam: " << i << " firstcb: " << c.callbackArgs.first << " secondcb: " << c.callbackArgs.second << std::endl;
+                        callbackfuncs[i] = c.callbackFunc;
+                        i++;
+                    }
+                    camera.camera->StartSyncCapture(i, 
+                                                    const_cast<const FlyCapture2::Camera**>(camptrs), 
+                                                    const_cast<const FlyCapture2::ImageEventCallback*>(callbackfuncs), 
+                                                    const_cast<const void**>(callbackptrs)); 
                     
-                    
+                    //delete camptrs;
+                    //delete callbackptrs;
+                    //delete callbackfuncs;
                 } catch(const std::exception& e) {
                     NUClear::log<NUClear::DEBUG>(std::string("Exception while starting camera streaming: ") + e.what());
                     throw e;
                 }
-                
+                std::cout << "Leaving camera init" << std::endl;
  });
             /*on<Trigger<Every<1, std::chrono::seconds>>, With<Configuration<LinuxCamera>>>("Camera Setting Applicator", [this] (const time_t&, const Configuration<LinuxCamera>& config) {
                 if(camera.isStreaming()) {

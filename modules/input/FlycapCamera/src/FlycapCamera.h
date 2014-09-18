@@ -44,7 +44,7 @@ namespace modules {
 
         private:
             /// @brief Our internal camera class that interacts with the physical device
-            PtGreyCamera cameras[6];
+            std::vector<PtGreyCamera> cameras;
             
             
             

@@ -53,7 +53,7 @@ namespace modules {
         private:
             
             
-            std::pair<void*,PtGreyCamera*> callbackArgs;
+            
 
             /// @brief the width of the image being retrieved from the camera
             size_t width;
@@ -76,7 +76,9 @@ namespace modules {
             int deviceID;
             
             /// @brief Our internal camera class that interacts with the physical device
-            FlyCapture2::Camera camera;
+            std::unique_ptr<FlyCapture2::Camera> camera;
+            std::pair<void*,PtGreyCamera*> callbackArgs;
+            FlyCapture2::ImageEventCallback callbackFunc;
             
             /// @brief this enum holds important constants (we are c++ we don't use defines for this kind of thing)
             enum {
@@ -111,7 +113,7 @@ namespace modules {
              * @param h the image's height
              * @param f whether the camera is mounted upside down
              */
-            void resetCamera(const size_t device, size_t w, size_t h);
+            void resetCamera(const size_t device, size_t w, size_t h, void* reactor);
 
             /**
              * @brief Returns a map of all configurable settings

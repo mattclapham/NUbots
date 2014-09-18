@@ -44,19 +44,25 @@ namespace modules {
         using messages::support::Configuration;
 
         PtGreyCamera::PtGreyCamera() : width(0), height(0), deviceID(-1), streaming(false) {
-            
+            camera = std::make_unique<FlyCapture2::Camera>();
         }
 
-        void PtGreyCamera::resetCamera(const size_t device, size_t w, size_t h) {
+        void PtGreyCamera::resetCamera(const size_t device, size_t w, size_t h, void* reactor) {
             // if the camera device is already open, close it
             closeCamera();
             std::cout << "beginning to create camera" << std::endl;
-            //XXX: support multiple cameras
             FlyCapture2::PGRGuid deviceIdentifier;
             FlyCapture2::BusManager().GetCameraFromSerialNumber((unsigned int)device, &deviceIdentifier );
             std::cout << "retrieved device" << std::endl;
-            FlyCapture2::Error error = camera.Connect( &deviceIdentifier );
+            FlyCapture2::Error error = camera->Connect( &deviceIdentifier );
             std::cout << "connected" << std::endl;
+
+            
+            
+            callbackArgs = {reactor, this};
+            
+            //XXX: support non-fisheye
+            callbackFunc = &captureRadial;
             
             if ( error != FlyCapture2::PGRERROR_OK )
             {
@@ -78,8 +84,8 @@ namespace modules {
                 throw std::runtime_error("The format must be 1280x960Y8");
             }
             
-            error = camera.SetVideoModeAndFrameRate(format,
-                                                    FlyCapture2::FRAMERATE_15);
+            error = camera->SetVideoModeAndFrameRate(format,
+                                                    FlyCapture2::FRAMERATE_3_75);
             if ( error != FlyCapture2::PGRERROR_OK )
             {
                 throw std::system_error(errno, std::system_category(), "Failed to set the format or framerate");
@@ -89,51 +95,56 @@ namespace modules {
             settings.clear();
             FlyCapture2::Property p;
             p.type = FlyCapture2::BRIGHTNESS;
-            camera.GetProperty(&p);
+            camera->GetProperty(&p);
             settings.insert( std::make_pair("brightness",                 p) );
             
             p.type = FlyCapture2::AUTO_EXPOSURE;
-            camera.GetProperty(&p);
+            camera->GetProperty(&p);
             settings.insert( std::make_pair("auto_exposure",              p) );
             
             p.type = FlyCapture2::WHITE_BALANCE;
-            camera.GetProperty(&p);
+            camera->GetProperty(&p);
             settings.insert( std::make_pair("white_balance_temperature",  p) );
             
             p.type = FlyCapture2::GAMMA;
-            camera.GetProperty(&p);
+            camera->GetProperty(&p);
             settings.insert( std::make_pair("gamma",                      p) );
             
             p.type = FlyCapture2::PAN;
-            camera.GetProperty(&p);
+            camera->GetProperty(&p);
             settings.insert( std::make_pair("absolute_pan",               p) );
             
             p.type = FlyCapture2::TILT;
-            camera.GetProperty(&p);
+            camera->GetProperty(&p);
             settings.insert( std::make_pair("absolute_tilt",              p) );
             
             p.type = FlyCapture2::SHUTTER;
-            camera.GetProperty(&p);
+            camera->GetProperty(&p);
             settings.insert( std::make_pair("absolute_exposure",          p) );
             
             p.type = FlyCapture2::GAIN;
-            camera.GetProperty(&p);
+            camera->GetProperty(&p);
             settings.insert( std::make_pair("gain",                       p) );
             
             p.type = FlyCapture2::TEMPERATURE;
-            camera.GetProperty(&p);
+            camera->GetProperty(&p);
             settings.insert( std::make_pair("temperature",                p) );
+            
+            FlyCapture2::FC2Config camConf;
+            camera->GetConfiguration(&camConf);
+            camConf.numBuffers = 3;
+            camConf.highPerformanceRetrieveBuffer = true;
+            camConf.grabTimeout = 500;
+            camera->SetConfiguration(&camConf);
         }
 
         void PtGreyCamera::startStreaming(void* reactor) {
             if (!streaming) {
                 
-                if (reactor != NULL) {
-                    callbackArgs = {reactor, this};
-                }
                 
+                std::cout << "Attempting to start image capture" << std::endl;
                 // Start streaming data
-                FlyCapture2::Error error = camera.StartCapture(
+                FlyCapture2::Error error = camera->StartCapture(
                                 &captureRadial
                                 ,&callbackArgs);
                 if ( error == FlyCapture2::PGRERROR_ISOCH_BANDWIDTH_EXCEEDED )
@@ -144,7 +155,7 @@ namespace modules {
                 {
                     throw std::system_error(errno, std::system_category(), "Failed to start image capture");
                 }
-                
+                std::cout << "Image capture started" << std::endl;
                 streaming = true;
             }
         }
@@ -152,7 +163,7 @@ namespace modules {
         void PtGreyCamera::stopStreaming() {
             if (streaming) {
                 
-                FlyCapture2::Error error = camera.StopCapture();
+                FlyCapture2::Error error = camera->StopCapture();
                 
                 if ( error != FlyCapture2::PGRERROR_OK )
                 {
@@ -193,51 +204,51 @@ namespace modules {
             auto& s = this->getSettings()["brightness"];
             //s.onOff = true;
             s.valueA = config["brightness"].as<unsigned int>();
-            camera.SetProperty(&s);
+            camera->SetProperty(&s);
             
             s = this->getSettings()["gain"];
             s.autoManualMode = config["gain_auto"].as<unsigned int>();
             s.valueA = config["gain"].as<unsigned int>();
-            camera.SetProperty(&s);
+            camera->SetProperty(&s);
             
             s = this->getSettings()["gamma"];
             s.onOff = true;
             s.valueA = config["gamma"].as<unsigned int>();
-            camera.SetProperty(&s);
+            camera->SetProperty(&s);
             
             s = this->getSettings()["absolute_exposure"];
             s.valueA = config["absolute_exposure"].as<unsigned int>();
-            camera.SetProperty(&s);
+            camera->SetProperty(&s);
             
             s = this->getSettings()["absolute_pan"];
             s.valueA = config["absolute_pan"].as<unsigned int>();
-            camera.SetProperty(&s);
+            camera->SetProperty(&s);
             
             s = this->getSettings()["absolute_tilt"];
             s.valueA = config["absolute_tilt"].as<unsigned int>();
-            camera.SetProperty(&s);
+            camera->SetProperty(&s);
             
             s = this->getSettings()["auto_exposure"];
             s.onOff = config["auto_exposure"].as<int>();
             s.absValue = config["auto_exposure_val"].as<float>();
-            camera.SetProperty(&s);
+            camera->SetProperty(&s);
             
             s = this->getSettings()["white_balance_temperature"];
             s.valueA = config["white_balance_temperature_red"].as<unsigned int>();
             s.valueB = config["white_balance_temperature_blue"].as<unsigned int>();
             s.onOff = config["auto_white_balance"].as<unsigned int>();
-            camera.SetProperty(&s);
+            camera->SetProperty(&s);
             
             //XXX: auto white balance
-            //auto& s = camera.getSettings()["absolute_pan"];
+            //auto& s = this->getSettings()["absolute_pan"];
             //s.valueA = config["absolute_pan"].as<unsigned int>();
-            //camera.camera.SetProperty(&s);
+            //camera->SetProperty(&s);
         }
 
         void PtGreyCamera::closeCamera() {
             if (deviceID != -1) {
                 stopStreaming();
-                camera.Disconnect();
+                camera->Disconnect();
                 deviceID = -1;
             }
         }

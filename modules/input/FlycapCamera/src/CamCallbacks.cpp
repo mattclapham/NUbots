@@ -125,7 +125,7 @@ namespace modules {
                 j2 += radius*2;
             }
             image = std::make_unique<messages::input::Image>(radius*2, sourceHeight, std::move(data));
-            std::cout << cbData->second->deviceID << std::endl;
+            std::cout << "firstcb: " << cbData->first << " secondcb: " << cbData->second << std::endl;
             reactor->emitImage(std::move(image));
         }
 
