@@ -83,7 +83,7 @@ namespace modules {
                         }
 
                         // Set our camera settings
-                        error = camera->SetVideoModeAndFrameRate(FlyCapture2::VIDEOMODE_1280x960Y8, FlyCapture2::FRAMERATE_3_75);
+                        error = newCam->SetVideoModeAndFrameRate(FlyCapture2::VIDEOMODE_1280x960Y8, FlyCapture2::FRAMERATE_3_75);
                         if (error != FlyCapture2::PGRERROR_OK) {
                             throw std::system_error(errno, std::system_category(), "Failed to set the format or framerate");
                         }
