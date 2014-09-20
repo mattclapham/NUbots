@@ -20,15 +20,11 @@
 #ifndef MODULES_INPUT_CAMCALLBACKS_H
 #define MODULES_INPUT_CAMCALLBACKS_H
 
-#include <map>
-#include <memory>
-#include <string>
 #include <flycapture/FlyCapture2.h>
-//#include "V4L2CameraSetting.h"
 
 namespace modules {
     namespace input {
-        
+
         /**
          * @brief This class encapsulates the physical camera device. It will setup a camera device and begin streaming
          *    images

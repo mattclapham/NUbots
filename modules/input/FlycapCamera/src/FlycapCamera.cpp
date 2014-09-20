@@ -19,9 +19,6 @@
 
 #include "FlycapCamera.h"
 
-extern "C" {
-    #include <jpeglib.h>
-}
 #include "utility/image/ColorModelConversions.h"
 #include "messages/input/CameraParameters.h"
 #include "messages/support/Configuration.h"
@@ -32,22 +29,20 @@ namespace modules {
 
         using messages::support::Configuration;
         using messages::input::CameraParameters;
-        //using namespace FlyCapture2;
 
-        // We assume that the device will always be video0, if not then change this
         FlycapCamera::FlycapCamera(std::unique_ptr<NUClear::Environment> environment) : Reactor(std::move(environment)) {
-            cameras.reserve(10);
+
             // When we shutdown, we must tell our camera class to close (stop streaming)
             on<Trigger<Shutdown>>([this](const Shutdown&) {
-                for (auto& camera: cameras) {
-                    camera.closeCamera();
-                }
+
+                // Stop streaming somehow
+                // for (auto& camera: cameras) {
+                //     camera.closeCamera();
+                // }
             });
 
             on<Trigger<Configuration<FlycapCamera>>>([this](const Configuration<FlycapCamera>& config) {
-
-                
-                
+                try {
                     //XXX: NOT PER CAMERA
                     auto cameraParameters = std::make_unique<CameraParameters>();
 
@@ -60,71 +55,106 @@ namespace modules {
                     imageCentre << cameraParameters->imageSizePixels[0] * 0.5 << cameraParameters->imageSizePixels[1] * 0.5;
                     cameraParameters->pixelsToTanThetaFactor << (tanHalfFOV[0] / imageCentre[0]) << (tanHalfFOV[1] / imageCentre[1]);
                     cameraParameters->focalLengthPixels = imageCentre[0] / tanHalfFOV[0];
-                emit<Scope::DIRECT>(std::move(cameraParameters));
-                
-                
-                    PtGreyCamera* cameraptr = nullptr;
-                    std::cout << "Setting Up Device: " << config["deviceID"].as<int>() << std::endl;
-                    for (PtGreyCamera& c : cameras) {
-                        c.stopStreaming();
-                        if (c.deviceID == config["deviceID"].as<int>()) {
-                            cameraptr = &c;
-                            break;
+                    emit<Scope::DIRECT>(std::move(cameraParameters));
+
+                    // Try to find our camera
+                    uint deviceId = config["device_id"].as<int>();
+                    auto camera = cameras.find(deviceId);
+
+                    // If we don't have a camera then make a new one
+                    if(camera == cameras.end()) {
+                        // TODO stop the cameras streaming
+
+                        // Make a new camera
+                        auto newCam = std::make_unique<FlyCapture2::Camera>();
+
+                        // Find the physical camera to connect to
+                        FlyCapture2::PGRGuid id;
+                        FlyCapture2::BusManager().GetCameraFromSerialNumber(deviceId, &id);
+                        std::cout << "retrieved device" << std::endl;
+                        FlyCapture2::Error error = newCam->Connect(&id);
+                        std::cout << "connected" << std::endl;
+
+                        if (error != FlyCapture2::PGRERROR_OK) {
+                            throw std::system_error(errno, std::system_category(), "Failed to connect to camera, did you run as sudo?");
                         }
-                    }
-                    if (cameraptr == nullptr) {
-                        cameras.push_back(PtGreyCamera());
-                        cameraptr = &cameras.back();
-                    }
-                    
-                    PtGreyCamera& camera = *cameraptr;
-                
-                try {
-                    
 
-                    FlyCapture2::Camera** camptrs = new FlyCapture2::Camera*[cameras.size()];
-                    FlyCapture2::ImageEventCallback* callbackfuncs = new FlyCapture2::ImageEventCallback[cameras.size()];
-                    void** callbackptrs = new void*[cameras.size()];
+                        // Insert our new camera
+                        camera = cameras.insert(std::make_pair(deviceId, std::move(newCam))).first;
 
-                    
-                    //if thisisaradialcamera
-                    camera.resetCamera(config["deviceID"].as<uint>(), 1280, 960,this);
-                    camera.configure(config.config);
-                    //camera.startStreaming();
-                    int i = 0;
-                    std::cout << "This: " << this << std::endl;
-                    for (PtGreyCamera& c : cameras) {
-                        camptrs[i] = c.camera.get();
-                        callbackptrs[i] = &c.callbackArgs;
-                        std::cout << "Cam: " << i << " firstcb: " << c.callbackArgs.first << " secondcb: " << c.callbackArgs.second << std::endl;
-                        callbackfuncs[i] = c.callbackFunc;
-                        i++;
+                        // Make an array to hold our pointers
+                        std::vector<const FlyCapture2::Camera*> camPtrs;
+                        std::vector<FlyCapture2::ImageEventCallback> callbacks;
+                        std::vector<const void*> context;
+                        for(auto& cam : cameras) {
+                            camPtrs.push_back(cam.second.get());
+                            callbacks.push_back(&captureRadial);
+                            context.push_back(this);
+                        }
+
+                        // Start capturing on all cameras
+                        FlyCapture2::Camera::StartSyncCapture(camPtrs.size(), camPtrs.data(), callbacks.data(), context.data());
                     }
-                    camera.camera->StartSyncCapture(i, 
-                                                    const_cast<const FlyCapture2::Camera**>(camptrs), 
-                                                    const_cast<const FlyCapture2::ImageEventCallback*>(callbackfuncs), 
-                                                    const_cast<const void**>(callbackptrs)); 
-                    
-                    //delete camptrs;
-                    //delete callbackptrs;
-                    //delete callbackfuncs;
-                } catch(const std::exception& e) {
+
+                    auto& cam = *camera->second;
+                    FlyCapture2::Property p;
+                    p.type = FlyCapture2::BRIGHTNESS;
+                    p.onOff = true;
+                    p.valueA = config["brightness"].as<unsigned int>();
+                    cam.SetProperty(&p);
+
+                    p.type = FlyCapture2::AUTO_EXPOSURE;
+                    p.onOff = config["auto_exposure"].as<int>();
+                    p.absValue = config["auto_exposure_val"].as<float>();
+                    cam.SetProperty(&p);
+
+                    p.type = FlyCapture2::WHITE_BALANCE;
+                    p.valueA = config["white_balance_temperature_red"].as<unsigned int>();
+                    p.valueB = config["white_balance_temperature_blue"].as<unsigned int>();
+                    p.onOff = config["auto_white_balance"].as<bool>();
+                    cam.SetProperty(&p);
+
+                    p.type = FlyCapture2::GAMMA;
+                    p.onOff = true;
+                    p.valueA = config["gamma"].as<unsigned int>();
+                    cam.SetProperty(&p);
+
+                    p.type = FlyCapture2::PAN;
+                    p.valueA = config["absolute_pan"].as<unsigned int>();
+                    cam.SetProperty(&p);
+
+                    p.type = FlyCapture2::TILT;
+                    p.valueA = config["absolute_tilt"].as<unsigned int>();
+                    cam.SetProperty(&p);
+
+                    p.type = FlyCapture2::SHUTTER;
+                    p.valueA = config["absolute_exposure"].as<unsigned int>();
+                    cam.SetProperty(&p);
+
+                    p.type = FlyCapture2::GAIN;
+                    p.autoManualMode = config["gain_auto"].as<unsigned int>();
+                    p.valueA = config["gain"].as<unsigned int>();
+                    cam.SetProperty(&p);
+
+                    p.type = FlyCapture2::TEMPERATURE;
+                    p.valueA = config["white_balance_temperature_red"].as<unsigned int>();
+                    p.valueB = config["white_balance_temperature_blue"].as<unsigned int>();
+                    p.onOff = config["auto_white_balance"].as<unsigned int>();
+                    cam.SetProperty(&p);
+
+                    FlyCapture2::FC2Config camConf;
+                    cam.GetConfiguration(&camConf);
+                    camConf.numBuffers = 3;
+                    camConf.highPerformanceRetrieveBuffer = true;
+                    camConf.grabTimeout = 500;
+                    cam.SetConfiguration(&camConf);
+                }
+                catch(const std::exception& e) {
                     NUClear::log<NUClear::DEBUG>(std::string("Exception while starting camera streaming: ") + e.what());
                     throw e;
                 }
                 std::cout << "Leaving camera init" << std::endl;
- });
-            /*on<Trigger<Every<1, std::chrono::seconds>>, With<Configuration<LinuxCamera>>>("Camera Setting Applicator", [this] (const time_t&, const Configuration<LinuxCamera>& config) {
-                if(camera.isStreaming()) {
-                    // Set all other camera settings
-                    for(auto& setting : camera.getSettings()) {
-                        int value = config[setting.first].as<int>();
-                        if(setting.second.set(value) == false) {
-                            NUClear::log<NUClear::DEBUG>("Failed to set " + setting.first + " on camera");
-                        }
-                    }
-                }
-            });*/
+            });
         }
 
     }  // input

@@ -22,7 +22,6 @@
 
 #include <nuclear>
 #include <flycapture/FlyCapture2.h>
-#include "PtGreyCamera.h"
 #include "messages/input/Image.h"
 
 namespace modules {
@@ -36,24 +35,21 @@ namespace modules {
          *    emit them out to the rest of the system. It does this using the Video4Linux2 drivers that are built into
          *    the kernel.
          *
-         * @author Michael Burton
-         * @author Jake Woods
+         * @author Josiah Walker
          * @author Trent Houliston
          */
         class FlycapCamera : public NUClear::Reactor {
 
         private:
             /// @brief Our internal camera class that interacts with the physical device
-            std::vector<PtGreyCamera> cameras;
-            
-            
-            
+            std::map<uint, std::unique_ptr<FlyCapture2::Camera>> cameras;
+
         public:
-            
-            void emitImage(std::unique_ptr<messages::input::Image>&& image) {
+
+            void inline emitImage(std::unique_ptr<messages::input::Image>&& image) {
                 emit(std::move(image));
             }
-            
+
             /// @brief Our configuration file for this class
             static constexpr const char* CONFIGURATION_PATH = "FlycapCameras";
 
