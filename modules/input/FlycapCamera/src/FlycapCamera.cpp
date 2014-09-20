@@ -63,7 +63,10 @@ namespace modules {
 
                     // If we don't have a camera then make a new one
                     if(camera == cameras.end()) {
-                        // TODO stop the cameras streaming
+                        // Stop all the cameras streaming
+                        for(auto& cam : cameras) {
+                            cam.second->StopCapture();
+                        }
 
                         // Make a new camera
                         auto newCam = std::make_unique<FlyCapture2::Camera>();
@@ -77,6 +80,12 @@ namespace modules {
 
                         if (error != FlyCapture2::PGRERROR_OK) {
                             throw std::system_error(errno, std::system_category(), "Failed to connect to camera, did you run as sudo?");
+                        }
+
+                        // Set our camera settings
+                        error = camera->SetVideoModeAndFrameRate(FlyCapture2::VIDEOMODE_1280x960Y8, FlyCapture2::FRAMERATE_3_75);
+                        if (error != FlyCapture2::PGRERROR_OK) {
+                            throw std::system_error(errno, std::system_category(), "Failed to set the format or framerate");
                         }
 
                         // Insert our new camera
@@ -99,44 +108,53 @@ namespace modules {
                     auto& cam = *camera->second;
                     FlyCapture2::Property p;
                     p.type = FlyCapture2::BRIGHTNESS;
+                    cam.GetProperty(&p);
                     p.onOff = true;
                     p.valueA = config["brightness"].as<unsigned int>();
                     cam.SetProperty(&p);
 
                     p.type = FlyCapture2::AUTO_EXPOSURE;
+                    cam.GetProperty(&p);
                     p.onOff = config["auto_exposure"].as<int>();
                     p.absValue = config["auto_exposure_val"].as<float>();
                     cam.SetProperty(&p);
 
                     p.type = FlyCapture2::WHITE_BALANCE;
+                    cam.GetProperty(&p);
                     p.valueA = config["white_balance_temperature_red"].as<unsigned int>();
                     p.valueB = config["white_balance_temperature_blue"].as<unsigned int>();
                     p.onOff = config["auto_white_balance"].as<bool>();
                     cam.SetProperty(&p);
 
                     p.type = FlyCapture2::GAMMA;
+                    cam.GetProperty(&p);
                     p.onOff = true;
                     p.valueA = config["gamma"].as<unsigned int>();
                     cam.SetProperty(&p);
 
                     p.type = FlyCapture2::PAN;
+                    cam.GetProperty(&p);
                     p.valueA = config["absolute_pan"].as<unsigned int>();
                     cam.SetProperty(&p);
 
                     p.type = FlyCapture2::TILT;
+                    cam.GetProperty(&p);
                     p.valueA = config["absolute_tilt"].as<unsigned int>();
                     cam.SetProperty(&p);
 
                     p.type = FlyCapture2::SHUTTER;
+                    cam.GetProperty(&p);
                     p.valueA = config["absolute_exposure"].as<unsigned int>();
                     cam.SetProperty(&p);
 
                     p.type = FlyCapture2::GAIN;
+                    cam.GetProperty(&p);
                     p.autoManualMode = config["gain_auto"].as<unsigned int>();
                     p.valueA = config["gain"].as<unsigned int>();
                     cam.SetProperty(&p);
 
                     p.type = FlyCapture2::TEMPERATURE;
+                    cam.GetProperty(&p);
                     p.valueA = config["white_balance_temperature_red"].as<unsigned int>();
                     p.valueB = config["white_balance_temperature_blue"].as<unsigned int>();
                     p.onOff = config["auto_white_balance"].as<unsigned int>();
