@@ -158,7 +158,6 @@ namespace support {
             message.set_type(Message::PING);
             message.set_filter_id(0);
             message.set_utc_timestamp(getUtcTimestamp());
-            std::cout << "Pinging" << std::endl;
             send(message);
         });
 
