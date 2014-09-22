@@ -68,11 +68,10 @@ FlycapCamera::FlycapCamera(std::unique_ptr<NUClear::Environment> environment) : 
             auto camera = cameras.find(deviceId);
 
             // If we don't have a camera then make a new one
-            if (camera == cameras.end())
-            {
+            if (camera == cameras.end()) {
+
                 // Stop all the cameras streaming
-                for (auto &cam : cameras)
-                {
+                for (auto &cam : cameras) {
                     cam.second->StopCapture();
                 }
 
@@ -86,22 +85,26 @@ FlycapCamera::FlycapCamera(std::unique_ptr<NUClear::Environment> environment) : 
                 FlyCapture2::Error error = newCam->Connect(&id);
                 std::cout << "connected" << std::endl;
 
-                if (error != FlyCapture2::PGRERROR_OK)
-                {
+                if (error != FlyCapture2::PGRERROR_OK) {
                     throw std::system_error(errno, std::system_category(), "Failed to connect to camera, did you run as sudo?");
                 }
 
                 // Set our camera settings
                 error = newCam->SetVideoModeAndFrameRate(FlyCapture2::VIDEOMODE_1280x960Y8, FlyCapture2::FRAMERATE_3_75);
-                if (error != FlyCapture2::PGRERROR_OK)
-                {
+                if (error != FlyCapture2::PGRERROR_OK) {
                     throw std::system_error(errno, std::system_category(), "Failed to set the format or framerate");
                 }
 
                 // Insert our new camera
                 camera = cameras.insert(std::make_pair(deviceId, std::move(newCam))).first;
 
-
+                // Stop all the cameras streaming
+                int i = 0;
+                for (auto &cam : cameras) {
+                    std::cout << "Starting camera " << ++i << std::endl;
+                    cam.second->StartCapture();
+                    std::cout << "Started camera " << i << std::endl;
+                }
             }
 
             auto &cam = *camera->second;
@@ -166,29 +169,26 @@ FlycapCamera::FlycapCamera(std::unique_ptr<NUClear::Environment> environment) : 
             camConf.grabTimeout = 500;
             cam.SetConfiguration(&camConf);
         }
-        catch (const std::exception &e)
-        {
+        catch (const std::exception &e) {
             NUClear::log<NUClear::DEBUG>(std::string("Exception while starting camera streaming: ") + e.what());
             throw e;
         }
         std::cout << "Leaving camera init" << std::endl;
     });
 
-    on<Trigger<Startup>>([this](const Startup&) {
+    on<Trigger<Every<225, Per<std::chrono::minutes>>>, Options<Single>>([this](const time_t&) {
 
-        // Make an array to hold our pointers
-        std::vector<const FlyCapture2::Camera *> camPtrs;
-        std::vector<FlyCapture2::ImageEventCallback> callbacks;
-        std::vector<const void *> context;
-        for (auto &cam : cameras)
-        {
-            camPtrs.push_back(cam.second.get());
-            callbacks.push_back(&captureRadial);
-            context.push_back(this);
+        FlyCapture2::Image image;
+
+        int i = 0;
+
+        for(const auto& camera : cameras) {
+            auto& cam = *camera.second;
+            std::cout << ++i << std::endl;
+
+            cam.RetrieveBuffer(&image);
+            emit(std::make_unique<Image>(captureRadial(image)));
         }
-
-        // Start capturing on all cameras
-        FlyCapture2::Camera::StartSyncCapture(camPtrs.size(), camPtrs.data(), callbacks.data(), context.data());
     });
 }
 

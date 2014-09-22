@@ -21,6 +21,7 @@
 #define MODULES_INPUT_CAMCALLBACKS_H
 
 #include <flycapture/FlyCapture2.h>
+#include "messages/input/Image.h"
 
 namespace modules {
     namespace input {
@@ -34,7 +35,7 @@ namespace modules {
          *
          * @author Josiah Walker
          */
-        void captureRadial(FlyCapture2::Image* pImage, const void* pCallbackData);
+        messages::input::Image captureRadial(FlyCapture2::Image& image);
 
     }  // input
 }  // modules

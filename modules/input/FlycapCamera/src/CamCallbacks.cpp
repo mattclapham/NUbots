@@ -26,6 +26,8 @@
 namespace modules {
     namespace input {
 
+        using messages::input::Image;
+
         //these are used for radial lenses with a circular display area to speed up the image demosaicing
         //get the factor of 2 aligned left edge of the circle
         static constexpr size_t getViewStart(const int& ptHeight, const int& width, const int& height, const int& radius) {
@@ -46,9 +48,7 @@ namespace modules {
          *
          * @author Josiah Walker
          */
-        void captureRadial(FlyCapture2::Image* pImage, const void* pCallbackData) {
-
-            FlycapCamera* reactor = reinterpret_cast<FlycapCamera*>(const_cast<void*>(pCallbackData));
+        Image captureRadial(FlyCapture2::Image& image) {
 
             constexpr uint radius = 475;
             constexpr uint sourceWidth = 1280;
@@ -56,9 +56,7 @@ namespace modules {
             constexpr uint hOffset = sourceWidth/2-radius;
 
             //the horizontal offset cuts out the black areas of the image altogether to save CPU
-            std::vector<messages::input::Image::Pixel> data(sourceHeight*(radius*2), {0,0,0});
-            std::unique_ptr<messages::input::Image> image;
-            FlyCapture2::Image& rawImage = *pImage;
+            std::vector<Image::Pixel> data(sourceHeight*(radius*2), {0,0,0});
 
             // do a cache-coherent demosaic step
             size_t j2 = 0;
@@ -74,16 +72,16 @@ namespace modules {
                     auto& pxNextNext = data[dIndex+1];
 
                     //get the required information
-                    const auto& currentBlue = *rawImage[index];
-                    const auto& currentGreen = *rawImage[index+1];
-                    const auto& nextBlue = *rawImage[index+2];
-                    const auto& nextGreen = *rawImage[index+3];
+                    const auto& currentBlue = *image[index];
+                    const auto& currentGreen = *image[index+1];
+                    const auto& nextBlue = *image[index+2];
+                    const auto& nextGreen = *image[index+3];
 
                     //demosaic red and green
-                    pxNext.y = (unsigned char)(((unsigned int)currentBlue + (unsigned int)nextBlue) >> 1);
+                    pxNext.y = uint8_t((uint(currentBlue) + uint(nextBlue)) >> 1);
                     pxNext.cb = currentGreen;
                     pxNextNext.y = nextBlue;
-                    pxNextNext.cb = (unsigned char)(((unsigned int)currentGreen + (unsigned int)nextGreen) >> 1);
+                    pxNextNext.cb = uint8_t((uint(currentGreen) + uint(nextGreen)) >> 1);
 
                     //do the row below
                     //px = data[dIndex+radius*2];
@@ -104,26 +102,26 @@ namespace modules {
                     auto& pxNextNext = data[dIndex+1];
 
                     //get the required information
-                    const auto& currentGreen = *rawImage[index];
-                    const auto& currentRed = *rawImage[index+1];
-                    const auto& nextGreen = *rawImage[index+2];
-                    const auto& nextRed = *rawImage[index+3];
+                    const auto& currentGreen = *image[index];
+                    const auto& currentRed = *image[index+1];
+                    const auto& nextGreen = *image[index+2];
+                    const auto& nextRed = *image[index+3];
 
                     //demosaic red and green
-                    pxNext.cb = (unsigned char)(((unsigned int)currentGreen + (unsigned int)nextGreen) >> 1);
+
+                    pxNext.cb = uint8_t((uint(currentGreen) + uint(nextGreen)) >> 1);;
                     pxNext.cr = currentRed;
                     pxNextNext.cb = nextGreen;
-                    pxNextNext.cr = (unsigned char)(((unsigned int)currentRed + (unsigned int)nextRed) >> 1);
+                    pxNextNext.cr = uint8_t((uint(currentRed) + uint(nextRed)) >> 1);
 
                     //do the row below
                     data[dIndex+radius*2].cr = currentRed;
-                    data[dIndex+1+radius*2].cr = (unsigned char)(((unsigned int)currentRed + (unsigned int)nextRed) >> 1);
+                    data[dIndex+1+radius*2].cr = uint8_t((uint(currentRed) + uint(nextRed)) >> 1);
 
                 }
                 j2 += radius*2;
             }
-            image = std::make_unique<messages::input::Image>(radius*2, sourceHeight, std::move(data));
-            reactor->emitImage(std::move(image));
+            return Image(radius*2, sourceHeight, std::move(data));
         }
 
     }  // input
