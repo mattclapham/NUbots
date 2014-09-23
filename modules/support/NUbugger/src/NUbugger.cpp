@@ -109,10 +109,10 @@ namespace support {
                 // Open a file using the file name and timestamp
                 outputFile.close();
                 outputFile.clear();
-                outputFile.open(config["output"]["file"]["path"].as<std::string>()
+                outputFile.open(std::string(config["output"]["file"]["path"].as<std::string>()
                                 + "/"
                                 + timestamp
-                                + ".nbs", std::ios::binary);
+                                + ".nbz").c_str(), std::ios::binary);
 
                 fileEnabled = true;
             }

@@ -22,6 +22,7 @@
 
 #include <nuclear>
 #include <zmq.hpp>
+#include "gzstream.h"
 #include "messages/support/nubugger/proto/Message.pb.h"
 #include "messages/localisation/FieldObject.h"
 #include "messages/input/gameevents/GameEvents.h"
@@ -55,7 +56,7 @@ namespace modules {
             bool networkEnabled = false;
             bool fileEnabled = false;
 
-            std::ofstream outputFile;
+            ogzstream outputFile;
 
             std::mutex networkMutex;
             std::mutex fileMutex;
