@@ -22,10 +22,11 @@
 
 #include <nuclear>
 #include <zmq.hpp>
-#include "gzstream.h"
 #include "messages/support/nubugger/proto/Message.pb.h"
 #include "messages/localisation/FieldObject.h"
 #include "messages/input/gameevents/GameEvents.h"
+
+#include <boost/iostreams/filtering_stream.hpp>
 
 namespace modules {
     namespace support {
@@ -56,7 +57,7 @@ namespace modules {
             bool networkEnabled = false;
             bool fileEnabled = false;
 
-            ogzstream outputFile;
+            boost::iostreams::filtering_ostream outputFile;
 
             std::mutex networkMutex;
             std::mutex fileMutex;
