@@ -19,12 +19,43 @@
 
 #include "DC1394Camera.h"
 
+#include "messages/support/Configuration.h"
+
 namespace modules {
 namespace input {
 
-    DC1394Camera::DC1394Camera(std::unique_ptr<NUClear::Environment> environment)
-        : Reactor(std::move(environment)) {
+    using messages::support::Configuration;
 
+    DC1394Camera::DC1394Camera(std::unique_ptr<NUClear::Environment> environment)
+        : Reactor(std::move(environment)),
+        context(dc1394_new(), [](dc1394_t* ptr) {
+            dc1394_free(ptr);
+        }) {
+
+        on<Trigger<Configuration<DC1394Camera>>>([this](const Configuration<DC1394Camera> &config) {
+
+            // Get the device
+            uint64_t deviceId = config["device"].as<uint64_t>();
+
+            // See if we already have this camera
+            auto camera = cameras.find(deviceId);
+
+            // If we don't have a camera then make a new one
+            if (camera == cameras.end()) {
+
+                // Stop all the cameras streaming
+
+                // Make a new camera
+                auto newCam = std::unique_ptr<dc1394camera_t, std::function<void (dc1394camera_t*)>>(dc1394_camera_new(context.get(), deviceId), [](dc1394camera_t* ptr) {
+                    dc1394_camera_free(ptr);
+                });
+
+                // DO SOME SETUP THINGS
+
+                cameras.insert(std::make_pair(deviceId, std::move(newCam)));
+
+            }
+        });
     }
 
 }

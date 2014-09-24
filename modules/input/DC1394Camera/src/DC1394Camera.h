@@ -22,11 +22,18 @@
 
 #include <nuclear>
 
+#include <dc1394/dc1394.h>
+
 namespace modules {
 namespace input {
 
     class DC1394Camera : public NUClear::Reactor {
     public:
+        std::unique_ptr<dc1394_t, std::function<void (dc1394_t*)>> context;
+        std::map<uint64_t, std::unique_ptr<dc1394camera_t, std::function<void (dc1394camera_t*)>>> cameras;
+
+        static constexpr const char* CONFIGURATION_PATH = "Cameras";
+
         /// @brief Called by the powerplant to build and setup the DC1394Camera reactor.
         explicit DC1394Camera(std::unique_ptr<NUClear::Environment> environment);
     };
