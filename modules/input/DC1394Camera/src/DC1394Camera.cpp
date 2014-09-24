@@ -20,6 +20,7 @@
 #include "DC1394Camera.h"
 
 #include "messages/support/Configuration.h"
+#include "utility/error/dc1394_error_category.h"
 
 namespace modules {
 namespace input {
@@ -31,6 +32,8 @@ namespace input {
         context(dc1394_new(), [](dc1394_t* ptr) {
             dc1394_free(ptr);
         }) {
+
+        const int NUM_BUFFERS = 2;
 
         on<Trigger<Configuration<DC1394Camera>>>([this](const Configuration<DC1394Camera> &config) {
 
@@ -50,8 +53,28 @@ namespace input {
                     dc1394_camera_free(ptr);
                 });
 
-                // DO SOME SETUP THINGS
+                // Our error variable
+                dc1394error_t err;
 
+                // Set some important bus options
+                err = dc1394_video_set_iso_speed(newCam.get(), DC1394_ISO_SPEED_400);
+                if(err > 0) throw std::system_error(err, utility::error::dc1394_error_category());
+
+                err = dc1394_video_set_mode(newCam.get(), DC1394_VIDEO_MODE_1280x960_RGB8);
+                if(err > 0) throw std::system_error(err, utility::error::dc1394_error_category());
+
+                err = dc1394_video_set_framerate(newCam.get(), DC1394_FRAMERATE_7_5);
+                if(err > 0) throw std::system_error(err, utility::error::dc1394_error_category());
+
+                // Setup our capture
+                err = dc1394_capture_setup(newCam.get(), NUM_BUFFERS, DC1394_CAPTURE_FLAGS_DEFAULT);
+                if(err > 0) throw std::system_error(err, utility::error::dc1394_error_category());
+
+                // Start the camera
+                err = dc1394_video_set_transmission(newCam.get(), DC1394_ON);
+                if(err > 0) throw std::system_error(err, utility::error::dc1394_error_category());
+
+                // Add our camera to the list
                 cameras.insert(std::make_pair(deviceId, std::move(newCam)));
 
             }
