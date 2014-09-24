@@ -20,6 +20,8 @@
 #include "NUbugger.h"
 
 #include <zmq.hpp>
+#include <boost/iostreams/filter/gzip.hpp>
+#include <boost/iostreams/device/file.hpp>
 
 #include "messages/vision/LookUpTable.h"
 #include "messages/support/Configuration.h"
@@ -106,23 +108,31 @@ namespace support {
                 // Get our timestamp
                 std::string timestamp = std::to_string(std::chrono::duration_cast<std::chrono::seconds>(NUClear::clock::now().time_since_epoch()).count());
 
-                // Open a file using the file name and timestamp
-                outputFile.close();
-                outputFile.clear();
-                outputFile.open(config["output"]["file"]["path"].as<std::string>()
-                                + "/"
-                                + timestamp
-                                + ".nbs", std::ios::binary);
+                // Reset the file if one exists
+                if(outputFile) {
+                    outputFile.reset();
+                    boost::iostreams::close(outputFile);
+                }
+
+                outputFile.push(boost::iostreams::gzip_compressor(10));
+                outputFile.push(boost::iostreams::file_sink(std::string(config["output"]["file"]["path"].as<std::string>()
+                                    + "/"
+                                    + timestamp
+                                    + ".nbz", std::ios_base::out | std::ios_base::binary)));
 
                 fileEnabled = true;
             }
             else if(fileEnabled && !config["output"]["file"]["enabled"].as<bool>()) {
 
+
+                // TODO close the file
+
                 // Lock the file
                 std::lock_guard<std::mutex> lock(fileMutex);
 
                 // Close the file
-                outputFile.close();
+                boost::iostreams::close(outputFile);
+
                 fileEnabled = false;
             }
 
@@ -175,9 +185,9 @@ namespace support {
             pub.close();
 
             // Close the file if it exists
-            fileEnabled = false;
-            outputFile.close();
-            // TODO DO THIS
+            if(fileEnabled) {
+                boost::iostreams::close(outputFile);
+            }
         });
     }
 

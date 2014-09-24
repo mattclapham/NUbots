@@ -1,7 +1,7 @@
 output:
   file:
-    enabled: true
-    path: DataStream/
+    enabled: false
+    path: /home/robotx/DataStream
   network:
     enabled: true
     pub_port: 12000
@@ -13,7 +13,7 @@ reaction_handles:
   game_controller: false
   behaviour: false
   sensors: false
-  image: false
+  image: true
   classified_image: false
   goals: false
   balls: false
