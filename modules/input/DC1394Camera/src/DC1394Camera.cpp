@@ -78,6 +78,8 @@ namespace input {
                 cameras.insert(std::make_pair(deviceId, std::move(newCam)));
 
             }
+
+            // TODO Apply our settings
         });
     }
 
