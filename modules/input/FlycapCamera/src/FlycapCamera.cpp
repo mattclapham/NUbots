@@ -81,9 +81,7 @@ FlycapCamera::FlycapCamera(std::unique_ptr<NUClear::Environment> environment) : 
                 // Find the physical camera to connect to
                 FlyCapture2::PGRGuid id;
                 FlyCapture2::BusManager().GetCameraFromSerialNumber(deviceId, &id);
-                std::cout << "retrieved device" << std::endl;
                 FlyCapture2::Error error = newCam->Connect(&id);
-                std::cout << "connected" << std::endl;
 
                 if (error != FlyCapture2::PGRERROR_OK) {
                     throw std::system_error(errno, std::system_category(), "Failed to connect to camera, did you run as sudo?");
@@ -99,11 +97,8 @@ FlycapCamera::FlycapCamera(std::unique_ptr<NUClear::Environment> environment) : 
                 camera = cameras.insert(std::make_pair(deviceId, std::move(newCam))).first;
 
                 // Stop all the cameras streaming
-                int i = 0;
                 for (auto &cam : cameras) {
-                    std::cout << "Starting camera " << ++i << std::endl;
                     cam.second->StartCapture();
-                    std::cout << "Started camera " << i << std::endl;
                 }
             }
 
@@ -173,18 +168,14 @@ FlycapCamera::FlycapCamera(std::unique_ptr<NUClear::Environment> environment) : 
             NUClear::log<NUClear::DEBUG>(std::string("Exception while starting camera streaming: ") + e.what());
             throw e;
         }
-        std::cout << "Leaving camera init" << std::endl;
     });
 
     on<Trigger<Every<225, Per<std::chrono::minutes>>>, Options<Single>>([this](const time_t&) {
 
         FlyCapture2::Image image;
 
-        int i = 0;
-
         for(const auto& camera : cameras) {
             auto& cam = *camera.second;
-            std::cout << ++i << std::endl;
 
             cam.RetrieveBuffer(&image);
             emit(std::make_unique<Image>(captureRadial(image)));
