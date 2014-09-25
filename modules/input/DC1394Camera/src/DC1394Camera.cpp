@@ -29,9 +29,7 @@ namespace input {
 
     DC1394Camera::DC1394Camera(std::unique_ptr<NUClear::Environment> environment)
         : Reactor(std::move(environment)),
-        context(dc1394_new(), [](dc1394_t* ptr) {
-            dc1394_free(ptr);
-        }) {
+        context(dc1394_new(), dc1394_free) {
 
         const int NUM_BUFFERS = 2;
 
@@ -49,9 +47,7 @@ namespace input {
                 // Stop all the cameras streaming
 
                 // Make a new camera
-                auto newCam = std::unique_ptr<dc1394camera_t, std::function<void (dc1394camera_t*)>>(dc1394_camera_new(context.get(), deviceId), [](dc1394camera_t* ptr) {
-                    dc1394_camera_free(ptr);
-                });
+                auto newCam = std::unique_ptr<dc1394camera_t, std::function<void (dc1394camera_t*)>>(dc1394_camera_new(context.get(), deviceId), dc1394_camera_free);
 
                 // Our error variable
                 dc1394error_t err;
