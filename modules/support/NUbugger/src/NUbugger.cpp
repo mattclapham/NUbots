@@ -21,7 +21,7 @@
 
 #include <zmq.hpp>
 #include <boost/iostreams/filter/gzip.hpp>
-#include <boost/iostreams/device/file.hpp>
+#include <boost/iostreams/device/file_descriptor.hpp>
 
 #include "messages/vision/LookUpTable.h"
 #include "messages/support/Configuration.h"
@@ -110,15 +110,16 @@ namespace support {
 
                 // Reset the file if one exists
                 if(outputFile) {
-                    outputFile.reset();
                     boost::iostreams::close(outputFile);
                 }
 
-                outputFile.push(boost::iostreams::gzip_compressor(10));
-                outputFile.push(boost::iostreams::file_sink(std::string(config["output"]["file"]["path"].as<std::string>()
-                                    + "/"
-                                    + timestamp
-                                    + ".nbz", std::ios_base::out | std::ios_base::binary)));
+                std::string outputFilePath = config["output"]["file"]["path"].as<std::string>();
+                outputFilePath += "/";
+                outputFilePath += timestamp;
+                outputFilePath += ".nbz";
+
+                // outputFile.push(boost::iostreams::gzip_compressor(9));
+                outputFile.push(boost::iostreams::file_descriptor_sink(outputFilePath, std::ios_base::out | std::ios_base::binary));
 
                 fileEnabled = true;
             }
@@ -163,7 +164,7 @@ namespace support {
             }
         });
 
-        on<Trigger<Every<1, std::chrono::seconds>>>([this] (const time_t&) {
+        on<Trigger<Every<1, std::chrono::seconds>>, Options<Single, Priority<NUClear::LOW>>>([this] (const time_t&) {
             Message message;
             message.set_type(Message::PING);
             message.set_filter_id(0);
@@ -316,12 +317,14 @@ namespace support {
             dataPtr[1] = uint8_t(message.filter_id());
             send(packet);
         }
+
         if(fileEnabled && outputFile) {
             // Append the number of bytes to the file (so we can re-read it)
-            outputFile << message.ByteSize();
+            outputFile << uint32_t(message.ByteSize());
             // Append the protocol buffer to the file
             message.SerializeToOstream(&outputFile);
         }
+
 
     }
 
