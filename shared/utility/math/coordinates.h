@@ -83,6 +83,30 @@ namespace utility {
 
                 return result;
             }
+            
+
+            //ANGLE IMAGE CONVERSIONS
+            //NOTE: these assume a cam ray of (1,0,0) and up ray of (0,0,1) - use transforms to get to body space.
+            inline arma::vec3 AngleImage2CamRay(const arma::vec2& AngleImageCoords) {
+                //get radians rotation
+                const double rads = arma::norm(AngleImageCoords);
+                
+                //get the x/y component length
+                const double sinRadsOnRads = sin(rads)/rads;
+
+                return arma::vec3({AngleImageCoords[0]*sinRadsOnRads, AngleImageCoords[1]*sinRadsOnRads, cos(rads)});
+            }
+            
+            inline arma::vec2 CamRay2AngleImage(const arma::vec3& CamRay) {
+                //get our distance (in case of non-unit vector rays)
+                const double dist = arma::norm(CamRay);
+                
+                //rads/dist is the conversion factor for the x and y components of the CamRay
+                const double radsOnDist = acos(CamRay[3]/dist)/dist;
+                
+                //return the converted CamRay
+                return arma::vec2({CamRay[0]*radsOnDist, CamRay[1]*radsOnDist});
+            }
         }
     }
 }
