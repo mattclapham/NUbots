@@ -36,26 +36,21 @@ namespace messages {
                 YCbCr422,
                 YCbCr444,
                 RGB,
-                JPEG
+                JPEG,
+                BGGR
             };
 
-            struct CameraGeometry {
+            struct Lens {
                 arma::vec2 fov;
                 std::function<arma::ivec2 (const arma::vec2&)> pixel;
                 std::function<arma::vec2 (const arma::ivec2&)> angle;
             };
 
-            struct Pixel {
-                uint8_t y;
-                uint8_t cb;
-                uint8_t cr;
-            };
-
-            inline Pixel& operator()(uint x, uint y) {
+            inline arma::u8_vec3 operator()(uint x, uint y) {
                 return data[x + y * width()];
             }
 
-            inline const Pixel& operator()(uint x, uint y) const {
+            inline const arma::u8_vec3 operator()(uint x, uint y) const {
                 return data[x + y * width()];
             }
 
@@ -71,9 +66,8 @@ namespace messages {
             NUClear::clock::time_point timestamp;
             SourceFormat format;
             arma::uvec2 dimensions;
-            std::vector<Pixel> data;
             std::vector<uint8_t> source;
-            CameraGeometry cam;
+            Lens lens;
         };
 
     }  // input

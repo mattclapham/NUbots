@@ -82,6 +82,30 @@ namespace vision {
      *                 GOOD STUFF                   *
      ************************************************/
 
+    //ANGLE IMAGE CONVERSIONS
+    //NOTE: these assume a cam ray of (1,0,0) and up ray of (0,0,1) - use transforms to get to body space.
+    inline arma::vec3 angle2Cam(const arma::vec2& angleImageCoords) {
+        //get radians rotation
+        const double rads = arma::norm(angleImageCoords);
+
+        //get the x/y component length
+        const double sinRadsOnRads = sin(rads)/rads;
+
+        return arma::vec3({angleImageCoords[0]*sinRadsOnRads, angleImageCoords[1]*sinRadsOnRads, cos(rads)});
+    }
+
+    inline arma::vec2 camToAngle(const arma::vec3& camRay) {
+        //get our distance (in case of non-unit vector rays)
+        const double dist = arma::norm(camRay);
+
+        //rads/dist is the conversion factor for the x and y components of the camRay
+        const double radsOnDist = acos(camRay[3]/dist)/dist;
+
+        //return the converted CamRay
+        return arma::vec2({camRay[0]*radsOnDist, camRay[1]*radsOnDist});
+    }
+
+
     inline double getParallaxAngle(const arma::vec2& screen1, const arma::vec2& screen2, const double& camFocalLengthPixels){
         arma::vec3 camSpaceP1 = {camFocalLengthPixels, screen1[0], screen1[1]};
         arma::vec3 camSpaceP2 = {camFocalLengthPixels, screen2[0], screen2[1]};
