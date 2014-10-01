@@ -41,6 +41,12 @@ namespace messages {
             };
 
             struct Lens {
+                enum class Type {
+                    EQUIRECTANGULAR,
+                    RADIAL
+                };
+
+
                 arma::vec2 fov;
                 std::function<arma::ivec2 (const arma::vec2&)> pixel;
                 std::function<arma::vec2 (const arma::ivec2&)> angle;
