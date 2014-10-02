@@ -6,8 +6,9 @@ ADD_ROLE(
         support::configuration::ConfigSystem
         support::configuration::GlobalConfig
         #platform::darwin::HardwareIO
-        #input::LinuxCamera
-        input::DC1394Camera
+        # input::LinuxCamera
+        input::FlycapCamera
+        # input::DC1394Camera
         support::NUbugger
         support::configuration::SoccerConfig
 )

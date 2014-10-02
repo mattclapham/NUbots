@@ -178,7 +178,7 @@ FlycapCamera::FlycapCamera(std::unique_ptr<NUClear::Environment> environment) : 
             auto& cam = *camera.second;
 
             cam.RetrieveBuffer(&image);
-            emit(std::make_unique<Image>(captureRadial(image)));
+            emit(std::make_unique<Image>(captureBayer(image)));
         }
     });
 }

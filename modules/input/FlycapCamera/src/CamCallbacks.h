@@ -36,6 +36,7 @@ namespace modules {
          * @author Josiah Walker
          */
         messages::input::Image captureRadial(FlyCapture2::Image& image);
+        messages::input::Image captureBayer(FlyCapture2::Image& image);
 
     }  // input
 }  // modules

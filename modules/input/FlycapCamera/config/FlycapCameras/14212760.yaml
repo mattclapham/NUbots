@@ -29,7 +29,7 @@ white_balance_temperature_red: 550
 white_balance_temperature_blue: 810
 # auto is supported (bool): default=1
 #IMPLEMENTATION NOTE: auto white is a separate setting to balance even though it has an auto flag
-auto_white_balance: true
+auto_white_balance: false
 
 # Determines the exposure time of the camera sensor. The exposure time is limited by the frame interval.
 # Drivers should interpret the values as 100 µs units, where the value 1 stands for 1/10000th of a second, 10000 for 1 second and 100000 for 10 seconds.
@@ -39,7 +39,7 @@ absolute_exposure_float: 12.0158
 
 # exposure has auto option (bool)   : default=1
 #IMPLEMENTATION NOTE: auto white is a separate setting to balance even though it has an auto flag
-auto_exposure: false
+auto_exposure: true
 #unsure what the float val of auto exposure does. Range: -7.58496, 2.41364
 auto_exposure_val: -7.58496
 

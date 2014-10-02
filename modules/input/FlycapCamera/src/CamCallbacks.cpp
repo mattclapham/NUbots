@@ -39,6 +39,20 @@ namespace modules {
             return static_cast<size_t>(((width/2 + (int)sqrt(radius*radius - (ptHeight-height/2)*(ptHeight-height/2))) / 2) * 2);
         }
 
+        Image captureBayer(FlyCapture2::Image& image) {
+
+            // Return an image with bayer
+
+            uint size = image.GetDataSize();
+
+            std::vector<Image::Pixel> data(size / 3);
+
+            std::memcpy(reinterpret_cast<char*>(data.data()), reinterpret_cast<char*>(image.GetData()), size);
+
+
+            return Image(1280, 960, std::move(data));
+        }
+
         /**
          * @brief This class encapsulates the physical camera device. It will setup a camera device and begin streaming
          *    images
@@ -50,23 +64,50 @@ namespace modules {
          */
         Image captureRadial(FlyCapture2::Image& image) {
 
-            constexpr uint radius = 475;
             constexpr uint sourceWidth = 1280;
             constexpr uint sourceHeight = 960;
-            constexpr uint hOffset = sourceWidth/2-radius;
 
             //the horizontal offset cuts out the black areas of the image altogether to save CPU
-            std::vector<Image::Pixel> data(sourceHeight*(radius*2), {0,0,0});
+            std::vector<Image::Pixel> data(sourceHeight*(sourceWidth), {0,0,0});
 
             // do a cache-coherent demosaic step
-            size_t j2 = 0;
-            for (size_t j = (sourceHeight/2-radius)*sourceWidth; j < (sourceHeight/2+radius)*sourceWidth; j += sourceWidth) {
+            for (size_t j = 0; j < sourceHeight*sourceWidth; j += sourceWidth) {
 
-                for (size_t i = getViewStart(j/sourceWidth,sourceWidth,sourceHeight,radius);
-                    i < getViewEnd(j/sourceWidth,sourceWidth,sourceHeight,radius)-2; i += 2) { // assume we always start on an even pixel (odd ones are nasty)
+                // do the second line
+                for (size_t i = 0;
+                    i < 1280-2; i += 2) { // assume we always start on an even pixel (odd ones are nasty)
 
                     const size_t index = i+j;
-                    const size_t dIndex = i+j2-hOffset+1;
+                    const size_t dIndex = index+1;
+                    //do the current row
+                    auto& pxNext = data[dIndex];
+                    auto& pxNextNext = data[dIndex+1];
+
+                    //get the required information
+                    const auto& currentGreen = *image[index];
+                    const auto& currentRed = *image[index+1];
+                    const auto& nextGreen = *image[index+2];
+                    const auto& nextRed = *image[index+3];
+
+                    //demosaic red and green
+
+                    pxNext.cb = uint8_t((uint(currentGreen) + uint(nextGreen)) >> 1);
+                    pxNext.cr = currentRed;
+                    pxNextNext.cb = nextGreen;
+                    pxNextNext.cr = uint8_t((uint(currentRed) + uint(nextRed)) >> 1);
+
+                    //do the row below
+                    data[dIndex+sourceWidth].cr = currentRed;
+                    data[dIndex+1+sourceWidth].cr = uint8_t((uint(currentRed) + uint(nextRed)) >> 1);
+
+                }
+                j += sourceWidth;
+
+                for (size_t i = 0;
+                    i < 1280-2; i += 2) { // assume we always start on an even pixel (odd ones are nasty)
+
+                    const size_t index = i+j;
+                    const size_t dIndex = index+1;
                     //do the current row
                     auto& pxNext = data[dIndex];
                     auto& pxNextNext = data[dIndex+1];
@@ -85,43 +126,13 @@ namespace modules {
 
                     //do the row below
                     //px = data[dIndex+radius*2];
-                    data[dIndex+radius*2].y = (unsigned char)(((unsigned int)currentBlue + (unsigned int)nextBlue) >> 1);
-                    data[dIndex+1+radius*2].y = nextBlue;
+                    data[dIndex+sourceWidth].y = (unsigned char)(((unsigned int)currentBlue + (unsigned int)nextBlue) >> 1);
+                    data[dIndex+1+sourceWidth].y = nextBlue;
 
                 }
-                j += sourceWidth;
-                j2 += radius*2;
-                // do the second line
-                for (size_t i = getViewStart(j/sourceWidth,sourceWidth,sourceHeight,radius);
-                    i < getViewEnd(j/sourceWidth,sourceWidth,sourceHeight,radius)-2; i += 2) { // assume we always start on an even pixel (odd ones are nasty)
 
-                    const size_t index = i+j;
-                    const size_t dIndex = i+j2-hOffset+1;
-                    //do the current row
-                    auto& pxNext = data[dIndex];
-                    auto& pxNextNext = data[dIndex+1];
-
-                    //get the required information
-                    const auto& currentGreen = *image[index];
-                    const auto& currentRed = *image[index+1];
-                    const auto& nextGreen = *image[index+2];
-                    const auto& nextRed = *image[index+3];
-
-                    //demosaic red and green
-
-                    pxNext.cb = uint8_t((uint(currentGreen) + uint(nextGreen)) >> 1);;
-                    pxNext.cr = currentRed;
-                    pxNextNext.cb = nextGreen;
-                    pxNextNext.cr = uint8_t((uint(currentRed) + uint(nextRed)) >> 1);
-
-                    //do the row below
-                    data[dIndex+radius*2].cr = currentRed;
-                    data[dIndex+1+radius*2].cr = uint8_t((uint(currentRed) + uint(nextRed)) >> 1);
-
-                }
-                j2 += radius*2;
             }
-            return Image(radius*2, sourceHeight, std::move(data));
+            return Image(sourceWidth, sourceHeight, std::move(data));
         }
 
     }  // input
