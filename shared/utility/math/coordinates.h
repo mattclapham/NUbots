@@ -40,7 +40,7 @@ namespace utility {
                 double cos_phi = cos(sphericalCoordinates[2]);
                 double sin_phi = sin(sphericalCoordinates[2]);
                 arma::vec3 result;
-                
+
                 result[0] = distance * cos_theta * cos_phi;
                 result[1] = distance * sin_theta * cos_phi;
                 result[2] = distance * sin_phi;
@@ -76,37 +76,16 @@ namespace utility {
                 double dist = sphericalCoordinates(0);
                 double declination = sphericalCoordinates(2);
                 double flat_distance = dist * std::cos(declination);
-                
+
                 arma::vec2 result;
                 result[0] = flat_distance;
                 result[1] = sphericalCoordinates(1);
 
                 return result;
             }
-            
 
-            //ANGLE IMAGE CONVERSIONS
-            //NOTE: these assume a cam ray of (1,0,0) and up ray of (0,0,1) - use transforms to get to body space.
-            inline arma::vec3 AngleImage2CamRay(const arma::vec2& AngleImageCoords) {
-                //get radians rotation
-                const double rads = arma::norm(AngleImageCoords);
-                
-                //get the x/y component length
-                const double sinRadsOnRads = sin(rads)/rads;
 
-                return arma::vec3({AngleImageCoords[0]*sinRadsOnRads, AngleImageCoords[1]*sinRadsOnRads, cos(rads)});
-            }
-            
-            inline arma::vec2 CamRay2AngleImage(const arma::vec3& CamRay) {
-                //get our distance (in case of non-unit vector rays)
-                const double dist = arma::norm(CamRay);
-                
-                //rads/dist is the conversion factor for the x and y components of the CamRay
-                const double radsOnDist = acos(CamRay[3]/dist)/dist;
-                
-                //return the converted CamRay
-                return arma::vec2({CamRay[0]*radsOnDist, CamRay[1]*radsOnDist});
-            }
+
         }
     }
 }
