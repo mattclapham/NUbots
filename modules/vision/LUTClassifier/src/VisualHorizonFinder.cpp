@@ -17,7 +17,7 @@
  * Copyright 2013 NUBots <nubots@nubots.net>
  */
 
-#include "LUTClassifier.h"
+#include "VisualHorizonFinder.h"
 #include "QuexClassifier.h"
 
 namespace modules {
@@ -27,106 +27,76 @@ namespace modules {
         using messages::vision::LookUpTable;
         using messages::vision::ObjectClass;
         using messages::vision::ClassifiedImage;
-
-        void LUTClassifier::findVisualHorizon(const Image& image, const LookUpTable& lut, ClassifiedImage<ObjectClass>& classifiedImage) {
-
-            // Get some local references to class variables to make text shorter
-            auto& horizon = classifiedImage.horizon;
-            auto& visualHorizon = classifiedImage.visualHorizon;
-            auto& maxVisualHorizon = classifiedImage.maxVisualHorizon;
-            auto& minVisualHorizon = classifiedImage.minVisualHorizon;
-
-            // Cast lines to find our visual horizon
-            for(uint x = 0; x < image.width(); x += VISUAL_HORIZON_SPACING) {
-
-                // Find our point to classify from (slightly above the horizon)
-                int top = std::max(int(lround(horizon.y(x)) - VISUAL_HORIZON_BUFFER), int(0));
-                top = std::min(top, int(image.height() - 1));
-
-                // Classify our segments
-                auto segments = quex->classify(image, lut, { int(x), top }, { int(x), int(image.height() - 1) }, VISUAL_HORIZON_SUBSAMPLING);
-
-                // Our default green point is the bottom of the screen
-                arma::ivec2 greenPoint = { int(x), int(image.height() - 1) };
-
-                // Loop through our segments to find our first green segment
-                for (auto it = segments.begin(); it != segments.end(); ++it) {
-
-                    // If this a valid green point update our information
-                    if(it->colour == ObjectClass::FIELD && it->length >= VISUAL_HORIZON_MINIMUM_SEGMENT_SIZE) {
-
-                        greenPoint = it->start;
-
-                        // We move our green point up by the scanning size if possible (assume more green horizon rather then less)
-                        greenPoint[1] = std::max(int(greenPoint[1] - (VISUAL_HORIZON_SUBSAMPLING / 2)), 0);
-
-                        // We found our green
-                        break;
-                    }
-                }
-
-                visualHorizon.push_back(std::move(greenPoint));
-
-                insertSegments(classifiedImage, segments, true);
+        
+        VisualHorizonFinder(Config& config) {
+            
+                
+            //save the values we need to generate ray vector lists
+            for (const auto& fov config["fovs"]) {
+                //XXX: store these somehow
+                generateScanRays(fov["x"].as<double>(),fov["y"].as<double>());
             }
-
-            // If we don't have a line on the right of the image, make one
-            if(image.width() - 1 % VISUAL_HORIZON_SPACING != 0) {
-
-                // Our default green point is the bottom of the screen
-                arma::ivec2 greenPoint = { int(image.width() - 1), int(image.height() - 1) };
-
-                // Find our point to classify from (slightly above the horizon)
-                int top = std::max(int(lround(horizon.y(image.width() - 1)) - VISUAL_HORIZON_BUFFER), int(0));
-                top = std::min(top, int(image.height() - 1));
-
-                arma::ivec2 start = { int(image.width() - 1), top };
-                arma::ivec2 end = { int(image.width() - 1), int(image.height() - 1) };
-
-                auto segments = quex->classify(image, lut, start, end, VISUAL_HORIZON_SUBSAMPLING);
-
-                // Loop through our segments to find our first green segment
-                for (auto it = segments.begin(); it != segments.end(); ++it) {
-
-                    // If this a valid green point update our information
-                    if(it->colour == ObjectClass::FIELD && it->length >= VISUAL_HORIZON_MINIMUM_SEGMENT_SIZE) {
-                        greenPoint = it->start;
-                        // We found our green
-                        break;
-                    }
-                }
-
-                visualHorizon.push_back(std::move(greenPoint));
-                insertSegments(classifiedImage, segments, true);
+            
+        }
+        
+        arma::mat VisualHorizonFinder::generateScanRays(const double& x, const double& y, const bool rectilinear = true) const {
+            //XXX: this currently assumes rectilinear - radial would be max of x and y
+            const double maxFOV = (rectilinear) ? sqrt(x*x + y*y) : std::max(x,y);
+            arma::mat scanRays(uint(maxFOV/VISUAL_HORIZON_SCAN_RESOLUTION),3);
+            
+            uint total = 0;
+            
+            //this is the rotation above the horizon to allow a buffer for detectign it
+            double sz = sin(VISUAL_HORIZON_BUFFER);
+            double cz = cos(VISUAL_HORIZON_BUFFER);
+            
+            //this calculates all the top camera raypoints in sphere space - we scan along the down vector from these
+            for (uint i = 0; i < scanrays.n_rows; ++i) {
+                sp = sin(i*VISUAL_HORIZON_SCAN_RESOLUTION - maxFOV/2);
+                cp = cos(i*VISUAL_HORIZON_SCAN_RESOLUTION - maxFOV/2);
+                scanRays[i] = arma::rowvec({cp*cz,sp*cz,sz});
             }
-
-            // Do a convex hull on the map points to build the horizon
-            for(auto a = visualHorizon.begin(); a < visualHorizon.end() - 2;) {
-
-                auto b = a + 1;
-                auto c = a + 2;
-
-                // Get the Z component of a cross product to check if it is concave
-                bool concave = 0 <   (double(a->at(0)) - double(b->at(0))) * (double(c->at(1)) - double(b->at(1)))
-                                   - (double(a->at(1)) - double(b->at(1))) * (double(c->at(0)) - double(b->at(0)));
-
-                if(concave) {
-                    visualHorizon.erase(b);
-                    a = a == visualHorizon.begin() ? a : --a;
-                }
-                else {
-                    ++a;
-                }
-            }
-
-            // As this is a convex hull, the max visual horizon will always be at one of the edges
-            maxVisualHorizon = visualHorizon.front()[1] > visualHorizon.back()[1] ? visualHorizon.begin() : visualHorizon.end() - 1;
-
-            // As this is a convex function, we just need to progress till the next point is lower
-            for(minVisualHorizon = visualHorizon.begin();
-                minVisualHorizon < visualHorizon.end() - 1
-                && minVisualHorizon->at(1) > (minVisualHorizon + 1)->at(1);
-                ++minVisualHorizon);
+            
+            return scanRays;
+        }
+        
+        //find the IMU horizon, visual horizon and convex hull of the visual horizon
+        void findVisualHorizon(const messages::input::Image& image,
+                               const messages::vision::LookUpTable& lut, 
+                               const arma::mat44& cameraToGround,
+                               messages::vision::ClassifiedImage<messages::vision::ObjectClass>& classifiedImage) {
+            
+            //XXX: get scanRays for the correct FOV
+            
+            
+            //trim out of screen pixels here
+            arma::imat rayPositions = trimToScreen(
+                                            bulkRay2Pixel(
+                                                IMU*scanRays,
+                                                image),
+                                            image);
+            
+            arma::ivec rayLength = arma::conv_to<arma::ivec>::from(arma::round(IMU.col(2)*(imageSize)));
+            
+            //shrink rays until all are the right length
+            //XXX: this will look different for radial and rectilinear
+            arma::imat rayEnds = snapToScreen(rayPositions,rayLength,image);
+            
+            //Then scan all rays
+            auto scannedPts = quex->scanAll(rayPositions,rayEnds);
+            
+            
+            //then find the horizon points
+            arma::imat horizonPts;
+            
+            //Remember: untransform to be in camera space
+            arma::mat horizonRays = IMU.t()*bulkPixel2Ray(arma::conv_to<arma::mat>::from(horizonPts));
+            
+            
+            //then find the spherical hyperhull
+            
+            
+            //return the hyperhull
         }
 
     }  // vision
