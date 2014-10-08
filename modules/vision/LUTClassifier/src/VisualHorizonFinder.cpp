@@ -79,7 +79,6 @@ namespace modules {
             arma::ivec rayLength = arma::conv_to<arma::ivec>::from(arma::round(IMU.col(2)*(imageSize)));
             
             //shrink rays until all are the right length
-            //XXX: this will look different for radial and rectilinear
             arma::imat rayEnds = snapToScreen(rayPositions,rayLength,image);
             
             //Then scan all rays
@@ -94,7 +93,14 @@ namespace modules {
             
             
             //then find the spherical hyperhull
-            
+            arma::mat horizonNormals(horizonRays.n_rows,3);
+            int startRay = 0;
+            int endRay = horizonRays.n_rows-1;
+            for ( ; ; ) {
+                
+                endRay = startRay;
+                ++startRay;
+            }
             
             //return the hyperhull
         }
