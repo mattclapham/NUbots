@@ -32,17 +32,58 @@ namespace utility {
 namespace vision {
 namespace geometry {
 
-    inline arma::imat snapToScreen() {
-    
+    inline arma::imat snapToScreen(const arma::imat& rayPositions, const arma::ivec& rayLength, const Image& image) {
+        arma::mat scales(rayPositions.n_rows,2);
+        if (radial) {
+        
+        
+        } else if (rectilinear) {
+            scales.col(0) = ;
+        
+        }
     }
     
-    inline arma::imat trimToScreen() {
-    
+    inline arma::imat trimToScreen(const arma::imat& pixels, const Image& image) {
+        //remove any pixel references not within the screen area
+        arma::imat result = pixels(arma::find(pixels.col(1) >= 0));
+        result = pixels(arma::find(pixels.col(1) < image.width));
+        result = pixels(arma::find(pixels.col(0) >= 0));
+        result = pixels(arma::find(pixels.col(0) < image.height));
+        return std::move(result);
     }
     
-    inline arma::imat bulkRay2Pixel() {
-    
-    
+    inline arma::imat bulkRay2Pixel(const arma::mat& rays, const Image& image) {
+        //convert camera rays to pixels
+        arma::mat result;
+        
+        if (radial) {
+            arma::vec2 imageCenter = arma::vec2({image.lensParams[0],
+                                                     image.lensParams[1]});
+            double pixelPitch = image.lensParams[2];
+            
+            result = rays.cols(0,1);
+            
+            arma::vec rads = arma::acos(rays.col(2));
+            
+            result /= arma::repmat(arma::sqrt(arma::sum(arma::square(result),1))*pixelPitch,2,1);
+            result *= arma::repmat(rads,2,1);
+            result += arma::repmat(imageCenter,1,rays.n_rows);
+        
+        } else if (rectilinear) {
+            
+            arma::vec2 imageCenter = arma::vec2({image.height/2,
+                                                 image.width/2});
+            
+            double focalLength = image.lensParams[0];
+            
+            result = rays.cols(0,1);
+            
+            result *= arma::repmat(focalLength/rays.col(2),2,1);
+            
+            result += arma::repmat(imageCenter,1,rays.n_rows);
+        }
+        
+        
         return arma::conv_to<arma::imat>::from(arma::round(result));
     }
     
