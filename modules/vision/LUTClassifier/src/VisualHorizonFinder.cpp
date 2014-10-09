@@ -63,20 +63,24 @@ namespace modules {
         //find the IMU horizon, visual horizon and convex hull of the visual horizon
         void findVisualHorizon(const messages::input::Image& image,
                                const messages::vision::LookUpTable& lut, 
-                               const arma::mat44& cameraToGround,
                                messages::vision::ClassifiedImage<messages::vision::ObjectClass>& classifiedImage) {
             
-            //XXX: get scanRays for the correct FOV
+            arma::mat33 camTransform = image.IMU.cols(0,2).rows(0,2);
             
+            //get scanRays for the correct FOV
+            //XXX: cache these eventually
+            arma::mat scanRays = generateScanRays(image.FOV[0],image.FOV[1],image.lens.rectilinear);
             
             //trim out of screen pixels here
-            arma::imat rayPositions = trimToScreen(
+            arma::imat rayPositions = arma::conv_to<arma::imat>::from(mat)arma::round(
+                                        trimToFOV(
                                             bulkRay2Pixel(
-                                                IMU*scanRays,
+                                                camTransform*scanRays,
                                                 image),
-                                            image);
+                                            image)));
             
-            arma::ivec rayLength = arma::conv_to<arma::ivec>::from(arma::round(IMU.col(2)*(imageSize)));
+            //get the down vector to project rays through
+            arma::ivec rayLength = arma::round(-camTransform.col(2).rows(0,1));
             
             //shrink rays until all are the right length
             arma::imat rayEnds = snapToScreen(rayPositions,rayLength,image);
@@ -89,20 +93,41 @@ namespace modules {
             arma::imat horizonPts;
             
             //Remember: untransform to be in camera space
-            arma::mat horizonRays = IMU.t()*bulkPixel2Ray(arma::conv_to<arma::mat>::from(horizonPts));
+            arma::mat horizonRays = camTransform.t()*bulkPixel2Ray(arma::conv_to<arma::mat>::from(horizonPts));
             
             
             //then find the spherical hyperhull
+            
+            //
+            
             arma::mat horizonNormals(horizonRays.n_rows,3);
             int startRay = 0;
-            int endRay = horizonRays.n_rows-1;
-            for ( ; ; ) {
+            int endRay = 1;
+            int totalNormals = 0;
+            while (startRay < horizonRays.n_rows - 1) {
+                arma::vec currentNormal = arma::normalise(arma::cross(horizonRays.row(startRay), horizonRays.row(endRay)));
                 
-                endRay = startRay;
-                ++startRay;
+                arma::ivec aboveHull = arma::find(arma::dot(horizonRays.rows(startRay,horizonRays.n_rows-1),currentRay) > 0);
+                
+                while (endRay < horizonRays.n_rows - 1 and aboveHull.n_elem > 0) {
+                    endRay = aboveHull[0] + startRay;
+                    
+                    currentNormal = arma::normalise(arma::cross(horizonRays.row(startRay), horizonRays.row(endRay)));
+                
+                    aboveHull = arma::find(horizonRays.rows(startRay,horizonRays.n_rows-1) > 0);
+                }
+                
+                horizonNormals.row(totalNormals) = currentNormal.t();
+                
+                startRay = endRay;
+                ++endRay;
+                ++totalNormals;
             }
             
+            horizonNormals.shed_rows(totalNormals,horizonNormals.n_rows-1);
+            
             //return the hyperhull
+            return std::move(horizonNormals);
         }
 
     }  // vision

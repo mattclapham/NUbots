@@ -32,22 +32,102 @@ namespace utility {
 namespace vision {
 namespace geometry {
 
-    inline arma::imat snapToScreen(const arma::imat& rayPositions, const arma::ivec& rayLength, const Image& image) {
-        arma::mat scales(rayPositions.n_rows,2);
+    inline arma::mat snapToScreen(const arma::mat& rayPositions, const arma::vec& rayLength, const Image& image) {
+        //returns a mat of vectors of resized rayLength so that rays end at the edge of the image space
+        arma::vec scales(rayPositions.n_rows,1);
         if (radial) {
-        
-        
+            const double pixelPitch = image.lensParams[2];
+            const double pixelFOV = image.FOV[0]/pixelPitch;
+            
+            if (rayLength[0] != 0 and rayLength[1] != 0) {
+                const arma::mat k = ( rayPositions )/arma::repmat(rayLength.t(),1,rayPositions.n_rows);
+                
+                const arma::vec b = 2.0*(k.col(0) + k.col(1));
+                
+                const arma::vec sqrtfactor =    arma::sqrt(arma::square(b)-4.0*2.0*arma::sum(arma::square(k),1));
+                
+                scales = (-b+sqrtfactor)/4.0;
+            } else if (rayLength[1] != 0) {
+                const arma::mat k = ( rayPositions.col(1) )/arma::repmat(rayLength.row(1),1,rayPositions.n_rows);
+                
+                const arma::vec b = 2.0*k;
+                
+                const arma::vec sqrtfactor =    arma::sqrt(arma::square(b)-4.0*arma::sum(arma::square(k),1));
+                
+                scales = (-b+sqrtfactor)/2.0;
+            } else if (rayLength[0] != 0) {
+                const arma::mat k = ( rayPositions.col(0) )/arma::repmat(rayLength.row(0),1,rayPositions.n_rows);
+                
+                const arma::vec b = 2.0*k;
+                
+                const arma::vec sqrtfactor =    arma::sqrt(arma::square(b)-4.0*arma::sum(arma::square(k),1));
+                
+                scales = (-b+sqrtfactor)/2.0;
+            }
+            
+            
         } else if (rectilinear) {
-            scales.col(0) = ;
-        
+            
+            //check which direction to calculate the x edge of image intercept from
+            if (rayLength[0] > 0) { 
+                //calculate the positive x intercept
+                scales = (image.width/2-rayPositions.col(0))/rayLength[0];
+                
+            } else if (rayLength[0] < 0) {
+                //calculate the positive x intercept
+                scales = (rayPositions.col(0)-image.width/2)/rayLength[0];
+                
+            }
+            
+            //now do y edge of image intercepts
+            if (rayLength[0] == 0) {
+                if (rayLength[1] > 0) { 
+                    //calculate the positive x intercept
+                    scales = (image.height/2-rayPositions.col(1))/rayLength[1];
+                    
+                } else if (rayLength[1] < 0) {
+                    //calculate the positive x intercept
+                    scales = (rayPositions.col(1)-image.height/2)/rayLength[1];
+                    
+                }
+            } else {
+                if (rayLength[1] > 0) { 
+                    //calculate the positive x intercept
+                    scales = arma::min( (image.height/2-rayPositions.col(1))/rayLength[1], scales);
+                    
+                } else if (rayLength[1] < 0) {
+                    //calculate the positive x intercept
+                    scales = arma::min( (rayPositions.col(1)-image.height/2)/rayLength[1], scales);
+                    
+                }
+            }
         }
+        
+        return arma::round( arma::repmat(rayLength,scales.n_rows,1) % arma::repmat(scales,1,2) );
     }
     
-    inline arma::imat trimToScreen(const arma::imat& pixels, const Image& image) {
-        //remove any pixel references not within the screen area
+    inline arma::imat trimToImage(const arma::imat& pixels, const Image& image) {
+        //remove any pixel references not within the image area
         arma::imat result = pixels(arma::find( (pixels.col(1) >= 0) + (pixels.col(1) < image.width) ));
         result = result(arma::find( (result.col(0) >= 0) + (result.col(0) < image.height) ));
         return std::move(result);
+    }
+    
+    inline arma::mat trimToFOV(const arma::mat& rays, const Image& image) {
+        //remove any pixel references not within the screen FOV
+        arma::ivec selected
+        if (radial) {
+            //assuming Z is the forward vector
+            const double fsize = arma::cos(image.FOV[0]/2);
+            selected = arma::find(rays.col(2) < fsize);
+            
+        } else if (rectilinear) {
+            const double fsizex = arma::cos(image.FOV[0]/2);
+            const double fsizey = arma::cos(image.FOV[1]/2);
+            selected = arma::find( (rays.col(0) < fsizex) % (rays.col(1) < fsizey) );
+        }
+        
+        return std::move(rays(selected));
     }
     
     inline arma::imat bulkRay2Pixel(const arma::mat& rays, const Image& image) {
@@ -109,8 +189,8 @@ namespace geometry {
             arma::vec sinRadsOnRads = arma::sin(rad)/rads;
             
             //project to the unit sphere
-            result.col(0) = px.col(0)*sinRadsOnRads;
-            result.col(1) = px.col(1)*sinRadsOnRads;
+            result.col(0) = px.col(0) % sinRadsOnRads;
+            result.col(1) = px.col(1) % sinRadsOnRads;
             result.col(2) = arma::cos(rads);
             
         } else if (rectilinear) {
