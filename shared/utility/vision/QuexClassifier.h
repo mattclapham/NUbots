@@ -17,8 +17,8 @@
  * Copyright 2013 NUBots <nubots@nubots.net>
  */
 
-#ifndef MODULES_VISION_QUEXCLASSIFIER_H
-#define MODULES_VISION_QUEXCLASSIFIER_H
+#ifndef UTILITY_VISION_QUEXCLASSIFIER_H
+#define UTILITY_VISION_QUEXCLASSIFIER_H
 
 #include <vector>
 
@@ -26,24 +26,44 @@
 #define QUEX_OPTION_ASSERTS_DISABLED
 #define QUEX_OPTION_COMPUTED_GOTOS
 #define QUEX_OPTION_TERMINATION_ZERO_DISABLED
-#include "Lexer.hpp"
-#include "messages/input/Image.h"
-#include "messages/vision/LookUpTable.h"
-#include "messages/vision/ClassifiedImage.h"
 
 namespace modules {
     namespace vision {
+
+        template <typename Lexer>
         class QuexClassifier {
         private:
             static constexpr size_t BUFFER_SIZE = 2000;
-            uint8_t buffer[BUFFER_SIZE]; // This should be big enough for now
-            quex::Lexer lexer;
+            static __thread uint8_t buffer[BUFFER_SIZE]; // This should be big enough for now
+            Lexer lexer;
             size_t& tknNumber;
 
         public:
             QuexClassifier();
 
-            std::vector<messages::vision::ClassifiedImage<messages::vision::ObjectClass>::Segment> classify(const messages::input::Image& image, const messages::vision::LookUpTable& lut, const arma::ivec2& start, const arma::ivec2& end, const uint& stratification = 1);
+            template <typename Iterator>
+            std::vector<std::pair<uint32_t, uint32_t>> classify(Iterator begin, Iterator end) {
+
+                // Start reading data
+                lexer.buffer_fill_region_prepare();
+
+                // Copy our data into the buffer
+                std::copy(begin, end, buffer + 1);
+                int length = std::distance(begin, end);
+
+                lexer.buffer_fill_region_finish(length);
+
+                std::vector<std::pair<uint32_t, uint32_t>> output;
+
+                for(uint32_t typeID = lexer.receive();
+                    typeID != QUEX_TKN_TERMINATION;
+                    typeID = lexer.receive()) {
+
+                    output.emplace_back({ typeID, len });
+                }
+
+                return output;
+            }
         };
     }
 }
