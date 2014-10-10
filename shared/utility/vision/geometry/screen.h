@@ -108,8 +108,8 @@ namespace geometry {
     
     inline arma::imat trimToImage(const arma::imat& pixels, const Image& image) {
         //remove any pixel references not within the image area
-        arma::imat result = pixels(arma::find( (pixels.col(1) >= 0) + (pixels.col(1) < image.width) ));
-        result = result(arma::find( (result.col(0) >= 0) + (result.col(0) < image.height) ));
+        arma::imat result = pixels(arma::find( (pixels.col(1) >= 0) % (pixels.col(1) < image.width) ));
+        result = result(arma::find( (result.col(0) >= 0) % (result.col(0) < image.height) ));
         return std::move(result);
     }
     

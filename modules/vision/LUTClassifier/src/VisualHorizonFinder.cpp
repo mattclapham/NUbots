@@ -63,16 +63,16 @@ namespace modules {
         //find the IMU horizon, visual horizon and convex hull of the visual horizon
         void findVisualHorizon(const messages::input::Image& image,
                                const messages::vision::LookUpTable& lut, 
-                               messages::vision::ClassifiedImage<messages::vision::ObjectClass>& classifiedImage) {
+                               quex) {
             
-            arma::mat33 camTransform = image.IMU.cols(0,2).rows(0,2);
+            arma::mat33 camTransform = image.IMU.span(0,0,2,2);
             
             //get scanRays for the correct FOV
             //XXX: cache these eventually
             arma::mat scanRays = generateScanRays(image.FOV[0],image.FOV[1],image.lens.rectilinear);
             
             //trim out of screen pixels here
-            arma::imat rayPositions = arma::conv_to<arma::imat>::from(mat)arma::round(
+            arma::imat rayPositions = arma::conv_to<arma::imat>::from(arma::round(
                                         trimToFOV(
                                             bulkRay2Pixel(
                                                 camTransform*scanRays,
