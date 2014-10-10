@@ -52,10 +52,12 @@ namespace geometry {
     
     inline double arcSizeFromTopRayGroundPlane(const arma::vec3& ray, const arma::vec2& objectSize, const double& cameraHeight, const double& orientation) {
         //XXX: unimplemented
+        return 0;
     }
     
     inline double arcSizeFromBaseRayGroundPlane(const arma::vec3& ray, const double& objectSize, const double& cameraHeight, const double& orientation) {
         //XXX: unimplemented
+        return 0;
     }
     
     inline double distanceFromCentreRay(const arma::vec3& ray, const double& objectSize, const double& cameraHeight) {
