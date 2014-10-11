@@ -5,7 +5,6 @@ ADD_ROLE(
         support::logging::ConsoleLogHandler
         support::configuration::ConfigSystem
         support::configuration::GlobalConfig
-        #platform::darwin::HardwareIO
         input::LinuxCamera
         support::NUbugger
 

@@ -7,7 +7,9 @@ ADD_ROLE(
         input::LinuxCamera
         platform::darwin::HardwareIO
         platform::darwin::SensorFilter
-        vision::LUTClassifier
+
+
+
         support::NUbugger
         support::configuration::SoccerConfig
 )
