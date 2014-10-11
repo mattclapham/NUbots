@@ -44,11 +44,6 @@ namespace modules {
             /// @brief Our internal camera class that interacts with the physical device
             V4L2Camera camera;
 
-            /// @brief The camera function that takes a pixel co-ordinate and gives the angle from the camera
-            std::function<arma::vec2 (const arma::ivec2&)> angle;
-
-            /// @brief the camera function that takes an angle from the camera and converts it to a pixel
-            std::function<arma::ivec2 (const arma::vec2&)> pixel;
         public:
             /// @brief Our configuration file for this class
             static constexpr const char* CONFIGURATION_PATH = "LinuxCamera.yaml";

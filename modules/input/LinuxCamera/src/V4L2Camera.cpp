@@ -54,7 +54,9 @@ namespace modules {
                 throw std::system_error(errno, std::system_category(), "There was an error while de-queuing a buffer");
             }
 
-            std::vector<Image::Pixel> data(width * height);
+            const uint NUM_CHANNELS = 3;
+
+            std::vector<uint8_t> data(width * height * NUM_CHANNELS);
             auto image = std::make_unique<Image>();
 
             // If it is a MJPG
@@ -82,19 +84,19 @@ namespace modules {
 
                 // Set our options
                 cinfo.do_fancy_upsampling = false;
-                cinfo.out_color_components = 3;
+                cinfo.out_color_components = NUM_CHANNELS;
                 cinfo.out_color_space = JCS_YCbCr;
 
                 // Start decompression
                 jpeg_start_decompress(&cinfo);
 
                 // Decompress the JPEG
-                for (Image::Pixel* row = data.data();
+                for (uint8_t* row = data.data();
                         cinfo.output_scanline < cinfo.output_height;
-                        row += width) {
+                        row += width * cinfo.out_color_components) {
 
                     // Read the scanline into place
-                    jpeg_read_scanlines(&cinfo, reinterpret_cast<uint8_t**>(&row), 1);
+                    jpeg_read_scanlines(&cinfo, &row, 1);
                 }
 
                 // Clean up
@@ -103,11 +105,13 @@ namespace modules {
 
                 // Move this data into the image along with the jpeg source
                 image->dimensions = { width, height };
-                image->data = std::move(data);
-                image->source = std::move(jpegData);
+                image->source = std::move(data);
             }
 
             else {
+
+                // TODO this is totally broken now
+
                 uint8_t* input = static_cast<uint8_t*>(buff[current.index].payload);
 
                 const size_t total = width * height;
@@ -115,18 +119,18 @@ namespace modules {
                 // Fix the colour information to be YUV444 rather then YUV422
                 for(size_t i = 0; i < total; ++++i) {
 
-                    data[i].y  = input[i * 2];
-                    data[i].cb = input[i * 2 + 1];
-                    data[i].cr = input[i * 2 + 3];
+                    // data[i].y  = input[i * 2];
+                    // data[i].cb = input[i * 2 + 1];
+                    // data[i].cr = input[i * 2 + 3];
 
-                    data[i + 1].y  = input[i * 2 + 2];
-                    data[i + 1].cb = input[i * 2 + 1];
-                    data[i + 1].cr = input[i * 2 + 3];
+                    // data[i + 1].y  = input[i * 2 + 2];
+                    // data[i + 1].cb = input[i * 2 + 1];
+                    // data[i + 1].cr = input[i * 2 + 3];
                 }
 
                 // Move this data into the image
                 image->dimensions = { width, height };
-                image->data = std::move(data);
+                image->source = std::move(data);
             }
 
             // Enqueue our next buffer so it can be written to
