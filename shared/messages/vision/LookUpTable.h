@@ -55,13 +55,13 @@ namespace messages {
 
         class LookUpTable {
         public:
-            uint8_t BITS_Y;
-            uint8_t BITS_CB;
-            uint8_t BITS_CR;
+            uint8_t BITS_C1;
+            uint8_t BITS_C2;
+            uint8_t BITS_C3;
             size_t LUT_SIZE; //!< The size of a lookup table in bytes.
 
             LookUpTable();
-            LookUpTable(uint8_t bitsY, uint8_t bitsCb, uint8_t bitsCr, std::vector<Colour>&& data);
+            LookUpTable(uint8_t bitsC1, uint8_t bitsC2, uint8_t bitsC3, std::vector<Colour>&& data);
 
             std::string getData() const;
             const std::vector<Colour>& getRawData() const;
@@ -71,29 +71,29 @@ namespace messages {
                 @param p the pixel
                 @return Returns the colour classification of this pixel
              */
-            const messages::vision::Colour& operator()(const messages::input::Image::Pixel& p) const;
-            messages::vision::Colour& operator()(const messages::input::Image::Pixel& p);
+            const messages::vision::Colour& operator()(const arma::Col<uint8_t>::fixed<3>& p) const;
+            messages::vision::Colour& operator()(const arma::Col<uint8_t>::fixed<3>& p);
 
             /*!
              *   @brief Gets the index of the pixel in the LUT
              *   @param p The pixel to be classified.
              *   @return Returns the colour index for the given pixel.
              */
-            uint getLUTIndex(const messages::input::Image::Pixel& colour) const;
+            uint getLUTIndex(const arma::Col<uint8_t>::fixed<3>& colour) const;
 
             /*!
              *   @brief The inverse of getLUTIndex
              *   NOTE: This inverse is NOT injective (e.g. not 1-to-1)
              */
-            messages::input::Image::Pixel getPixelFromIndex(const uint& index) const;
+            arma::Col<uint8_t>::fixed<3> getPixelFromIndex(const uint& index) const;
         private:
 
-            uint8_t BITS_Y_REMOVED;
-            uint8_t BITS_CB_REMOVED;
-            uint8_t BITS_CR_REMOVED;
-            uint8_t BITS_CB_CR;
-            uint8_t BITS_CB_MASK;
-            uint8_t BITS_CR_MASK;
+            uint8_t BITS_C1_REMOVED;
+            uint8_t BITS_C2_REMOVED;
+            uint8_t BITS_C3_REMOVED;
+            uint8_t BITS_C2_C3;
+            uint8_t BITS_C2_MASK;
+            uint8_t BITS_C3_MASK;
             std::vector<Colour> data;
         };
 
@@ -111,9 +111,9 @@ namespace YAML {
         static Node encode(const messages::vision::LookUpTable& rhs) {
             Node node;
 
-            node["bits"]["y"] = uint(rhs.BITS_Y);
-            node["bits"]["cb"] = uint(rhs.BITS_CB);
-            node["bits"]["cr"] = uint(rhs.BITS_CR);
+            node["bits"][0] = uint(rhs.BITS_C1);
+            node["bits"][1] = uint(rhs.BITS_C2);
+            node["bits"][2] = uint(rhs.BITS_C3);
 
             node["lut"] = rhs.getData();
 
@@ -122,9 +122,9 @@ namespace YAML {
 
         static bool decode(const Node& node, messages::vision::LookUpTable& rhs) {
 
-            uint8_t bitsY = node["bits"]["y"].as<uint>();
-            uint8_t bitsCb = node["bits"]["cb"].as<uint>();
-            uint8_t bitsCr = node["bits"]["cr"].as<uint>();
+            uint8_t bitsC1 = node["bits"][0].as<uint>();
+            uint8_t bitsC2 = node["bits"][1].as<uint>();
+            uint8_t bitsC3 = node["bits"][2].as<uint>();
 
             std::string dataString = node["lut"].as<std::string>();
             std::vector<messages::vision::Colour> data;
@@ -134,7 +134,7 @@ namespace YAML {
                 data.push_back(messages::vision::Colour(s));
             }
 
-            rhs = messages::vision::LookUpTable(bitsY, bitsCb, bitsCr, std::move(data));
+            rhs = messages::vision::LookUpTable(bitsC1, bitsC2, bitsC3, std::move(data));
 
             return true;
         }

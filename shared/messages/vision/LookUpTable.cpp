@@ -26,27 +26,27 @@ namespace messages {
     namespace vision {
 
         LookUpTable::LookUpTable(uint8_t bitsY, uint8_t bitsCb, uint8_t bitsCr, std::vector<Colour>&& data)
-            : BITS_Y(bitsY)
-            , BITS_CB(bitsCb)
-            , BITS_CR(bitsCr)
-            , LUT_SIZE(1 << (BITS_Y + BITS_CB + BITS_CR))
-            , BITS_Y_REMOVED(sizeof(uint8_t) * 8 - BITS_Y)
-            , BITS_CB_REMOVED(sizeof(uint8_t) * 8 - BITS_CB)
-            , BITS_CR_REMOVED(sizeof(uint8_t) * 8 - BITS_CR)
-            , BITS_CB_CR(BITS_CB + BITS_CR)
-            , BITS_CB_MASK(std::pow(2, BITS_CB) - 1)
-            , BITS_CR_MASK(std::pow(2, BITS_CR) - 1)
+            : BITS_C1(bitsY)
+            , BITS_C2(bitsCb)
+            , BITS_C3(bitsCr)
+            , LUT_SIZE(1 << (BITS_C1 + BITS_C2 + BITS_C3))
+            , BITS_C1_REMOVED(sizeof(uint8_t) * 8 - BITS_C1)
+            , BITS_C2_REMOVED(sizeof(uint8_t) * 8 - BITS_C2)
+            , BITS_C3_REMOVED(sizeof(uint8_t) * 8 - BITS_C3)
+            , BITS_C2_C3(BITS_C2 + BITS_C3)
+            , BITS_C2_MASK(std::pow(2, BITS_C2) - 1)
+            , BITS_C3_MASK(std::pow(2, BITS_C3) - 1)
             , data(std::move(data)) {
         }
 
         LookUpTable::LookUpTable() {
         }
 
-        const Colour& LookUpTable::operator()(const messages::input::Image::Pixel& p) const {
+        const Colour& LookUpTable::operator()(const arma::Col<uint8_t>::fixed<3>& p) const {
             return data[getLUTIndex(p)];
         }
 
-        Colour& LookUpTable::operator()(const messages::input::Image::Pixel& p) {
+        Colour& LookUpTable::operator()(const arma::Col<uint8_t>::fixed<3>& p) {
             return data[getLUTIndex(p)];
         }
 
@@ -58,22 +58,22 @@ namespace messages {
             return data;
         }
 
-        uint LookUpTable::getLUTIndex(const messages::input::Image::Pixel& colour) const {
+        uint LookUpTable::getLUTIndex(const arma::Col<uint8_t>::fixed<3>& colour) const {
             unsigned int index = 0;
 
-            index += ((colour.y >> BITS_Y_REMOVED) << BITS_CB_CR);
-            index += ((colour.cb >> BITS_CB_REMOVED) << BITS_CR);
-            index += (colour.cr >> BITS_CR_REMOVED);
+            index += ((colour[0] >> BITS_C1_REMOVED) << BITS_C2_C3);
+            index += ((colour[1] >> BITS_C2_REMOVED) << BITS_C3);
+            index +=  (colour[2] >> BITS_C3_REMOVED);
 
             return index;
         }
 
-        messages::input::Image::Pixel LookUpTable::getPixelFromIndex(const uint& index) const {
-            uint8_t y = (index >> BITS_CB_CR) << BITS_Y_REMOVED;
-            uint8_t cb = ((index >> BITS_CR) & BITS_CB_MASK) << BITS_CB_REMOVED;
-            uint8_t cr = (index & BITS_CR_MASK) << BITS_CR_REMOVED;
+        arma::Col<uint8_t>::fixed<3> LookUpTable::getPixelFromIndex(const uint& index) const {
+            uint8_t c1 = (index >> BITS_C2_C3) << BITS_C1_REMOVED;
+            uint8_t c2 = ((index >> BITS_C3) & BITS_C2_MASK) << BITS_C2_REMOVED;
+            uint8_t c3 = (index & BITS_C3_MASK) << BITS_C3_REMOVED;
 
-            return messages::input::Image::Pixel{y, cb, cr};
+            return {c1, c2, c3};
         }
 
     } //vision

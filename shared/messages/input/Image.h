@@ -43,21 +43,23 @@ namespace messages {
             struct Lens {
                 enum class Type {
                     EQUIRECTANGULAR,
-                    RADIAL
-                };
+                    RADIAL,
+                    BARREL
+                } type;
 
+                union {
+                    struct equirectangular {
 
-                arma::vec2 fov;
-                std::function<arma::ivec2 (const arma::vec2&)> pixel;
-                std::function<arma::vec2 (const arma::ivec2&)> angle;
+                    } equirectangular;
+
+                    struct radial {
+
+                    } radial;
+                } parameters;
             };
 
-            inline arma::u8_vec3 operator()(uint x, uint y) {
-                return data[x + y * width()];
-            }
-
-            inline const arma::u8_vec3 operator()(uint x, uint y) const {
-                return data[x + y * width()];
+            inline arma::Col<uint8_t>::fixed<3> operator()(uint x, uint y) const {
+                return {0, 0, 0};//source[x + y * width()]; // TODO do the bayer conversion here
             }
 
             inline uint width() const {
