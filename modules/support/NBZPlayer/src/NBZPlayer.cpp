@@ -21,6 +21,7 @@
 
 #include "messages/support/Configuration.h"
 #include "messages/support/nubugger/proto/Message.pb.h"
+#include "messages/input/Image.h"
 
 #include <boost/iostreams/filter/gzip.hpp>
 #include <boost/iostreams/device/file_descriptor.hpp>
@@ -29,6 +30,7 @@ namespace modules {
 namespace support {
 
     using messages::support::Configuration;
+    using messages::input::Image;
     using messages::support::nubugger::proto::Message;
 
     NBZPlayer::NBZPlayer(std::unique_ptr<NUClear::Environment> environment)
@@ -84,7 +86,18 @@ namespace support {
                         std::this_thread::sleep_until(timeToRun);
 
                         // Send it!
-                        std::cout << "makin images!" << std::endl;
+
+                        // Get the width and height
+                        int width = message.image().dimensions().y();
+                        int height = message.image().dimensions().x();
+                        const std::string& source = message.image().data();
+
+                        // Get the image data
+                        std::vector<Image::Pixel> data(width * height);
+
+                        std::memcpy(data.data(), source.data(), source.size());
+
+                        emit(std::make_unique<Image>(1280, 960, std::move(data)));
                     }
 
                 }
@@ -92,22 +105,6 @@ namespace support {
             [] {
                 // This is a buggy module! recode me!
             }));
-
-            // Add a service thread that just reads for now
-
-            // Open the file
-
-            // Read the next size
-
-            // Read that into a message
-
-            // For the first one get the difference between its timestamp and the current as "offset"
-
-            // Sleep until the next offset
-
-            // Emit while next offset is not 0
-
-            // Add handlers for each type
 
     }
 
