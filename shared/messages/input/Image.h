@@ -76,6 +76,7 @@ namespace messages {
             arma::uvec2 dimensions;
             std::vector<uint8_t> source;
             Lens lens;
+            arma::mat44 cameraToGround;
         };
 
     }  // input

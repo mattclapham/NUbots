@@ -21,12 +21,27 @@
 #define MODULES_VISION_LUT_VISUALHORIZONFINDER_H
 
 #include <nuclear>
+#include <armadillo>
+
+#include "messages/vision/LookUpTable.h"
+#include "messages/input/Image.h"
 
 namespace modules {
 namespace vision {
 namespace LUT {
 
     class VisualHorizonFinder : public NUClear::Reactor {
+    private:
+        double VISUAL_HORIZON_SCAN_RESOLUTION = 0.2; //this is the radians between scanlines
+        double VISUAL_HORIZON_BUFFER = 0.1; //this is the radians buffer above the horizon
+        double VISUAL_HORIZON_MINIMUM_SEGMENT_SIZE = 0;
+        double VISUAL_HORIZON_SUBSAMPLING = 1;
+
+        arma::mat generateScanRays(const double& x, const double& y, const bool rectilinear = true) const;
+
+        //find the IMU horizon, visual horizon and convex hull of the visual horizon
+        void findVisualHorizon(const messages::input::Image& image,
+                               const messages::vision::LookUpTable& lut);
     public:
         /// @brief Called by the powerplant to build and setup the VisualHorizonFinder reactor.
         explicit VisualHorizonFinder(std::unique_ptr<NUClear::Environment> environment);
