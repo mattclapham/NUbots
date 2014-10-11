@@ -53,6 +53,12 @@ namespace support {
             imageData->mutable_dimensions()->set_y(image.height());
 
             std::string* imageBytes = imageData->mutable_data();
+
+            // TODO SO MUCH HACKS!!!
+            static int cameraId = 0;
+            cameraId = cameraId == 0 ? 1 : 0;
+            imageData->set_camera_id(cameraId);
+
             if(!image.source().empty()) {
                 imageData->set_format(messages::input::proto::Image::JPEG);
 
