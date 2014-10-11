@@ -20,7 +20,6 @@
 #include "FlycapCamera.h"
 
 #include "utility/image/ColorModelConversions.h"
-#include "messages/input/CameraParameters.h"
 #include "messages/support/Configuration.h"
 #include "CamCallbacks.h"
 
@@ -30,7 +29,6 @@ namespace input
 {
 
 using messages::support::Configuration;
-using messages::input::CameraParameters;
 
 FlycapCamera::FlycapCamera(std::unique_ptr<NUClear::Environment> environment) : Reactor(std::move(environment))
 {
@@ -49,20 +47,6 @@ FlycapCamera::FlycapCamera(std::unique_ptr<NUClear::Environment> environment) : 
     {
         try
         {
-            //XXX: NOT PER CAMERA
-            auto cameraParameters = std::make_unique<CameraParameters>();
-
-            cameraParameters->imageSizePixels << config["imageWidth"].as<uint>() << config["imageHeight"].as<uint>();
-            cameraParameters->FOV << config["FOV_X"].as<double>() << config["FOV_Y"].as<double>();
-            cameraParameters->distortionFactor = config["DISTORTION_FACTOR"].as<double>();
-            arma::vec2 tanHalfFOV;
-            tanHalfFOV << std::tan(cameraParameters->FOV[0] * 0.5) << std::tan(cameraParameters->FOV[1] * 0.5);
-            arma::vec2 imageCentre;
-            imageCentre << cameraParameters->imageSizePixels[0] * 0.5 << cameraParameters->imageSizePixels[1] * 0.5;
-            cameraParameters->pixelsToTanThetaFactor << (tanHalfFOV[0] / imageCentre[0]) << (tanHalfFOV[1] / imageCentre[1]);
-            cameraParameters->focalLengthPixels = imageCentre[0] / tanHalfFOV[0];
-            emit<Scope::DIRECT>(std::move(cameraParameters));
-
             // Try to find our camera
             uint deviceId = config["device_id"].as<int>();
             auto camera = cameras.find(deviceId);

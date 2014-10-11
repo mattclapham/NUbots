@@ -93,11 +93,15 @@ namespace support {
                         const std::string& source = message.image().data();
 
                         // Get the image data
-                        std::vector<Image::Pixel> data(width * height);
+                        std::vector<uint8_t> data(source.begin(), source.end());
 
-                        std::memcpy(data.data(), source.data(), source.size());
+                        auto image = std::make_unique<Image>();
+                        image->timestamp = NUClear::clock::now();
+                        image->format =  Image::SourceFormat::BGGR;
+                        image->dimensions = { 1280, 960 };
+                        image->source = std::move(data);
 
-                        emit(std::make_unique<Image>(1280, 960, std::move(data)));
+                        emit(std::move(image));
                     }
 
                 }

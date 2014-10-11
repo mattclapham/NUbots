@@ -45,12 +45,17 @@ namespace modules {
 
             uint size = image.GetDataSize();
 
-            std::vector<Image::Pixel> data(size / 3);
+            std::vector<uint8_t> data(size);
 
-            std::memcpy(reinterpret_cast<char*>(data.data()), reinterpret_cast<char*>(image.GetData()), size);
+            std::memcpy(data.data(), reinterpret_cast<char*>(image.GetData()), size);
 
+            Image output;
+            output.timestamp = NUClear::clock::now();
+            output.format =  Image::SourceFormat::BGGR;
+            output.dimensions = { 1280, 960 };
+            output.source = std::move(data);
 
-            return Image(1280, 960, std::move(data));
+            return output;
         }
 
         /**
@@ -62,78 +67,78 @@ namespace modules {
          *
          * @author Josiah Walker
          */
-        Image captureRadial(FlyCapture2::Image& image) {
+        // Image captureRadial(FlyCapture2::Image& image) {
 
-            constexpr uint sourceWidth = 1280;
-            constexpr uint sourceHeight = 960;
+        //     constexpr uint sourceWidth = 1280;
+        //     constexpr uint sourceHeight = 960;
 
-            //the horizontal offset cuts out the black areas of the image altogether to save CPU
-            std::vector<Image::Pixel> data(sourceHeight*(sourceWidth), {0,0,0});
+        //     //the horizontal offset cuts out the black areas of the image altogether to save CPU
+        //     std::vector<Image::Pixel> data(sourceHeight*(sourceWidth), {0,0,0});
 
-            // do a cache-coherent demosaic step
-            for (size_t j = 0; j < sourceHeight*sourceWidth; j += sourceWidth) {
+        //     // do a cache-coherent demosaic step
+        //     for (size_t j = 0; j < sourceHeight*sourceWidth; j += sourceWidth) {
 
-                // do the second line
-                for (size_t i = 0;
-                    i < 1280-2; i += 2) { // assume we always start on an even pixel (odd ones are nasty)
+        //         // do the second line
+        //         for (size_t i = 0;
+        //             i < 1280-2; i += 2) { // assume we always start on an even pixel (odd ones are nasty)
 
-                    const size_t index = i+j;
-                    const size_t dIndex = index+1;
-                    //do the current row
-                    auto& pxNext = data[dIndex];
-                    auto& pxNextNext = data[dIndex+1];
+        //             const size_t index = i+j;
+        //             const size_t dIndex = index+1;
+        //             //do the current row
+        //             auto& pxNext = data[dIndex];
+        //             auto& pxNextNext = data[dIndex+1];
 
-                    //get the required information
-                    const auto& currentGreen = *image[index];
-                    const auto& currentRed = *image[index+1];
-                    const auto& nextGreen = *image[index+2];
-                    const auto& nextRed = *image[index+3];
+        //             //get the required information
+        //             const auto& currentGreen = *image[index];
+        //             const auto& currentRed = *image[index+1];
+        //             const auto& nextGreen = *image[index+2];
+        //             const auto& nextRed = *image[index+3];
 
-                    //demosaic red and green
+        //             //demosaic red and green
 
-                    pxNext.cb = uint8_t((uint(currentGreen) + uint(nextGreen)) >> 1);
-                    pxNext.cr = currentRed;
-                    pxNextNext.cb = nextGreen;
-                    pxNextNext.cr = uint8_t((uint(currentRed) + uint(nextRed)) >> 1);
+        //             pxNext.cb = uint8_t((uint(currentGreen) + uint(nextGreen)) >> 1);
+        //             pxNext.cr = currentRed;
+        //             pxNextNext.cb = nextGreen;
+        //             pxNextNext.cr = uint8_t((uint(currentRed) + uint(nextRed)) >> 1);
 
-                    //do the row below
-                    data[dIndex+sourceWidth].cr = currentRed;
-                    data[dIndex+1+sourceWidth].cr = uint8_t((uint(currentRed) + uint(nextRed)) >> 1);
+        //             //do the row below
+        //             data[dIndex+sourceWidth].cr = currentRed;
+        //             data[dIndex+1+sourceWidth].cr = uint8_t((uint(currentRed) + uint(nextRed)) >> 1);
 
-                }
-                j += sourceWidth;
+        //         }
+        //         j += sourceWidth;
 
-                for (size_t i = 0;
-                    i < 1280-2; i += 2) { // assume we always start on an even pixel (odd ones are nasty)
+        //         for (size_t i = 0;
+        //             i < 1280-2; i += 2) { // assume we always start on an even pixel (odd ones are nasty)
 
-                    const size_t index = i+j;
-                    const size_t dIndex = index+1;
-                    //do the current row
-                    auto& pxNext = data[dIndex];
-                    auto& pxNextNext = data[dIndex+1];
+        //             const size_t index = i+j;
+        //             const size_t dIndex = index+1;
+        //             //do the current row
+        //             auto& pxNext = data[dIndex];
+        //             auto& pxNextNext = data[dIndex+1];
 
-                    //get the required information
-                    const auto& currentBlue = *image[index];
-                    const auto& currentGreen = *image[index+1];
-                    const auto& nextBlue = *image[index+2];
-                    const auto& nextGreen = *image[index+3];
+        //             //get the required information
+        //             const auto& currentBlue = *image[index];
+        //             const auto& currentGreen = *image[index+1];
+        //             const auto& nextBlue = *image[index+2];
+        //             const auto& nextGreen = *image[index+3];
 
-                    //demosaic red and green
-                    pxNext.y = uint8_t((uint(currentBlue) + uint(nextBlue)) >> 1);
-                    pxNext.cb = currentGreen;
-                    pxNextNext.y = nextBlue;
-                    pxNextNext.cb = uint8_t((uint(currentGreen) + uint(nextGreen)) >> 1);
+        //             //demosaic red and green
+        //             pxNext.y = uint8_t((uint(currentBlue) + uint(nextBlue)) >> 1);
+        //             pxNext.cb = currentGreen;
+        //             pxNextNext.y = nextBlue;
+        //             pxNextNext.cb = uint8_t((uint(currentGreen) + uint(nextGreen)) >> 1);
 
-                    //do the row below
-                    //px = data[dIndex+radius*2];
-                    data[dIndex+sourceWidth].y = (unsigned char)(((unsigned int)currentBlue + (unsigned int)nextBlue) >> 1);
-                    data[dIndex+1+sourceWidth].y = nextBlue;
+        //             //do the row below
+        //             //px = data[dIndex+radius*2];
+        //             data[dIndex+sourceWidth].y = (unsigned char)(((unsigned int)currentBlue + (unsigned int)nextBlue) >> 1);
+        //             data[dIndex+1+sourceWidth].y = nextBlue;
 
-                }
+        //         }
 
-            }
-            return Image(sourceWidth, sourceHeight, std::move(data));
-        }
+        //     }
+        //     return Image(sourceWidth, sourceHeight, std::move(data));
+        // }
 
     }  // input
 }  // modules
