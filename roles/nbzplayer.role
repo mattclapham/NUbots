@@ -1,15 +1,12 @@
 ADD_ROLE(
-    NAME cameratest
+    NAME nbzplayer
     MODULES
-        # Support
+        #Support
         support::SignalCatcher
         support::logging::ConsoleLogHandler
         support::configuration::ConfigSystem
-        support::configuration::GlobalConfig
-
-        # Vision
-        input::FlycapCamera
-
-        # Debugging
         support::NUbugger
+
+        support::NBZPlayer
 )
+

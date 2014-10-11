@@ -1,0 +1,35 @@
+device: 49712223535816342
+driver: dc1394
+
+format:
+  width: 1280
+  height: 960
+  input_format: BGGR
+  output_format: RGB
+
+settings:
+  brightness: auto
+  exposure: auto
+  sharpness: auto
+  white_balance: auto
+  hue: auto
+  saturation: auto
+  gamma: auto
+  shutter: auto
+  gain: auto
+  iris: auto
+  focus: auto
+  temperature: auto
+  trigger: auto
+  trigger_delay: auto
+  white_shading: auto
+  frame_rate: auto
+  zoom: auto
+  pan: auto
+  tilt: auto
+  optical_filter: auto
+  capture_size: auto
+  capture_quality: auto
+
+lens:
+  placeholder

@@ -61,7 +61,7 @@ namespace modules {
             double BALL_SEARCH_CIRCLE_SCALE = 2;
             double BALL_MAXIMUM_VERTICAL_CLUSTER_SPACING = 1;
             double BALL_HORIZONTAL_SUBSAMPLE_FACTOR = 1;
-            double BALL_RADIUS = 0.05;
+            double BALL_RADIUS = 0.31;
 
             void insertSegments(messages::vision::ClassifiedImage<messages::vision::ObjectClass>& image
                 , std::vector<messages::vision::ClassifiedImage<messages::vision::ObjectClass>::Segment>& segments

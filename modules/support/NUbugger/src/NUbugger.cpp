@@ -20,6 +20,8 @@
 #include "NUbugger.h"
 
 #include <zmq.hpp>
+#include <boost/iostreams/filter/gzip.hpp>
+#include <boost/iostreams/device/file_descriptor.hpp>
 
 #include "messages/vision/LookUpTable.h"
 #include "messages/support/Configuration.h"
@@ -106,23 +108,32 @@ namespace support {
                 // Get our timestamp
                 std::string timestamp = std::to_string(std::chrono::duration_cast<std::chrono::seconds>(NUClear::clock::now().time_since_epoch()).count());
 
-                // Open a file using the file name and timestamp
-                outputFile.close();
-                outputFile.clear();
-                outputFile.open(config["output"]["file"]["path"].as<std::string>()
-                                + "/"
-                                + timestamp
-                                + ".nbs", std::ios::binary);
+                // Reset the file if one exists
+                if(outputFile) {
+                    boost::iostreams::close(outputFile);
+                }
+
+                std::string outputFilePath = config["output"]["file"]["path"].as<std::string>();
+                outputFilePath += "/";
+                outputFilePath += timestamp;
+                outputFilePath += ".nbz";
+
+                // outputFile.push(boost::iostreams::gzip_compressor(9));
+                outputFile.push(boost::iostreams::file_descriptor_sink(outputFilePath, std::ios_base::out | std::ios_base::binary));
 
                 fileEnabled = true;
             }
             else if(fileEnabled && !config["output"]["file"]["enabled"].as<bool>()) {
 
+
+                // TODO close the file
+
                 // Lock the file
                 std::lock_guard<std::mutex> lock(fileMutex);
 
                 // Close the file
-                outputFile.close();
+                boost::iostreams::close(outputFile);
+
                 fileEnabled = false;
             }
 
@@ -153,7 +164,7 @@ namespace support {
             }
         });
 
-        on<Trigger<Every<1, std::chrono::seconds>>>([this] (const time_t&) {
+        on<Trigger<Every<1, std::chrono::seconds>>, Options<Single, Priority<NUClear::LOW>>>([this] (const time_t&) {
             Message message;
             message.set_type(Message::PING);
             message.set_filter_id(0);
@@ -175,9 +186,9 @@ namespace support {
             pub.close();
 
             // Close the file if it exists
-            fileEnabled = false;
-            outputFile.close();
-            // TODO DO THIS
+            if(fileEnabled) {
+                boost::iostreams::close(outputFile);
+            }
         });
     }
 
@@ -306,12 +317,14 @@ namespace support {
             dataPtr[1] = uint8_t(message.filter_id());
             send(packet);
         }
+
         if(fileEnabled && outputFile) {
             // Append the number of bytes to the file (so we can re-read it)
-            outputFile << message.ByteSize();
+            outputFile << uint32_t(message.ByteSize());
             // Append the protocol buffer to the file
             message.SerializeToOstream(&outputFile);
         }
+
 
     }
 

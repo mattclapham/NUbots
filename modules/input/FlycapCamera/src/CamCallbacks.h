@@ -17,24 +17,29 @@
  * Copyright 2013 NUBots <nubots@nubots.net>
  */
 
-#ifndef SHARED_UTILITY_IMAGE_COLORMODELCONVERSIONS_H
-#define SHARED_UTILITY_IMAGE_COLORMODELCONVERSIONS_H
-#include "RGB.h"
-#include "HSV.h"
-#include "YCbCr.h"
-namespace utility {
-    /**
-     * TODO document
-     *
-     * @author Jake Woods
-     */
-    namespace image {
-         RGB toRGB(YCbCr ycbcr);
-         RGB toRGB(HSV hsv);
-         HSV toHSV(RGB rgb);
-         HSV toHSV(YCbCr ycbcr);
-         YCbCr toYCbCr(const RGB& rgb);
-         YCbCr toYCbCr(HSV hsv);
-    }
-}
-#endif
+#ifndef MODULES_INPUT_CAMCALLBACKS_H
+#define MODULES_INPUT_CAMCALLBACKS_H
+
+#include <flycapture/FlyCapture2.h>
+#include "messages/input/Image.h"
+
+namespace modules {
+    namespace input {
+
+        /**
+         * @brief This class encapsulates the physical camera device. It will setup a camera device and begin streaming
+         *    images
+         *
+         * @details
+         *    This callback function converts a radial lens Bayer format image to rgb to work with NUClear.
+         *
+         * @author Josiah Walker
+         */
+        messages::input::Image captureRadial(FlyCapture2::Image& image);
+        messages::input::Image captureBayer(FlyCapture2::Image& image);
+
+    }  // input
+}  // modules
+
+#endif  // MODULES_INPUT_CAMCALLBACKS_H
+

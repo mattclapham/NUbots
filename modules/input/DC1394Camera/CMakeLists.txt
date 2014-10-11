@@ -1,0 +1,6 @@
+# Find libjpeg library
+FIND_PACKAGE(DC1394 REQUIRED)
+
+# Build our NUClear module
+NUCLEAR_MODULE(INCLUDES ${DC1394_INCLUDE_DIRS}
+               LIBRARIES ${DC1394_LIBRARIES})

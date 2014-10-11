@@ -1,5 +1,5 @@
 /*
- * This file is part of the NUbots Codebase.
+ * This file is part of NUbots Codebase.
  *
  * The NUbots Codebase is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,24 +17,7 @@
  * Copyright 2013 NUBots <nubots@nubots.net>
  */
 
-#ifndef SHARED_UTILITY_IMAGE_COLORMODELCONVERSIONS_H
-#define SHARED_UTILITY_IMAGE_COLORMODELCONVERSIONS_H
-#include "RGB.h"
-#include "HSV.h"
-#include "YCbCr.h"
-namespace utility {
-    /**
-     * TODO document
-     *
-     * @author Jake Woods
-     */
-    namespace image {
-         RGB toRGB(YCbCr ycbcr);
-         RGB toRGB(HSV hsv);
-         HSV toHSV(RGB rgb);
-         HSV toHSV(YCbCr ycbcr);
-         YCbCr toYCbCr(const RGB& rgb);
-         YCbCr toYCbCr(HSV hsv);
-    }
-}
-#endif
+
+
+#define CATCH_CONFIG_MAIN  // This tells Catch to provide a main() - only do this in one cpp file
+#include <catch.hpp>

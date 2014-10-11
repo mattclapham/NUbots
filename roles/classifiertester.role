@@ -1,15 +1,16 @@
 ADD_ROLE(
     NAME classifiertester
     MODULES
+
+        # Support
+        support::SignalCatcher
         support::logging::ConsoleLogHandler
         support::configuration::ConfigSystem
         support::configuration::GlobalConfig
-        input::LinuxCamera
-        platform::darwin::HardwareIO
-        platform::darwin::SensorFilter
 
+        # Vision
+        input::FlycapCamera
 
-
+        # Debugging
         support::NUbugger
-        support::configuration::SoccerConfig
 )
