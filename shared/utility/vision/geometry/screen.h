@@ -30,6 +30,19 @@ namespace geometry {
     
     using messages::input::Image;
     
+    inline arma::mat camTiltMatrix(const Image& image) {
+        //this returns an x-forward-aligned camera tilt matrix for filtering out of screen rays
+        double cosxy = image.cameraToGround(0,0);
+        double sinxy = image.cameraToGround(0,1);
+        
+        amra::mat33 camUnrotate;
+        camUnrotate << cosxy << sinxy << 0.0 << arma::endr
+                    << -sinxy << cosxy << 0.0 << arma::endr
+                    << 0.0 << 0.0 << 1.0 << ;
+        
+        return arma::dot(image.cameraToGround.submat(0,0,2,2),camUnrotate);
+    }
+    
     inline arma::mat snapToScreen(const arma::mat& rayPositions, const arma::vec& rayLength, const Image& image) {
         //returns a mat of vectors of resized rayLength so that rays end at the edge of the image space
         arma::vec scales(rayPositions.n_rows,1);

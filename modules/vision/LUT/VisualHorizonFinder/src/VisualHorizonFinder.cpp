@@ -29,6 +29,7 @@ namespace LUT {
     using utility::vision::geometry::bulkPixel2Ray;
     using utility::vision::geometry::trimToFOV;
     using utility::vision::geometry::snapToScreen;
+    using utility::vision::geometry::camTiltMatrix;
     using messages::input::Image;
     
     VisualHorizonFinder::VisualHorizonFinder(std::unique_ptr<NUClear::Environment> environment)
@@ -38,7 +39,7 @@ namespace LUT {
 
 
     arma::mat VisualHorizonFinder::generateScanRays(const double& x, const double& y, const bool rectilinear) const {
-        //XXX: this currently assumes rectilinear - radial would be max of x and y
+        //XXX: this currently assumes rectilinear or radial - fix should go in screen.h
         const double maxFOV = (rectilinear) ? sqrt(x*x + y*y) : std::max(x,y);
         arma::mat scanRays(uint(maxFOV/VISUAL_HORIZON_SCAN_RESOLUTION),3);
 
@@ -61,12 +62,11 @@ namespace LUT {
     arma::mat VisualHorizonFinder::findVisualHorizon(const messages::input::Image& image,
                            const messages::vision::LookUpTable& lut) {
         
-        //XXX: initialize camera tilt matrix - needs to be in screen.h
-        arma::mat33 camTransform = image.cameraToGround.submat(0,0,2,2);
+        //initialize camera tilt matrix
+        arma::mat33 camTransform = camTiltMatrix(image);
 
         //get scanRays for the correct FOV
         //XXX: cache these eventually
-        //XXX: FOV 0/1? How to generify? 
         arma::mat scanRays;
         if (image.lens.type == Image::Lens::Type::RADIAL) {
             scanRays = generateScanRays(image.lens.parameters.radial.radialFOV,image.lens.parameters.radial.radialFOV,false);
@@ -99,11 +99,6 @@ namespace LUT {
         //Remember: untransform to be in camera space
         arma::mat horizonRays = camTransform.t()*bulkPixel2Ray(horizonPts, image);
 
-
-        //then find the spherical hyperhull
-
-        //
-
         arma::mat horizonNormals(horizonRays.n_rows,3);
         int startRay = 0;
         int endRay = 1;
@@ -121,7 +116,7 @@ namespace LUT {
                                             currentNormal))
                                         > 0.0);
             
-            //keep taking hte next value above the hull until we are convex
+            //keep taking the next value above the hull until we are convex
             while (endRay < int(horizonRays.n_rows - 1) and aboveHull.n_elem > 0.0) {
                 endRay = aboveHull[0] + startRay;
 
