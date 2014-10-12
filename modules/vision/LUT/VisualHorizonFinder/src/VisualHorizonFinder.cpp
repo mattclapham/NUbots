@@ -19,6 +19,7 @@
 
 #include "VisualHorizonFinder.h"
 #include "utility/vision/geometry/screen.h"
+#include "messages/input/Image.h"
 
 namespace modules {
 namespace vision {
@@ -28,7 +29,7 @@ namespace LUT {
     using utility::vision::geometry::bulkPixel2Ray;
     using utility::vision::geometry::trimToFOV;
     using utility::vision::geometry::snapToScreen;
-    
+    using messages::input::Image;
     
     VisualHorizonFinder::VisualHorizonFinder(std::unique_ptr<NUClear::Environment> environment)
         : Reactor(std::move(environment)) {
@@ -41,7 +42,6 @@ namespace LUT {
         const double maxFOV = (rectilinear) ? sqrt(x*x + y*y) : std::max(x,y);
         arma::mat scanRays(uint(maxFOV/VISUAL_HORIZON_SCAN_RESOLUTION),3);
 
-        uint total = 0;
 
         //this is the rotation above the horizon to allow a buffer for detectign it
         const double sz = sin(VISUAL_HORIZON_BUFFER);
@@ -60,37 +60,44 @@ namespace LUT {
     //find the IMU horizon, visual horizon and convex hull of the visual horizon
     arma::mat VisualHorizonFinder::findVisualHorizon(const messages::input::Image& image,
                            const messages::vision::LookUpTable& lut) {
-
-        arma::mat33 camTransform = image.cameraToGround.span(0,0,2,2);
+        
+        //XXX: initialize camera tilt matrix - needs to be in screen.h
+        arma::mat33 camTransform = image.cameraToGround.submat(0,0,2,2);
 
         //get scanRays for the correct FOV
         //XXX: cache these eventually
         //XXX: FOV 0/1? How to generify? 
-        arma::mat scanRays = generateScanRays(image.lens.parameters.FOV[0],image.lens.parameters.FOV[1],image.lens.type);
-
+        arma::mat scanRays;
+        if (image.lens.type == Image::Lens::Type::RADIAL) {
+            scanRays = generateScanRays(image.lens.parameters.radial.radialFOV,image.lens.parameters.radial.radialFOV,false);
+        } else if (image.lens.type == Image::Lens::Type::EQUIRECTANGULAR) {
+            scanRays = generateScanRays(image.lens.parameters.equirectangular.FOV[0],image.lens.parameters.equirectangular.FOV[1],true);
+        }
+        
         //trim out of screen pixels here
-        arma::imat rayPositions = arma::conv_to<arma::imat>::from(arma::round(
-                                    trimToFOV(
-                                        bulkRay2Pixel(
+        arma::mat rayPositions = arma::round(
+                                    bulkRay2Pixel(
+                                        trimToFOV(
                                             camTransform*scanRays,
                                             image),
-                                        image)));
+                                        image)
+                                    );
 
         //get the down vector to project rays through
-        arma::ivec rayLength = -camTransform.col(2).rows(0,1);
+        arma::vec rayLength = -camTransform.col(2).rows(0,1);
 
         //shrink rays until all are the right length
-        arma::imat rayEnds = snapToScreen(rayPositions,rayLength,image);
+        arma::mat rayEnds = snapToScreen(rayPositions,rayLength,image);
 
         //Then scan all rays
-        auto scannedPts = quex->scanAll(rayPositions,rayEnds,lut);
+        auto scannedPts = quex->scanAll(arma::conv_to<arma::imat>::from(rayPositions), arma::conv_to<arma::imat>::from(rayEnds), lut);
 
 
         //then find the horizon points
         arma::imat horizonPts;
 
         //Remember: untransform to be in camera space
-        arma::mat horizonRays = camTransform.t()*bulkPixel2Ray(arma::conv_to<arma::mat>::from(horizonPts));
+        arma::mat horizonRays = camTransform.t()*bulkPixel2Ray(horizonPts, image);
 
 
         //then find the spherical hyperhull
