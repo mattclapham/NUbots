@@ -40,7 +40,7 @@ namespace LUT {
         arma::mat generateScanRays(const double& x, const double& y, const bool rectilinear = true) const;
 
         //find the IMU horizon, visual horizon and convex hull of the visual horizon
-        void findVisualHorizon(const messages::input::Image& image,
+        arma::mat findVisualHorizon(const messages::input::Image& image,
                                const messages::vision::LookUpTable& lut);
     public:
         /// @brief Called by the powerplant to build and setup the VisualHorizonFinder reactor.

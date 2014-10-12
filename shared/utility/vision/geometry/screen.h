@@ -22,22 +22,19 @@
 #include <cmath>
 #include <armadillo>
 #include <nuclear>
-#include "messages/localisation/FieldObject.h"
-#include "messages/input/Sensors.h"
-#include "utility/math/matrix.h"
-#include "utility/math/geometry/Plane.h"
-#include "utility/math/geometry/ParametricLine.h"
+#include "messages/input/Image.h"
 
 namespace utility {
 namespace vision {
 namespace geometry {
-
+    
+    using messages::input::Image;
+    
     inline arma::mat snapToScreen(const arma::mat& rayPositions, const arma::vec& rayLength, const Image& image) {
         //returns a mat of vectors of resized rayLength so that rays end at the edge of the image space
         arma::vec scales(rayPositions.n_rows,1);
-        if (radial) {
-            const double pixelPitch = image.lensParams[2];
-            const double pixelFOV = image.FOV[0]/pixelPitch;
+        if (image.lens.type == Image::Lens::Type::RADIAL) {
+            const double pixelFOV = image.lens.parameters.radialFOV/image.lens.parameters.pixelPitch;
             
             if (rayLength[0] != 0 and rayLength[1] != 0) {
                 const arma::mat k = ( rayPositions )/arma::repmat(rayLength.t(),1,rayPositions.n_rows);
@@ -66,16 +63,16 @@ namespace geometry {
             }
             
             
-        } else if (rectilinear) {
+        } else if (image.lens.type == Image::Lens::Type::EQUIRECTANGULAR) {
             
             //check which direction to calculate the x edge of image intercept from
             if (rayLength[0] > 0) { 
                 //calculate the positive x intercept
-                scales = (image.width/2-rayPositions.col(0))/rayLength[0];
+                scales = (image.dimensions[0]/2-rayPositions.col(0))/rayLength[0];
                 
             } else if (rayLength[0] < 0) {
                 //calculate the positive x intercept
-                scales = (rayPositions.col(0)-image.width/2)/rayLength[0];
+                scales = (rayPositions.col(0)-image.dimensions[0]/2)/rayLength[0];
                 
             }
             
@@ -83,21 +80,21 @@ namespace geometry {
             if (rayLength[0] == 0) {
                 if (rayLength[1] > 0) { 
                     //calculate the positive x intercept
-                    scales = (image.height/2-rayPositions.col(1))/rayLength[1];
+                    scales = (image.dimensions[1]/2-rayPositions.col(1))/rayLength[1];
                     
                 } else if (rayLength[1] < 0) {
                     //calculate the positive x intercept
-                    scales = (rayPositions.col(1)-image.height/2)/rayLength[1];
+                    scales = (rayPositions.col(1)-image.dimensions[1]/2)/rayLength[1];
                     
                 }
             } else {
                 if (rayLength[1] > 0) { 
                     //calculate the positive x intercept
-                    scales = arma::min( (image.height/2-rayPositions.col(1))/rayLength[1], scales);
+                    scales = arma::min( (image.dimensions[1]/2-rayPositions.col(1))/rayLength[1], scales);
                     
                 } else if (rayLength[1] < 0) {
                     //calculate the positive x intercept
-                    scales = arma::min( (rayPositions.col(1)-image.height/2)/rayLength[1], scales);
+                    scales = arma::min( (rayPositions.col(1)-image.dimensions[1]/2)/rayLength[1], scales);
                     
                 }
             }
@@ -108,55 +105,50 @@ namespace geometry {
     
     inline arma::imat trimToImage(const arma::imat& pixels, const Image& image) {
         //remove any pixel references not within the image area
-        arma::imat result = pixels(arma::find( (pixels.col(1) >= 0) % (pixels.col(1) < image.width) ));
-        result = result(arma::find( (result.col(0) >= 0) % (result.col(0) < image.height) ));
+        arma::imat result = pixels(arma::find( (pixels.col(1) >= 0) % (pixels.col(1) < image.dimensions[0]) ));
+        result = result.rows(arma::find( (result.col(0) >= 0) % (result.col(0) < image.dimensions[1]) ));
         return std::move(result);
     }
     
     inline arma::mat trimToFOV(const arma::mat& rays, const Image& image) {
         //remove any pixel references not within the screen FOV
-        arma::ivec selected
-        if (radial) {
+        arma::ivec selected;
+        if (image.lens.type == Image::Lens::Type::RADIAL) {
             //assuming Z is the forward vector
-            const double fsize = arma::cos(image.FOV[0]/2);
+            const double fsize = arma::cos(image.lens.parameters.radialFOV/2);
             selected = arma::find(rays.col(2) < fsize);
             
-        } else if (rectilinear) {
-            const double fsizex = arma::cos(image.FOV[0]/2);
-            const double fsizey = arma::cos(image.FOV[1]/2);
+        } else if (image.lens.type == Image::Lens::Type::EQUIRECTANGULAR) {
+            const double fsizex = arma::cos(image.lens.parameters.FOV[0]/2);
+            const double fsizey = arma::cos(image.lens.parameters.FOV[1]/2);
             selected = arma::find( (rays.col(0) < fsizex) % (rays.col(1) < fsizey) );
         }
         
-        return std::move(rays(selected));
+        return std::move(rays.rows(selected));
     }
     
     inline arma::imat bulkRay2Pixel(const arma::mat& rays, const Image& image) {
         //convert camera rays to pixels
         arma::mat result;
         
-        if (radial) {
-            arma::vec2 imageCenter = arma::vec2({image.lensParams[0],
-                                                     image.lensParams[1]});
-            double pixelPitch = image.lensParams[2];
+        if (image.lens.type == Image::Lens::Type::RADIAL) {
             
             result = rays.cols(0,1);
             
             arma::vec rads = arma::acos(rays.col(2));
             
-            result /= arma::repmat(arma::sqrt(arma::sum(arma::square(result),1))*pixelPitch,2,1);
+            result /= arma::repmat(arma::sqrt(arma::sum(arma::square(result),1))*image.lens.parameters.pixelPitch,2,1);
             result *= arma::repmat(rads,2,1);
-            result += arma::repmat(imageCenter,1,rays.n_rows);
+            result += arma::repmat(image.lens.parameters.imageCenter,1,rays.n_rows);
         
-        } else if (rectilinear) {
+        } else if (image.lens.type == Image::Lens::Type::EQUIRECTANGULAR) {
             
-            arma::vec2 imageCenter = arma::vec2({image.height/2,
-                                                 image.width/2});
-            
-            double focalLength = image.lensParams[0];
+            arma::vec2 imageCenter = arma::vec2({image.dimensions[1]/2,
+                                                 image.dimensions[0]/2});
             
             result = rays.cols(0,1);
             
-            result *= arma::repmat(focalLength/rays.col(2),2,1);
+            result *= arma::repmat(image.lens.parameters.focalLengthPixels/rays.col(2),2,1);
             
             result += arma::repmat(imageCenter,1,rays.n_rows);
         }
@@ -169,16 +161,12 @@ namespace geometry {
         //convert a matrix of rows of 2d pixels into spherical camera rays
         
         arma::mat result(pixels.n_rows,3);
-        if (radial) {
-            //radial lens conversion
-            arma::vec2 imageCenter = arma::vec2({image.lensParams[0],
-                                                 image.lensParams[1]});
-            double pixelPitch = image.lensParams[2];
+        if (image.lens.type == Image::Lens::Type::RADIAL) {
             
             //center the pixels
             const arma::mat px = arma::conv_to<arma::mat>::from(pixels) - 
-                                 arma::repmat(imageCenter.t(),1,pixels.n_rows) *
-                                 pixelPitch;
+                                 arma::repmat(image.lens.parameters.imageCenter.t(),1,pixels.n_rows) *
+                                 image.lens.parameters.pixelPitch;
             
             //get all the radian values
             arma::vec rads = arma::sqrt(
@@ -193,17 +181,14 @@ namespace geometry {
             result.col(1) = px.col(1) % sinRadsOnRads;
             result.col(2) = arma::cos(rads);
             
-        } else if (rectilinear) {
+        } else if (image.lens.type == Image::Lens::Type::EQUIRECTANGULAR) {
             
-            arma::vec2 imageCenter = arma::vec2({image.height/2,
-                                                 image.width/2});
-            
-            double focalLength = image.lensParams[0];
+            arma::vec2 imageCenter = arma::vec2({image.dimensions[1]/2,
+                                                 image.dimensions[0]/2});
             
             result.cols(0,1) = arma::conv_to<arma::mat>::from(pixels) - 
-                                 arma::repmat(imageCenter.t(),1,pixels.n_rows) *
-                                 pixelPitch;
-            result.cols(2) = focalLength;
+                                 arma::repmat(imageCenter.t(),1,pixels.n_rows);
+            result.cols(2) = image.lens.parameters.focalLength;
             
             result /= arma::repmat(arma::sqrt(arma::sum(arma::square(result),1)),3,1);
         }

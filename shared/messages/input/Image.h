@@ -49,11 +49,14 @@ namespace messages {
 
                 union {
                     struct equirectangular {
-
+                        arma::vec2 FOV;
+                        double focalLengthPixels;
                     } equirectangular;
 
                     struct radial {
-
+                        double radialFOV;
+                        double pixelPitch;
+                        arma::vec2 imageCenter;
                     } radial;
                 } parameters;
             };
