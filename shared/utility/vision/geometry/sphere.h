@@ -78,7 +78,7 @@ namespace sphere {
         return abs( (cameraHeight/objectRadius) / ray[2] );
     }
     
-    inline double distanceFromArcSize(const arma::vec3& ray, const double& objectRadius, const double& arcRadius) {
+    inline double distanceFromArcSize(const double& arcRadius, const double& objectRadius) {
         //returns the distance along the ray of the object using arcsize
         return abs(objectRadius/sin(arcRadius));
     }

@@ -44,6 +44,7 @@ namespace modules {
             double CAMERA_HEIGHT = 1.2; //this is the radians buffer above the horizon
             double MIN_POST_WIDTH = 0.1;
             double MIN_POST_HEIGHT = 0.8;
+            double MIN_GROUNDOBJ_SIZE = 0.3;
             
             //create a convex hull from the outline polygon, giving us info about obstacles
             arma::mat generateAboveHorizonRays(const messages::input::Image& image);
@@ -52,7 +53,7 @@ namespace modules {
             arma::mat generateBelowHorizonRays(const messages::input::Image& image);
             
             //find the IMU horizon, visual horizon and convex hull of the visual horizon
-            void findObjects(const messages::input::Image& image,
+            std::unordered_map<uint,std::vector<arma::ivec2>> findObjects(const messages::input::Image& image,
                              const messages::vision::LookUpTable& lut,
                              const arma::mat& horizonNormals);
 

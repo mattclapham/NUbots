@@ -19,6 +19,9 @@
 
 #include "CoarseScanner.h"
 #include <cmath>
+#include <unordered_set>
+#include <unordered_map>
+#include <vector>
 #include "utility/vision/geometry/screen.h"
 #include "utility/vision/geometry/sphere.h"
 #include "utility/vision/geometry/cylinder.h"
@@ -36,40 +39,14 @@ namespace modules {
         
         /*CoarseScanner(Config& config) {
             
-                
-            //save the values we need to generate ray vector lists
-            for (const auto& fov config["fovs"]) {
-                //XXX: store these somehow
-                generateScanRays(fov["x"].as<double>(),fov["y"].as<double>());
-            }
-            
+            //XXX: do config values
         }*/
         
-        /*arma::mat CoarseScanner::generateScanRays(const double& x, const double& y, const bool rectilinear = true) const {
-            //XXX: this currently assumes rectilinear - radial would be max of x and y
-            const double maxFOV = (rectilinear) ? sqrt(x*x + y*y) : std::max(x,y);
-            arma::mat scanRays(uint(maxFOV/VISUAL_HORIZON_SCAN_RESOLUTION),3);
-            
-            uint total = 0;
-            
-            //this is the rotation above the horizon to allow a buffer for detectign it
-            double sz = sin(VISUAL_HORIZON_BUFFER);
-            double cz = cos(VISUAL_HORIZON_BUFFER);
-            
-            //this calculates all the top camera raypoints in sphere space - we scan along the down vector from these
-            for (uint i = 0; i < scanrays.n_rows; ++i) {
-                sp = sin(i*VISUAL_HORIZON_SCAN_RESOLUTION - maxFOV/2);
-                cp = cos(i*VISUAL_HORIZON_SCAN_RESOLUTION - maxFOV/2);
-                scanRays[i] = arma::rowvec({cp*cz,sp*cz,sz});
-            }
-            
-            return scanRays;
-        }*/
         arma::mat CoarseScanner::generateAboveHorizonRays(const Image& image) {
             
             //get the max possible FOV, and the estimated pixel size
-            double maxFOV;
-            double pixelSize;
+            double maxFOV = 0.0;
+            double pixelSize = 0.0;
             if (image.lens.type == Image::Lens::Type::RADIAL) {
                 maxFOV  = image.lens.parameters.radial.radialFOV;
                 pixelSize = image.lens.parameters.radial.pixelPitch;
@@ -78,8 +55,7 @@ namespace modules {
                 pixelSize = maxFOV/arma::norm(arma::vec2({double(image.dimensions[0]), double(image.dimensions[1])}));
             }
             
-            //work out our limits
-            //XXX: this might need to be replaced by something simpler
+            //work out our limits - this might need to be replaced by something simpler
             double angleLimit = std::min(maxFOV, M_PI);
             angleLimit = std::min(angleLimit, 
                          utility::vision::geometry::cylinder::arcSizeFromTopRayVertical(
@@ -95,7 +71,7 @@ namespace modules {
             arma::vec2 halfArcSize = arma::vec2({0.0,0.0});
             
             //loop through creating new rays
-            //XXX: for loops everywhere, to make Trent proud
+            //for loops everywhere, to make Trent proud
             for (double startAngle = 0.0 + pixelSize*MIN_SIZE_PIXELS/2; startAngle < angleLimit; startAngle += halfArcSize[1]) {
                 arma::vec3 camRay = arma::vec3({cos(startAngle),0.0,sin(startAngle)});
                 halfArcSize = utility::vision::geometry::cylinder::arcSizeFromBaseRayVertical(
@@ -118,18 +94,69 @@ namespace modules {
                                                                          sinSA}).t();
                 }
                 
-                startAngle += halfArcSize[1];
             }
             
             return scanRays;
         }
         
         arma::mat CoarseScanner::generateBelowHorizonRays(const Image& image) {
-            return arma::mat();
+            //get the max possible FOV, and the estimated pixel size
+            double maxFOV = 0.0;
+            double pixelSize = 0.0;
+            if (image.lens.type == Image::Lens::Type::RADIAL) {
+                maxFOV  = image.lens.parameters.radial.radialFOV;
+                pixelSize = image.lens.parameters.radial.pixelPitch;
+            } else if (image.lens.type == Image::Lens::Type::EQUIRECTANGULAR) {
+                maxFOV = arma::norm(arma::vec2({image.lens.parameters.equirectangular.FOV[0], image.lens.parameters.equirectangular.FOV[1]}));
+                pixelSize = maxFOV/arma::norm(arma::vec2({double(image.dimensions[0]), double(image.dimensions[1])}));
+            }
+            
+            //work out our limits - this might need to be replaced by something simpler
+            double angleLimit = std::min(maxFOV, M_PI);
+            angleLimit = std::min(angleLimit, 
+                         utility::vision::geometry::sphere::arcSizeFromTopRay(
+                                    arma::vec3({cos(M_PI/2),0.0,sin(M_PI/2)}), 
+                                    MIN_GROUNDOBJ_SIZE, 
+                                    CAMERA_HEIGHT));
+            
+            //create our ray matrix
+            arma::mat scanRays(0,0);
+            
+            //define the starting angle to scan from
+            double offset = 0.0;
+            double halfArcSize = 0.0;
+            
+            //loop through creating new rays
+            //for loops everywhere, to make Trent proud
+            for (double startAngle = 0.0 + pixelSize*MIN_SIZE_PIXELS/2; startAngle < angleLimit; startAngle += halfArcSize) {
+                arma::vec3 camRay = arma::vec3({cos(startAngle),0.0,sin(startAngle)});
+                halfArcSize = utility::vision::geometry::sphere::arcSizeFromBaseRay(
+                                    arma::vec3({cos(M_PI/2.0),0.0,sin(M_PI/2.0)}), 
+                                    MIN_GROUNDOBJ_SIZE,
+                                    CAMERA_HEIGHT)/2.0;
+                //scale because we're mapping in spherical coordinates here
+                double scaledArcWidth = halfArcSize;
+                
+                
+                int numRays = int((maxFOV - offset)/scaledArcWidth);
+                scanRays = arma::resize(scanRays, scanRays.n_rows + numRays, 3);
+                
+                double cosSA = cos(startAngle);
+                double sinSA = sin(startAngle);
+                
+                for (int i = 0; i < numRays; ++i) {
+                    scanRays.row(scanRays.n_rows - i - 1) = arma::vec3({ cos(double(i)*scaledArcWidth - maxFOV/2.0 + offset) * cosSA, 
+                                                                         sin(double(i)*scaledArcWidth - maxFOV/2.0 + offset) * cosSA, 
+                                                                         sinSA}).t();
+                }
+                
+            }
+            
+            return scanRays;
         }
         
         //do a coarse scan for objects
-        void CoarseScanner::findObjects(const messages::input::Image& image,
+        std::unordered_map<uint,std::vector<arma::ivec2>> CoarseScanner::findObjects(const messages::input::Image& image,
                                const messages::vision::LookUpTable& lut, 
                                const arma::mat& horizonNormals) {
             //world space
@@ -142,14 +169,6 @@ namespace modules {
             //XXX: cache these eventually
             arma::mat aboveHorizonRays = camTransform * generateAboveHorizonRays(image);
             arma::mat belowHorizonRays = camTransform * generateBelowHorizonRays(image);
-            /*if (image.lens.type == Image::Lens::Type::RADIAL) {
-            //old code
-            } else if (image.lens.type == Image::Lens::Type::EQUIRECTANGULAR) {
-                aboveHorizonRays = camTransform * generateAboveHorizonRays(image);
-                belowHorizonRays = camTransform * generateBelowHorizonRays(image.lens.parameters.equirectangular.FOV[0],
-                                                                           image.lens.parameters.equirectangular.FOV[1],
-                                                                           true);
-            }*/
             
             //trim the scanrays using the visual horizon
             if (horizonNormals.n_elem > 0) {
@@ -167,13 +186,43 @@ namespace modules {
             
             
             //find all the unique pixels
+            std::unordered_map<uint,std::vector<arma::ivec2>> classifiedAboveHorizon;
+            std::unordered_map<uint,std::vector<arma::ivec2>> classifiedBelowHorizon;
+            std::unordered_set<uint> usedPixels;
             
+            //above horizon classification
+            for (uint i = 0; i < aboveHorizonPixels.n_rows; ++i) {
+                const uint key = aboveHorizonPixels(i,0)+aboveHorizonPixels(i,1)*image.dimensions[0];
+                if (usedPixels.count(key) == 0) {
+                    usedPixels.insert(key);
+                    
+                    //XXX: do LUT lookups
+                    const uint lutcolour = 0;
+                    
+                    classifiedAboveHorizon[lutcolour].push_back( arma::ivec2({aboveHorizonPixels(i,0), aboveHorizonPixels(i,1)}) );
+                    
+                }
+            }
             
+            //this is not actually necessary, but should speed up lookups
+            usedPixels.clear();
             
-            //do the LUT scans
+            //below horizon classification
+            for (uint i = 0; i < belowHorizonPixels.n_rows; ++i) {
+                const uint key = belowHorizonPixels(i,0)+belowHorizonPixels(i,1)*image.dimensions[0];
+                if (usedPixels.count(key) == 0) {
+                    usedPixels.insert(key);
+                    
+                    //XXX: do LUT lookups
+                    const uint lutcolour = 0;
+                    
+                    classifiedBelowHorizon[lutcolour].push_back( arma::ivec2({belowHorizonPixels(i,0), belowHorizonPixels(i,1)}) );
+                    
+                }
+            }
             
-            
-            //emit
+            //XXX: define a message type to return
+            return classifiedBelowHorizon;
         }
 
     }  // vision
