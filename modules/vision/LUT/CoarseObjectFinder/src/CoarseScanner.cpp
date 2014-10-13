@@ -84,8 +84,8 @@ namespace modules {
             angleLimit = std::min(angleLimit, 
                          utility::vision::geometry::cylinder::arcSizeFromTopRayVertical(
                                     arma::vec3({cos(M_PI/2),0.0,sin(M_PI/2)}), 
-                                    MIN_POST_WIDTH, 
-                                    CAMERA_HEIGHT));
+                                    arma::vec2({MIN_POST_WIDTH,MIN_POST_HEIGHT}), 
+                                    CAMERA_HEIGHT)[1]);
             
             //create our ray matrix
             arma::mat scanRays(0,0);
@@ -101,7 +101,7 @@ namespace modules {
                 arma::vec3 camRay = arma::vec3({cos(startAngle),0.0,sin(startAngle)});
                 halfArcSize = utility::vision::geometry::cylinder::arcSizeFromBaseRayVertical(
                                     arma::vec3({cos(M_PI/2.0),0.0,sin(M_PI/2.0)}), 
-                                    MIN_POST_WIDTH, 
+                                    arma::vec2({MIN_POST_WIDTH,MIN_POST_HEIGHT}),
                                     CAMERA_HEIGHT)/2.0;
                 //scale because we're mapping in spherical coordinates here
                 double scaledArcWidth = halfArcSize[0];

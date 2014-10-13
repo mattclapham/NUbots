@@ -40,10 +40,10 @@ namespace modules {
         private:
             arma::mat horizonScanPoints;
 
-            int VISUAL_HORIZON_SCAN_RESOLUTION = 0.2; //this is the radians between scanlines
-            double VISUAL_HORIZON_BUFFER = 0.1; //this is the radians buffer above the horizon
-            double VISUAL_HORIZON_MINIMUM_SEGMENT_SIZE = 0;
-            double VISUAL_HORIZON_SUBSAMPLING = 1;
+            double MIN_SIZE_PIXELS = 3.0; //this is the radians between scanlines
+            double CAMERA_HEIGHT = 1.2; //this is the radians buffer above the horizon
+            double MIN_POST_WIDTH = 0.1;
+            double MIN_POST_HEIGHT = 0.8;
             
             //create a convex hull from the outline polygon, giving us info about obstacles
             arma::mat generateAboveHorizonRays(const messages::input::Image& image);
