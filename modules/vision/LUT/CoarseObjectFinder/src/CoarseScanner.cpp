@@ -91,13 +91,12 @@ namespace modules {
             arma::mat scanRays(0,0);
             
             //define the starting angle to scan from
-            double startAngle = 0.0 + pixelSize*MIN_SIZE_PIXELS/2;
             double offset = 0.0;
             arma::vec2 halfArcSize = arma::vec2({0.0,0.0});
             
             //loop through creating new rays
             //XXX: for loops everywhere, to make Trent proud
-            for (startAngle = 0.0 + pixelSize*MIN_SIZE_PIXELS/2; startAngle < angleLimit; startAngle += halfArcSize[1]) {
+            for (double startAngle = 0.0 + pixelSize*MIN_SIZE_PIXELS/2; startAngle < angleLimit; startAngle += halfArcSize[1]) {
                 arma::vec3 camRay = arma::vec3({cos(startAngle),0.0,sin(startAngle)});
                 halfArcSize = utility::vision::geometry::cylinder::arcSizeFromBaseRayVertical(
                                     arma::vec3({cos(M_PI/2.0),0.0,sin(M_PI/2.0)}), 
