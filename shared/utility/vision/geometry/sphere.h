@@ -16,8 +16,8 @@
  *
  * Copyright 2013 NUBots <nubots@nubots.net>
  */
-#ifndef UTILITY_MATH_VISION_H
-#define UTILITY_MATH_VISION_H
+#ifndef UTILITY_VISION_SPHERE_H
+#define UTILITY_VISION_SPHERE_H
 
 #include <cmath>
 #include <armadillo>
@@ -31,6 +31,7 @@
 namespace utility {
 namespace vision {
 namespace geometry {
+namespace sphere {
 
     inline double arcSizeFromTopRay(const arma::vec3& ray, const double& objectRadius, const double& cameraHeight) {
         //returns the arcsize for a sphere this ray grazes the top of
@@ -39,10 +40,10 @@ namespace geometry {
         const double d = cameraHeight / ray[2]; 
         
         //get the radians inclination from straight down.
-        cons double inclination = acos(ray[2]);
+        const double inclination = acos(ray[2]);
         
         //this is the distance along the ray from the sphere intersection to the far ground point.
-        const double d2 = atan(pi/4 + inclination/2)*objectRadius;
+        const double d2 = atan(M_PI/4 + inclination/2)*objectRadius;
         
         //this is the distance along the ray from the origin to the sphere intersection.
         const double d1 = d - d2;
@@ -58,11 +59,11 @@ namespace geometry {
         const double d = cameraHeight / ray[2]; 
         
         //get the radians inclination from straight down.
-        cons double inclination = acos(ray[2]);
+        const double inclination = acos(ray[2]);
         
         //this is the distance along the ray from the sphere intersection to the far ground point.
         //NOTE: this is different to the above formula for top rays!
-        d2 = objectRadius / atan(pi/4 + inclination/2);
+        const double d2 = objectRadius / atan(M_PI/4 + inclination/2);
         
         //this is the distance along the ray from the origin to the sphere intersection.
         const double d1 = d - d2;
@@ -74,14 +75,14 @@ namespace geometry {
     
     inline double distanceFromCentreRay(const arma::vec3& ray, const double& objectRadius, const double& cameraHeight) {
         //returns the distance along the ray of the object using elevation and angle
-        return abs((cameraHeight/(objectRadius)/ray[2]);
+        return abs( (cameraHeight/objectRadius) / ray[2] );
     }
     
     inline double distanceFromArcSize(const arma::vec3& ray, const double& objectRadius, const double& arcRadius) {
         //returns the distance along the ray of the object using arcsize
         return abs(objectRadius/sin(arcRadius));
     }
-    
+}
 }
 }
 }

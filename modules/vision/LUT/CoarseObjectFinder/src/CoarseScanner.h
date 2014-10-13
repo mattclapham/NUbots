@@ -21,32 +21,24 @@
 #define MODULES_VISION_VISUALHORIZON_H
 
 #include <nuclear>
+#include <armadillo>
 
 #include "messages/input/Image.h"
-#include "messages/input/Sensors.h"
-#include "messages/vision/ClassifiedImage.h"
 #include "messages/vision/LookUpTable.h"
+#include "messages/vision/LookUpTable.h"
+#include "messages/support/Configuration.h"
 
 namespace modules {
     namespace vision {
-
-        struct LUTLocation {
-            static constexpr const char* CONFIGURATION_PATH = "LookUpTable.yaml";
-        };
-
-        class QuexClassifier;
 
         /**
          * Classifies a raw image, producing the colour segments for object detection
          *
          * @author Trent Houliston
          */
-        class VisualHorizonFinder {
+        class CoarseScanner {
         private:
             arma::mat horizonScanPoints;
-            
-            // A pointer to our quex class (since it is generated it is not defined at this point)
-            QuexClassifier* quex;
 
             int VISUAL_HORIZON_SCAN_RESOLUTION = 0.2; //this is the radians between scanlines
             double VISUAL_HORIZON_BUFFER = 0.1; //this is the radians buffer above the horizon
@@ -54,26 +46,20 @@ namespace modules {
             double VISUAL_HORIZON_SUBSAMPLING = 1;
             
             //create a convex hull from the outline polygon, giving us info about obstacles
-            void findVisualHull(const messages::input::Image& image,
-                                const messages::vision::LookUpTable& lut, 
-                                messages::vision::ClassifiedImage<messages::vision::ObjectClass>& classifiedImage);
+            arma::mat generateAboveHorizonRays(const messages::input::Image& image);
             
             //scan the horizon to find the horizon outline polygon
-            void scanHorizon(const messages::input::Image& image,
-                             const messages::vision::LookUpTable& lut,
-                             const arma::mat44& cameraToGround,
-                             messages::vision::ClassifiedImage<messages::vision::ObjectClass>& classifiedImage);
+            arma::mat generateBelowHorizonRays(const messages::input::Image& image);
             
             //find the IMU horizon, visual horizon and convex hull of the visual horizon
-            void findVisualHorizon(const messages::input::Image& image,
-                                   const messages::vision::LookUpTable& lut, 
-                                   const arma::mat44& cameraToGround,
-                                   messages::vision::ClassifiedImage<messages::vision::ObjectClass>& classifiedImage);
+            void findObjects(const messages::input::Image& image,
+                             const messages::vision::LookUpTable& lut,
+                             const arma::mat& horizonNormals);
 
         public:
             //static constexpr const char* CONFIGURATION_PATH = "LUTClassifier.yaml";
 
-            VisualHorizonFinder(config);
+            //CoarseScanner(const messages::support::Configuration& config);
         };
 
     }  // vision

@@ -18,8 +18,8 @@
  */
 
 #include "VisualHorizonFinder.h"
-#include "utility/vision/geometry/screen.h"
 #include "messages/input/Image.h"
+#include "utility/vision/geometry/screen.h"
 
 namespace modules {
 namespace vision {

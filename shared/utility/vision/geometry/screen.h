@@ -16,8 +16,8 @@
  *
  * Copyright 2013 NUBots <nubots@nubots.net>
  */
-#ifndef UTILITY_MATH_VISION_H
-#define UTILITY_MATH_VISION_H
+#ifndef UTILITY_VISION_SCREEN_H
+#define UTILITY_VISION_SCREEN_H
 
 #include <cmath>
 #include <armadillo>
@@ -35,12 +35,11 @@ namespace geometry {
         double cosxy = image.cameraToGround(0,0);
         double sinxy = image.cameraToGround(0,1);
         
-        amra::mat33 camUnrotate;
+        arma::mat camUnrotate;
         camUnrotate << cosxy << sinxy << 0.0 << arma::endr
                     << -sinxy << cosxy << 0.0 << arma::endr
-                    << 0.0 << 0.0 << 1.0 << ;
-        
-        return arma::dot(image.cameraToGround.submat(0,0,2,2),camUnrotate);
+                    << 0.0 << 0.0 << 1.0;
+        return image.cameraToGround.submat(0,0,2,2)*camUnrotate;
     }
     
     inline arma::mat snapToScreen(const arma::mat& rayPositions, const arma::vec& rayLength, const Image& image) {
@@ -49,7 +48,7 @@ namespace geometry {
         if (image.lens.type == Image::Lens::Type::RADIAL) {
             
             //XXX: this is unused - fix it!
-            const double pixelFOV = image.lens.parameters.radial.radialFOV/image.lens.parameters.radial.pixelPitch;
+            //const double pixelFOV = image.lens.parameters.radial.radialFOV/image.lens.parameters.radial.pixelPitch;
             
             if (rayLength[0] != 0 and rayLength[1] != 0) {
                 const arma::mat k = ( rayPositions )/arma::repmat(rayLength.t(),1,rayPositions.n_rows);

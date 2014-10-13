@@ -18,17 +18,23 @@
  */
 
 #include "CoarseScanner.h"
-#include "QuexClassifier.h"
+#include <cmath>
+#include "utility/vision/geometry/screen.h"
+#include "utility/vision/geometry/sphere.h"
+#include "utility/vision/geometry/cylinder.h"
+
+
 
 namespace modules {
     namespace vision {
 
         using messages::input::Image;
-        using messages::vision::LookUpTable;
-        using messages::vision::ObjectClass;
-        using messages::vision::ClassifiedImage;
+        using utility::vision::geometry::camTiltMatrix;
+        using utility::vision::geometry::bulkRay2Pixel;
+        using utility::vision::geometry::bulkPixel2Ray;
+        using utility::vision::geometry::trimToFOV;
         
-        CoarseScanner(Config& config) {
+        /*CoarseScanner(Config& config) {
             
                 
             //save the values we need to generate ray vector lists
@@ -37,9 +43,9 @@ namespace modules {
                 generateScanRays(fov["x"].as<double>(),fov["y"].as<double>());
             }
             
-        }
+        }*/
         
-        arma::mat CoarseScanner::generateScanRays(const double& x, const double& y, const bool rectilinear = true) const {
+        /*arma::mat CoarseScanner::generateScanRays(const double& x, const double& y, const bool rectilinear = true) const {
             //XXX: this currently assumes rectilinear - radial would be max of x and y
             const double maxFOV = (rectilinear) ? sqrt(x*x + y*y) : std::max(x,y);
             arma::mat scanRays(uint(maxFOV/VISUAL_HORIZON_SCAN_RESOLUTION),3);
@@ -58,41 +64,107 @@ namespace modules {
             }
             
             return scanRays;
+        }*/
+        arma::mat CoarseScanner::generateAboveHorizonRays(const Image& image) {
+            
+            //get the max possible FOV, and the estimated pixel size
+            double maxFOV;
+            double pixelSize;
+            if (image.lens.type == Image::Lens::Type::RADIAL) {
+                maxFOV  = image.lens.parameters.radial.radialFOV;
+                pixelSize = image.lens.parameters.radial.pixelPitch;
+            } else if (image.lens.type == Image::Lens::Type::EQUIRECTANGULAR) {
+                maxFOV = arma::norm(arma::vec2({image.lens.parameters.equirectangular.FOV[0], image.lens.parameters.equirectangular.FOV[1]}));
+                pixelSize = maxFOV/arma::norm(arma::vec2({double(image.dimensions[0]), double(image.dimensions[1])}));
+            }
+            
+            //work out our limits
+            //XXX: this might need to be replaced by something simpler
+            double angleLimit = std::min(maxFOV, M_PI);
+            angleLimit = std::min(angleLimit, 
+                         utility::vision::geometry::cylinder::arcSizeFromTopRayVertical(
+                                    arma::vec3({cos(M_PI/2),0.0,sin(M_PI/2)}), 
+                                    MIN_POST_WIDTH, 
+                                    CAMERA_HEIGHT));
+            
+            //create our ray matrix
+            arma::mat scanRays(0,0);
+            
+            //define the starting angle to scan from
+            double startAngle = 0.0 + pixelSize*MIN_SIZE_PIXELS/2;
+            double offset = 0.0;
+            arma::vec2 halfArcSize = arma::vec2({0.0,0.0});
+            
+            //loop through creating new rays
+            //XXX: for loops everywhere, to make Trent proud
+            for (startAngle = 0.0 + pixelSize*MIN_SIZE_PIXELS/2; startAngle < angleLimit; startAngle += halfArcSize[1]) {
+                arma::vec3 camRay = arma::vec3({cos(startAngle),0.0,sin(startAngle)});
+                halfArcSize = utility::vision::geometry::cylinder::arcSizeFromBaseRayVertical(
+                                    arma::vec3({cos(M_PI/2.0),0.0,sin(M_PI/2.0)}), 
+                                    MIN_POST_WIDTH, 
+                                    CAMERA_HEIGHT)/2.0;
+                //scale because we're mapping in spherical coordinates here
+                double scaledArcWidth = halfArcSize[0];
+                
+                
+                int numRays = int((maxFOV - offset)/scaledArcWidth);
+                scanRays = arma::resize(scanRays, scanRays.n_rows + numRays, 3);
+                
+                double cosSA = cos(startAngle);
+                double sinSA = sin(startAngle);
+                
+                for (int i = 0; i < numRays; ++i) {
+                    scanRays.row(scanRays.n_rows - i - 1) = arma::vec3({ cos(double(i)*scaledArcWidth - maxFOV/2.0 + offset) * cosSA, 
+                                                                         sin(double(i)*scaledArcWidth - maxFOV/2.0 + offset) * cosSA, 
+                                                                         sinSA}).t();
+                }
+                
+                startAngle += halfArcSize[1];
+            }
+            
+            return scanRays;
+        }
+        
+        arma::mat CoarseScanner::generateBelowHorizonRays(const Image& image) {
+            return arma::mat();
         }
         
         //do a coarse scan for objects
         void CoarseScanner::findObjects(const messages::input::Image& image,
                                const messages::vision::LookUpTable& lut, 
-                               const arma::mat& horizonNormals,
-                               quex) {
+                               const arma::mat& horizonNormals) {
+            //world space
+            arma::mat33 camTransform = camTiltMatrix(image);
             
-            arma::mat33 camTransform = image.IMU.span(0,0,2,2);
-            
-            //make a rotation matrix that doesn't change x/y axes somehow!
-            arma::mat33 ScanRayTransform;
-            arma::vec2 rotvals = arma::normalise(camTransform.col(0).rows(0,1));
-            ScanRayTransform << rotvals[0] << rotvals[1] << 0 << arma::endr
-                             << -rotvals[1] << rotvals[0] << 0 << arma::endr
-                             << 0 << 0 << 1;
-            
-            arma::mat alignedTransform = arma::dot(camTransform, ScanRayTransform);
+            //x = forward tilted cam space
+            arma::mat alignedTransform = camTiltMatrix(image);
             
             //get scanRays for the correct FOV
             //XXX: cache these eventually
-            //also rotate the scanrays so the horizon is in the right place
-            arma::mat scanRays = arma::dot(generateScanRays(image.FOV[0],image.FOV[1],image.lens.rectilinear), alignedTransform);
+            arma::mat aboveHorizonRays = camTransform * generateAboveHorizonRays(image);
+            arma::mat belowHorizonRays = camTransform * generateBelowHorizonRays(image);
+            /*if (image.lens.type == Image::Lens::Type::RADIAL) {
+            //old code
+            } else if (image.lens.type == Image::Lens::Type::EQUIRECTANGULAR) {
+                aboveHorizonRays = camTransform * generateAboveHorizonRays(image);
+                belowHorizonRays = camTransform * generateBelowHorizonRays(image.lens.parameters.equirectangular.FOV[0],
+                                                                           image.lens.parameters.equirectangular.FOV[1],
+                                                                           true);
+            }*/
             
             //trim the scanrays using the visual horizon
             if (horizonNormals.n_elem > 0) {
-                scanRays = scanRays.rows(arma::find(arma::prod(arma::dot(scanRays,horizonNormals.t()) < 0, 1)));
+                belowHorizonRays = belowHorizonRays.rows(arma::find(arma::prod(belowHorizonRays * horizonNormals.t() < 0.0, 1)));
             }
             
             //trim the scanrays to the field of view
-            scanRays = trimToFOV(scanRays,image);
+            aboveHorizonRays = trimToFOV(aboveHorizonRays,image);
+            belowHorizonRays = trimToFOV(belowHorizonRays,image);
             
             
             //convert to pixels
-            arma::imat pixels = bulkRay2Pixel(scanRays,image);
+            arma::imat aboveHorizonPixels = arma::conv_to<arma::imat>::from(bulkRay2Pixel(aboveHorizonRays,image));
+            arma::imat belowHorizonPixels = arma::conv_to<arma::imat>::from(bulkRay2Pixel(belowHorizonRays,image));
             
             
             //find all the unique pixels
