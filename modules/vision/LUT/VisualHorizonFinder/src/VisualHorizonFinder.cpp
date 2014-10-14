@@ -18,20 +18,30 @@
  */
 
 #include "VisualHorizonFinder.h"
+
+// quex lexer settings
+#define QUEX_SETTING_BUFFER_MIN_FALLBACK_N 0
+#define QUEX_OPTION_ASSERTS_DISABLED
+#define QUEX_OPTION_COMPUTED_GOTOS
+#define QUEX_OPTION_TERMINATION_ZERO_DISABLED
+
+#include "VisualHorizonLexer.hpp"
+
 #include "messages/input/Image.h"
+#include "utility/vision/QuexClassifier.h"
 #include "utility/vision/geometry/screen.h"
 
 namespace modules {
 namespace vision {
 namespace LUT {
-    
+
     using utility::vision::geometry::bulkRay2Pixel;
     using utility::vision::geometry::bulkPixel2Ray;
     using utility::vision::geometry::trimToFOV;
     using utility::vision::geometry::snapToScreen;
     using utility::vision::geometry::camTiltMatrix;
     using messages::input::Image;
-    
+
     VisualHorizonFinder::VisualHorizonFinder(std::unique_ptr<NUClear::Environment> environment)
         : Reactor(std::move(environment)) {
 
@@ -61,7 +71,7 @@ namespace LUT {
     //find the IMU horizon, visual horizon and convex hull of the visual horizon
     arma::mat VisualHorizonFinder::findVisualHorizon(const messages::input::Image& image,
                            const messages::vision::LookUpTable& lut) {
-        
+
         //initialize camera tilt matrix
         arma::mat33 camTransform = camTiltMatrix(image);
 
@@ -73,7 +83,7 @@ namespace LUT {
         } else if (image.lens.type == Image::Lens::Type::EQUIRECTANGULAR) {
             scanRays = generateScanRays(image.lens.parameters.equirectangular.FOV[0],image.lens.parameters.equirectangular.FOV[1],true);
         }
-        
+
         //trim out of screen pixels here
         arma::mat rayPositions = arma::round(
                                     bulkRay2Pixel(
@@ -89,9 +99,23 @@ namespace LUT {
         //shrink rays until all are the right length
         arma::mat rayEnds = snapToScreen(rayPositions,rayLength,image);
 
-        //Then scan all rays
-        auto scannedPts = quex->scanAll(arma::conv_to<arma::imat>::from(rayPositions), arma::conv_to<arma::imat>::from(rayEnds), lut);
+        arma::imat starts = arma::conv_to<arma::imat>::from(rayPositions.t());
+        arma::imat ends = arma::conv_to<arma::imat>::from(rayEnds.t());
 
+        // Scan all our segments
+        for(uint i = 0; i < rayPositions.n_elem; ++i) {
+            auto pts = utility::vision::bresenhamLine(starts.col(i), ends.col(i));
+
+            std::vector<char> l;
+            l.reserve(pts.size());
+
+            // Lut all the points
+            for(auto& p : pts) {
+                l.push_back(lut(image(p[0], p[1])));
+            }
+
+            auto segments = utility::vision::quexClassify<quex::VisualHorizonLexer>(l.begin(), l.end());
+        }
 
         //then find the horizon points
         arma::imat horizonPts;
@@ -106,7 +130,7 @@ namespace LUT {
         while (startRay < int(horizonRays.n_rows - 1)) {
             //initialise the starting hyperplane normal
             arma::vec currentNormal = arma::normalise(arma::cross(horizonRays.row(startRay), horizonRays.row(endRay)));
-            
+
             //look for points above the hull
             arma::uvec aboveHull = arma::find(
                                         arma::vec(arma::dot(
@@ -115,7 +139,7 @@ namespace LUT {
                                                 horizonRays.n_rows-1),
                                             currentNormal))
                                         > 0.0);
-            
+
             //keep taking the next value above the hull until we are convex
             while (endRay < int(horizonRays.n_rows - 1) and aboveHull.n_elem > 0.0) {
                 endRay = aboveHull[0] + startRay;

@@ -21,50 +21,79 @@
 #define UTILITY_VISION_QUEXCLASSIFIER_H
 
 #include <vector>
+#include <armadillo>
 
-#define QUEX_SETTING_BUFFER_MIN_FALLBACK_N 0
-#define QUEX_OPTION_ASSERTS_DISABLED
-#define QUEX_OPTION_COMPUTED_GOTOS
-#define QUEX_OPTION_TERMINATION_ZERO_DISABLED
+#include "messages/input/Image.h"
 
-namespace modules {
+namespace utility {
     namespace vision {
 
-        template <typename Lexer>
-        class QuexClassifier {
-        private:
-            static constexpr size_t BUFFER_SIZE = 2000;
-            static __thread uint8_t buffer[BUFFER_SIZE]; // This should be big enough for now
-            Lexer lexer;
-            size_t& tknNumber;
 
-        public:
-            QuexClassifier();
+        inline std::vector<arma::ivec2> bresenhamLine(const arma::ivec2& start, const arma::ivec2& end) {
 
-            template <typename Iterator>
-            std::vector<std::pair<uint32_t, uint32_t>> classify(Iterator begin, Iterator end) {
+            std::vector<arma::ivec2> out;
 
-                // Start reading data
-                lexer.buffer_fill_region_prepare();
+            arma::ivec2 point = start;
 
-                // Copy our data into the buffer
-                std::copy(begin, end, buffer + 1);
-                int length = std::distance(begin, end);
+            // The distance to travel with 1 point of fixed precision
+            arma::ivec2 delta = (end - point) * 2;
 
-                lexer.buffer_fill_region_finish(length);
+            // Calculate direction of movement
+            arma::ivec2 d = arma::sign(delta);
 
-                std::vector<std::pair<uint32_t, uint32_t>> output;
+            out.push_back(point);
 
-                for(uint32_t typeID = lexer.receive();
-                    typeID != QUEX_TKN_TERMINATION;
-                    typeID = lexer.receive()) {
+            // Which axis we move on
+            bool movement = delta[0] >= delta[1];
 
-                    output.emplace_back({ typeID, len });
+            int error = delta[!movement] - (delta[movement] >> 1);
+            while(point[movement] != end[movement]) {
+
+                if ((error >= 0) && (error || (d[movement] > 0))) {
+                    error -= delta[movement];
+                    point[!movement] += d[!movement];
                 }
 
-                return output;
+                error += delta[!movement];
+                point[movement] += d[movement];
+
+                out.push_back(point);
+
             }
-        };
+
+            return out;
+        }
+
+        template <typename Lexer, typename Iterator>
+        std::vector<std::pair<uint32_t, uint32_t>> quexClassify(Iterator start, Iterator end) {
+
+            constexpr int BUFFER_SIZE = 2000;
+
+            uint8_t buffer[BUFFER_SIZE];
+
+            // Thread safety make a new lexer every time :( (i don't know how expensive this is)
+            Lexer lexer(buffer, BUFFER_SIZE, buffer + 1);
+
+            // Copy our data into the buffer
+            std::copy(start, end, buffer + 1);
+            int length = std::distance(start, end);
+
+            lexer.buffer_fill_region_finish(length);
+
+            std::vector<std::pair<uint32_t, uint32_t>> output;
+
+            size_t& len(lexer.token_p()->number);
+
+            for(uint32_t typeID = lexer.receive();
+                typeID != QUEX_TKN_TERMINATION;
+                typeID = lexer.receive()) {
+
+                output.emplace_back(std::make_pair(uint(typeID), uint(len)));
+            }
+
+            return output;
+
+        }
     }
 }
 
