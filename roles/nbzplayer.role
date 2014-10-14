@@ -8,5 +8,7 @@ ADD_ROLE(
         support::NUbugger
 
         support::NBZPlayer
+
+        vision::LUT::VisualHorizonFinder;
 )
 
