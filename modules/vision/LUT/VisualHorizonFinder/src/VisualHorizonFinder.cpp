@@ -41,9 +41,15 @@ namespace LUT {
     using utility::vision::geometry::snapToScreen;
     using utility::vision::geometry::camTiltMatrix;
     using messages::input::Image;
+    using messages::vision::LookUpTable;
 
     VisualHorizonFinder::VisualHorizonFinder(std::unique_ptr<NUClear::Environment> environment)
         : Reactor(std::move(environment)) {
+
+        on<Trigger<Image>, With<LookUpTable>>("Visual Horizon", [this](const Image& image, const LookUpTable& lut) {
+
+            findVisualHorizon(image, lut);
+        });
 
     }
 
@@ -69,8 +75,8 @@ namespace LUT {
     }
 
     //find the IMU horizon, visual horizon and convex hull of the visual horizon
-    arma::mat VisualHorizonFinder::findVisualHorizon(const messages::input::Image& image,
-                           const messages::vision::LookUpTable& lut) {
+    arma::mat VisualHorizonFinder::findVisualHorizon(const Image& image,
+                           const LookUpTable& lut) {
 
         //initialize camera tilt matrix
         arma::mat33 camTransform = camTiltMatrix(image);
