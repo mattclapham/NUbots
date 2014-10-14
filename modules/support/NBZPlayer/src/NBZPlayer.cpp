@@ -55,7 +55,7 @@ namespace support {
 
                 // Read the message
                 Message message;
-                message.ParseFromArray(data.data(), data.size());
+                message.ParsePartialFromArray(data.data(), data.size());
 
                 offset = NUClear::clock::now() - time_t(std::chrono::milliseconds(message.utc_timestamp()));
             });
@@ -74,7 +74,7 @@ namespace support {
 
                     // Read the message
                     Message message;
-                    message.ParseFromArray(data.data(), data.size());
+                    message.ParsePartialFromArray(data.data(), data.size());
 
                     // If it's an image
                     if(message.type() == Message::IMAGE) {
