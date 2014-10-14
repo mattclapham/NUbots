@@ -9,6 +9,7 @@ ADD_ROLE(
 
         support::NBZPlayer
 
+        vision::LUT::LUTLoader;
         vision::LUT::VisualHorizonFinder;
 )
 
