@@ -147,14 +147,14 @@ namespace geometry {
 
         if (image.lens.type == Image::Lens::Type::RADIAL) {
 
-            arma::vec2 imageCenter = arma::vec2({image.lens.parameters.radial.imageCenter[0],
-                                                image.lens.parameters.radial.imageCenter[1]});
+            arma::vec2 imageCenter = arma::vec2({image.lens.parameters.radial.centre[0],
+                                                image.lens.parameters.radial.centre[1]});
 
             result = rays.cols(0,1);
 
             arma::vec rads = arma::acos(rays.col(2));
 
-            result /= arma::repmat(arma::sqrt(arma::sum(arma::square(result),1))*image.lens.parameters.radial.pixelPitch,2,1);
+            result /= arma::repmat(arma::sqrt(arma::sum(arma::square(result),1))*image.lens.parameters.radial.pitch,2,1);
             result *= arma::repmat(rads,2,1);
             result += arma::repmat(imageCenter,1,rays.n_rows);
 
@@ -165,7 +165,7 @@ namespace geometry {
 
             result = rays.cols(0,1);
 
-            result *= arma::repmat(image.lens.parameters.equirectangular.focalLengthPixels/rays.col(2),2,1);
+            result *= arma::repmat(image.lens.parameters.equirectangular.focalLength/rays.col(2),2,1);
 
             result += arma::repmat(imageCenter,1,rays.n_rows);
         }
@@ -180,12 +180,12 @@ namespace geometry {
         arma::mat result(pixels.n_rows,3);
         if (image.lens.type == Image::Lens::Type::RADIAL) {
 
-            arma::vec imageCenter = arma::vec2({image.lens.parameters.radial.imageCenter[0],
-                                                image.lens.parameters.radial.imageCenter[1]});
+            arma::vec imageCenter = arma::vec2({image.lens.parameters.radial.centre[0],
+                                                image.lens.parameters.radial.centre[1]});
             //center the pixels
             const arma::mat px = arma::conv_to<arma::mat>::from(pixels) -
                                  arma::repmat(imageCenter.t(),1,pixels.n_rows) *
-                                 image.lens.parameters.radial.pixelPitch;
+                                 image.lens.parameters.radial.pitch;
 
             //get all the radian values
             arma::vec rads = arma::sqrt(
@@ -207,7 +207,7 @@ namespace geometry {
 
             result.cols(0,1) = arma::conv_to<arma::mat>::from(pixels) -
                                  arma::repmat(imageCenter.t(),1,pixels.n_rows);
-            result.col(2) = image.lens.parameters.equirectangular.focalLengthPixels;
+            result.col(2) = image.lens.parameters.equirectangular.focalLength;
 
             result /= arma::repmat(arma::sqrt(arma::sum(arma::square(result),1)),3,1);
         }

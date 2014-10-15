@@ -49,7 +49,7 @@ namespace modules {
             double pixelSize = 0.0;
             if (image.lens.type == Image::Lens::Type::RADIAL) {
                 maxFOV  = image.lens.parameters.radial.fov;
-                pixelSize = image.lens.parameters.radial.pixelPitch;
+                pixelSize = image.lens.parameters.radial.pitch;
             } else if (image.lens.type == Image::Lens::Type::EQUIRECTANGULAR) {
                 maxFOV = arma::norm(arma::vec2({image.lens.parameters.equirectangular.fov[0], image.lens.parameters.equirectangular.fov[1]}));
                 pixelSize = maxFOV/arma::norm(arma::vec2({double(image.dimensions[0]), double(image.dimensions[1])}));
@@ -105,7 +105,7 @@ namespace modules {
             double pixelSize = 0.0;
             if (image.lens.type == Image::Lens::Type::RADIAL) {
                 maxFOV  = image.lens.parameters.radial.fov;
-                pixelSize = image.lens.parameters.radial.pixelPitch;
+                pixelSize = image.lens.parameters.radial.pitch;
             } else if (image.lens.type == Image::Lens::Type::EQUIRECTANGULAR) {
                 maxFOV = arma::norm(arma::vec2({image.lens.parameters.equirectangular.fov[0], image.lens.parameters.equirectangular.fov[1]}));
                 pixelSize = maxFOV/arma::norm(arma::vec2({double(image.dimensions[0]), double(image.dimensions[1])}));

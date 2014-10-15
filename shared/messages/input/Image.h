@@ -50,13 +50,13 @@ namespace messages {
                 union {
                     struct equirectangular {
                         double fov[2];
-                        double focalLengthPixels;
+                        double focalLength;
                     } equirectangular;
 
                     struct radial {
                         double fov;
-                        double pixelPitch;
-                        double imageCenter[2];
+                        double pitch;
+                        double centre[2];
                     } radial;
                 } parameters;
             };

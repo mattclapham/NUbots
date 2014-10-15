@@ -101,6 +101,13 @@ namespace support {
                         image->dimensions = { 1280, 960 };
                         image->source = std::move(data);
 
+                        // The lens! (hardcoded :P)
+                        image->lens.type = Image::Lens::Type::RADIAL;
+                        image->lens.parameters.radial.fov = M_PI;
+                        image->lens.parameters.radial.pitch = 0.0025;
+                        image->lens.parameters.radial.centre[0] = 640;
+                        image->lens.parameters.radial.centre[1] = 480;
+
                         emit(std::move(image));
                     }
 
