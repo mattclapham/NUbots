@@ -59,9 +59,6 @@ namespace support {
             cameraId = cameraId == 0 ? 1 : 0;
             imageData->set_camera_id(cameraId);
 
-            if(!image.source().empty()) {
-                imageData->set_format(messages::input::proto::Image::JPEG);
-
             // TODO work out the format
             imageData->set_format(messages::input::proto::Image::JPEG);
 
