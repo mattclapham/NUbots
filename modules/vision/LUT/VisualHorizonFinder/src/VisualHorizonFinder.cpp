@@ -85,9 +85,9 @@ namespace LUT {
         //XXX: cache these eventually
         arma::mat scanRays;
         if (image.lens.type == Image::Lens::Type::RADIAL) {
-            scanRays = generateScanRays(image.lens.parameters.radial.radialFOV,image.lens.parameters.radial.radialFOV,false);
+            scanRays = generateScanRays(image.lens.parameters.radial.fov, image.lens.parameters.radial.fov, false);
         } else if (image.lens.type == Image::Lens::Type::EQUIRECTANGULAR) {
-            scanRays = generateScanRays(image.lens.parameters.equirectangular.FOV[0],image.lens.parameters.equirectangular.FOV[1],true);
+            scanRays = generateScanRays(image.lens.parameters.equirectangular.fov[0],image.lens.parameters.equirectangular.fov[1],true);
         }
 
         //trim out of screen pixels here

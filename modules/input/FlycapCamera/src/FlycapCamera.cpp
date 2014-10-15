@@ -56,7 +56,7 @@ FlycapCamera::FlycapCamera(std::unique_ptr<NUClear::Environment> environment) : 
 
                 // Stop all the cameras streaming
                 for (auto &cam : cameras) {
-                    cam.second->StopCapture();
+                    cam.second.second->StopCapture();
                 }
 
                 // Make a new camera
@@ -78,15 +78,25 @@ FlycapCamera::FlycapCamera(std::unique_ptr<NUClear::Environment> environment) : 
                 }
 
                 // Insert our new camera
-                camera = cameras.insert(std::make_pair(deviceId, std::move(newCam))).first;
+                camera = cameras.insert(std::make_pair(deviceId, std::make_pair(Image::Lens(), std::move(newCam)))).first;
 
                 // Stop all the cameras streaming
                 for (auto &cam : cameras) {
-                    cam.second->StartCapture();
+                    cam.second.second->StartCapture();
                 }
             }
 
-            auto &cam = *camera->second;
+            auto& cam = *camera->second.second;
+            auto& lens = camera->second.first;
+
+            if(config["lens"]["type"].as<std::string>() == "RADIAL") {
+                lens.type = Image::Lens::Type::RADIAL;
+                lens.parameters.radial.fov = config["lens"]["fov"].as<double>();
+                lens.parameters.radial.pixelPitch = config["lens"]["pixel_pitch"].as<double>();
+                lens.parameters.radial.imageCenter[0] = config["lens"]["image_centre"][0].as<double>();
+                lens.parameters.radial.imageCenter[1] = config["lens"]["image_centre"][0].as<double>();
+            }
+
             FlyCapture2::Property p;
             p.type = FlyCapture2::BRIGHTNESS;
             cam.GetProperty(&p);
@@ -159,10 +169,15 @@ FlycapCamera::FlycapCamera(std::unique_ptr<NUClear::Environment> environment) : 
         FlyCapture2::Image image;
 
         for(const auto& camera : cameras) {
-            auto& cam = *camera.second;
+            auto& cam = *camera.second.second;
+            auto& lens = camera.second.first;
 
             cam.RetrieveBuffer(&image);
-            emit(std::make_unique<Image>(captureBayer(image)));
+
+            auto img = std::make_unique<Image>(captureBayer(image));
+            img->lens = lens;
+
+            emit(std::move(img));
         }
     });
 }

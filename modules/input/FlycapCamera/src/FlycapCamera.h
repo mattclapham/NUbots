@@ -42,7 +42,7 @@ namespace modules {
 
         private:
             /// @brief Our internal camera class that interacts with the physical device
-            std::map<uint, std::unique_ptr<FlyCapture2::Camera>> cameras;
+            std::map<uint, std::pair<messages::input::Image::Lens, std::unique_ptr<FlyCapture2::Camera>>> cameras;
 
         public:
 
