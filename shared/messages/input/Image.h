@@ -49,14 +49,14 @@ namespace messages {
 
                 union {
                     struct equirectangular {
-                        double FOV[2];
-                        double focalLengthPixels;
+                        double fov[2];
+                        double focalLength;
                     } equirectangular;
 
                     struct radial {
-                        double radialFOV;
-                        double pixelPitch;
-                        double imageCenter[2];
+                        double fov;
+                        double pitch;
+                        double centre[2];
                     } radial;
                 } parameters;
             };
