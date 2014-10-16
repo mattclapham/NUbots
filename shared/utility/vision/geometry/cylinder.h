@@ -36,7 +36,7 @@ namespace cylinder {
         const double horizontalDist = abs((cameraHeight-objectSize[1])/tan(angle));
         
         //find the sum of angles to get the predicted arcsize
-        return arma::vec2({asin(objectSize[0]/2.0 / (horizontalDist + objectSize[0]/2.0)), //XXX: fix
+        return arma::vec2({asin(objectSize[0]/2.0 / (horizontalDist + objectSize[0]/2.0)),
                            atan2(cameraHeight,horizontalDist) + atan2(objectSize[1]-cameraHeight,horizontalDist)});
     }
     
@@ -48,11 +48,11 @@ namespace cylinder {
         const double horizontalDist = abs((cameraHeight)/tan(angle));
         
         //find the sum of angles to get the predicted arcsize
-        return arma::vec2({asin(objectSize[0]/2.0 / (horizontalDist + objectSize[0]/2.0)), //XXX: fix
+        return arma::vec2({asin(objectSize[0]/2.0 / (horizontalDist + objectSize[0]/2.0)),
                            atan2(cameraHeight,horizontalDist) + atan2(objectSize[1]-cameraHeight,horizontalDist)});
         
     }
-    
+    /*TODO
     inline arma::vec2 arcSizeFromTopRayGroundPlane(const arma::vec3& ray, const arma::vec2& objectSize, const double& cameraHeight, const double& orientation) {
         //XXX: unimplemented
         return arma::vec2({0.0,0.0});
@@ -67,7 +67,7 @@ namespace cylinder {
         //returns the distance along the ray of the object using elevation and angle
         //Object size is {width,height}
         return abs((cameraHeight - objectSize[1]/2.0)/ray[2]);
-    }
+    }*/
     /*TODO
     inline double distanceFromArcWidth(const arma::vec3& ray, const arma::vec2& objectSize, const arma::vec2& arcRadius) {
         //returns the distance along the ray of the object using arcsize

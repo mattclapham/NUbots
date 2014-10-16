@@ -58,8 +58,7 @@ namespace LUT {
         //XXX: this currently assumes rectilinear or radial - fix should go in screen.h
         const double maxFOV = (rectilinear) ? sqrt(x*x + y*y) : std::max(x,y);
         arma::mat scanRays(uint(maxFOV/VISUAL_HORIZON_SCAN_RESOLUTION),3);
-
-
+        
         //this is the rotation above the horizon to allow a buffer for detectign it
         const double sz = sin(VISUAL_HORIZON_BUFFER);
         const double cz = cos(VISUAL_HORIZON_BUFFER);

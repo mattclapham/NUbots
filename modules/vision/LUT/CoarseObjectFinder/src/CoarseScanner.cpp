@@ -197,7 +197,7 @@ namespace modules {
                     usedPixels.insert(key);
                     
                     //XXX: do LUT lookups
-                    const uint lutcolour = 0;
+                    const uint lutcolour = lut.getLUTIndex(image(aboveHorizonPixels(i,0), aboveHorizonPixels(i,1)));
                     
                     classifiedAboveHorizon[lutcolour].push_back( arma::ivec2({aboveHorizonPixels(i,0), aboveHorizonPixels(i,1)}) );
                     
@@ -214,7 +214,7 @@ namespace modules {
                     usedPixels.insert(key);
                     
                     //XXX: do LUT lookups
-                    const uint lutcolour = 0;
+                    const uint lutcolour = lut.getLUTIndex(image(belowHorizonPixels(i,0), belowHorizonPixels(i,1)));
                     
                     classifiedBelowHorizon[lutcolour].push_back( arma::ivec2({belowHorizonPixels(i,0), belowHorizonPixels(i,1)}) );
                     
