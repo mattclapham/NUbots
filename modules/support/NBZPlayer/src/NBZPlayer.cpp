@@ -99,6 +99,7 @@ namespace support {
                         image->timestamp = NUClear::clock::now();
                         image->format =  Image::SourceFormat::BGGR;
                         image->dimensions = { 1280, 960 };
+                        image->cameraToGround = arma::eye(4,4);
                         image->source = std::move(data);
 
                         // The lens! (hardcoded :P)

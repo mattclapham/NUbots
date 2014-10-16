@@ -108,8 +108,9 @@ namespace LUT {
         std::cout << __LINE__ << std::endl;
         // Scan all our segments
         for(uint i = 0; i < rayPositions.n_elem; ++i) {
+            std::cout << __LINE__ << std::endl;
             auto pts = utility::vision::bresenhamLine(starts.col(i), ends.col(i));
-
+            std::cout << __LINE__ << std::endl;
             std::vector<char> l;
             l.reserve(pts.size());
 

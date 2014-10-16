@@ -115,7 +115,8 @@ namespace geometry {
             }
         }
         std::cout << __LINE__ << std::endl;
-        return arma::round( arma::repmat(rayLength,scales.n_rows,1) % arma::repmat(scales,1,2) );
+        //XXX: THERE IS SOMETHING VERY WRONG HERE, MAYBE
+        return arma::round( arma::repmat(rayLength,scales.n_rows,1) % arma::repmat(scales,2,1) );
     }
 
     inline arma::imat trimToImage(const arma::imat& pixels, const Image& image) {
