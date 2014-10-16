@@ -88,25 +88,24 @@ namespace LUT {
         } else if (image.lens.type == Image::Lens::Type::EQUIRECTANGULAR) {
             scanRays = generateScanRays(image.lens.parameters.equirectangular.fov[0],image.lens.parameters.equirectangular.fov[1],true);
         }
-
         //trim out of screen pixels here
         arma::mat rayPositions = arma::round(
                                     bulkRay2Pixel(
                                         trimToFOV(
-                                            camTransform*scanRays,
+                                            camTransform*scanRays.t(),
                                             image),
                                         image)
                                     );
-
+        std::cout << __LINE__ << std::endl;
         //get the down vector to project rays through
-        arma::vec rayLength = -camTransform.col(2).rows(0,1);
-
+        arma::vec rayLength = -camTransform.submat(0,2,1,2);//.col(2).rows(0,1).t();
+        std::cout << __LINE__ << std::endl;
         //shrink rays until all are the right length
         arma::mat rayEnds = snapToScreen(rayPositions,rayLength,image);
-
+        std::cout << __LINE__ << std::endl;
         arma::imat starts = arma::conv_to<arma::imat>::from(rayPositions.t());
         arma::imat ends = arma::conv_to<arma::imat>::from(rayEnds.t());
-
+        std::cout << __LINE__ << std::endl;
         // Scan all our segments
         for(uint i = 0; i < rayPositions.n_elem; ++i) {
             auto pts = utility::vision::bresenhamLine(starts.col(i), ends.col(i));
@@ -125,6 +124,7 @@ namespace LUT {
         //then find the horizon points
         arma::imat horizonPts;
 
+        std::cout << __LINE__ << std::endl;
         //Remember: untransform to be in camera space
         arma::mat horizonRays = camTransform.t()*bulkPixel2Ray(horizonPts, image);
 

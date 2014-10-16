@@ -46,33 +46,34 @@ namespace geometry {
         //returns a mat of vectors of resized rayLength so that rays end at the edge of the image space
         arma::vec scales(rayPositions.n_rows,1);
         if (image.lens.type == Image::Lens::Type::RADIAL) {
-
+            std::cout << __LINE__ << std::endl;
             //XXX: this is unused - fix it!
             //const double pixelFOV = image.lens.parameters.radial.fov/image.lens.parameters.radial.pixelPitch;
 
             if (rayLength[0] != 0 and rayLength[1] != 0) {
+                std::cout << __LINE__ << std::endl;
                 const arma::mat k = ( rayPositions )/arma::repmat(rayLength.t(),1,rayPositions.n_rows);
-
+                std::cout << __LINE__ << std::endl;
                 const arma::vec b = 2.0*(k.col(0) + k.col(1));
-
+                std::cout << __LINE__ << std::endl;
                 const arma::vec sqrtfactor =    arma::sqrt(arma::square(b)-4.0*2.0*arma::sum(arma::square(k),1));
-
+                std::cout << __LINE__ << std::endl;
                 scales = (-b+sqrtfactor)/4.0;
             } else if (rayLength[1] != 0) {
                 const arma::mat k = ( rayPositions.col(1) )/arma::repmat(rayLength.row(1),1,rayPositions.n_rows);
-
+                std::cout << __LINE__ << std::endl;
                 const arma::vec b = 2.0*k;
-
+                std::cout << __LINE__ << std::endl;
                 const arma::vec sqrtfactor =    arma::sqrt(arma::square(b)-4.0*arma::sum(arma::square(k),1));
-
+                std::cout << __LINE__ << std::endl;
                 scales = (-b+sqrtfactor)/2.0;
             } else if (rayLength[0] != 0) {
                 const arma::mat k = ( rayPositions.col(0) )/arma::repmat(rayLength.row(0),1,rayPositions.n_rows);
-
+                std::cout << __LINE__ << std::endl;
                 const arma::vec b = 2.0*k;
-
+                std::cout << __LINE__ << std::endl;
                 const arma::vec sqrtfactor =    arma::sqrt(arma::square(b)-4.0*arma::sum(arma::square(k),1));
-
+                std::cout << __LINE__ << std::endl;
                 scales = (-b+sqrtfactor)/2.0;
             }
 
@@ -113,7 +114,7 @@ namespace geometry {
                 }
             }
         }
-
+        std::cout << __LINE__ << std::endl;
         return arma::round( arma::repmat(rayLength,scales.n_rows,1) % arma::repmat(scales,1,2) );
     }
 
@@ -137,14 +138,12 @@ namespace geometry {
             const double fsizey = cos(image.lens.parameters.equirectangular.fov[1]/2.0);
             selected = arma::find( (rays.col(0) < fsizex) % (rays.col(1) < fsizey) );
         }
-
         return std::move(arma::mat(rays.rows(selected)));
     }
 
     inline arma::mat bulkRay2Pixel(const arma::mat& rays, const Image& image) {
         //convert camera rays to pixels
         arma::mat result;
-
         if (image.lens.type == Image::Lens::Type::RADIAL) {
 
             arma::vec2 imageCenter = arma::vec2({image.lens.parameters.radial.centre[0],
@@ -153,10 +152,9 @@ namespace geometry {
             result = rays.cols(0,1);
 
             arma::vec rads = arma::acos(rays.col(2));
-
-            result /= arma::repmat(arma::sqrt(arma::sum(arma::square(result),1))*image.lens.parameters.radial.pitch,2,1);
-            result *= arma::repmat(rads,2,1);
-            result += arma::repmat(imageCenter,1,rays.n_rows);
+            result /= arma::repmat(arma::sqrt(arma::sum(arma::square(result),1))*image.lens.parameters.radial.pitch,1,2);
+            result %= arma::repmat(rads,1,2);
+            result += arma::repmat(imageCenter,1,rays.n_rows).t();
 
         } else if (image.lens.type == Image::Lens::Type::EQUIRECTANGULAR) {
 
