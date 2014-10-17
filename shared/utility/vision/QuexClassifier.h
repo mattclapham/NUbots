@@ -40,11 +40,13 @@ namespace utility {
 
             // Calculate direction of movement
             arma::ivec2 d = arma::sign(delta);
+            
+            delta = arma::abs(delta);
 
             out.push_back(point);
 
             // Which axis we move on
-            bool movement = delta[0] >= delta[1];
+            bool movement = delta[0] <= delta[1];
 
             int error = delta[!movement] - (delta[movement] >> 1);
             while(point[movement] != end[movement]) {

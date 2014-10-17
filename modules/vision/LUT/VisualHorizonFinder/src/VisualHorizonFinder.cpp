@@ -88,29 +88,37 @@ namespace LUT {
         } else if (image.lens.type == Image::Lens::Type::EQUIRECTANGULAR) {
             scanRays = generateScanRays(image.lens.parameters.equirectangular.fov[0],image.lens.parameters.equirectangular.fov[1],true);
         }
+        
+        
         //trim out of screen pixels here
-        arma::mat rayPositions = arma::round(
-                                    bulkRay2Pixel(
+        arma::mat rayPositions = bulkRay2Pixel(
                                         trimToFOV(
-                                            camTransform*scanRays.t(),
+                                            (scanRays*camTransform),
                                             image),
-                                        image)
-                                    );
-        std::cout << __LINE__ << std::endl;
+                                        image);
+        
         //get the down vector to project rays through
         arma::vec rayLength = -camTransform.submat(0,2,1,2);//.col(2).rows(0,1).t();
-        std::cout << __LINE__ << std::endl;
         //shrink rays until all are the right length
         arma::mat rayEnds = snapToScreen(rayPositions,rayLength,image);
-        std::cout << __LINE__ << std::endl;
+        
         arma::imat starts = arma::conv_to<arma::imat>::from(rayPositions.t());
-        arma::imat ends = arma::conv_to<arma::imat>::from(rayEnds.t());
-        std::cout << __LINE__ << std::endl;
+        arma::imat ends = arma::conv_to<arma::imat>::from(rayEnds);
+        
+        //initialize the horizon points
+        arma::imat horizonPts(starts.n_cols,2);
+        
+        
         // Scan all our segments
-        for(uint i = 0; i < rayPositions.n_elem; ++i) {
-            std::cout << __LINE__ << std::endl;
-            auto pts = utility::vision::bresenhamLine(starts.col(i), ends.col(i));
-            std::cout << __LINE__ << std::endl;
+        for(uint i = 0; i < starts.n_cols; ++i) {
+            
+            
+            const arma::ivec2 s = starts.col(i);
+            
+            const arma::ivec2 e = ends.col(i);
+            
+            auto pts = utility::vision::bresenhamLine(s, e);
+            
             std::vector<char> l;
             l.reserve(pts.size());
 
@@ -120,56 +128,90 @@ namespace LUT {
             }
 
             auto segments = utility::vision::quexClassify<quex::VisualHorizonLexer>(l.begin(), l.end());
+            
+            
+            //save the top VH segment
+            int cnt = 0;
+            for (auto& s : segments) {
+                if (s.first == QUEX_TKN_FIELD and s.second > VISUAL_HORIZON_MINIMUM_SEGMENT_SIZE) {
+                    horizonPts.row(i) = pts[cnt].t();
+                    cnt = -1;
+                    break;
+                }
+                cnt += s.second;
+            }
+            
+            //if we find no VH segments
+            if (cnt >= 0) {
+                horizonPts.row(i) = pts.back().t();
+            }
         }
 
-        //then find the horizon points
-        arma::imat horizonPts;
-
-        std::cout << __LINE__ << std::endl;
+        
+        
         //Remember: untransform to be in camera space
-        arma::mat horizonRays = camTransform.t()*bulkPixel2Ray(horizonPts, image);
-
+        arma::mat horizonRays = (bulkPixel2Ray(horizonPts, image)*camTransform);
         arma::mat horizonNormals(horizonRays.n_rows,3);
         int startRay = 0;
         int endRay = 1;
         int totalNormals = 0;
+        
+        /*
+        std::cout << starts.t() << std::endl << ends.t() << std::endl << horizonPts << std::endl;
+        
+        arma::mat m1 = arma::conv_to<arma::mat>::from(horizonPts);
+        arma::mat m2 = bulkRay2Pixel(bulkPixel2Ray(horizonPts, image),image);
+        std::cout << m1 - m2;
+        std::cout << std::endl;
+        std::cout << m1.rows(26,29) << std::endl;
+        std::cout << m2.rows(26,29) << std::endl;
+        */
+        
         while (startRay < int(horizonRays.n_rows - 1)) {
             //initialise the starting hyperplane normal
-            arma::vec currentNormal = arma::normalise(arma::cross(horizonRays.row(startRay), horizonRays.row(endRay)));
-
+            arma::vec currentNormal = -arma::cross(horizonRays.row(startRay).t(), horizonRays.row(endRay).t());
+            
+            
             //look for points above the hull
-            arma::uvec aboveHull = arma::find(
-                                        arma::vec(arma::dot(
-                                            horizonRays.rows(
-                                                startRay,
-                                                horizonRays.n_rows-1),
-                                            currentNormal))
-                                        > 0.0);
-
-            //keep taking the next value above the hull until we are convex
-            while (endRay < int(horizonRays.n_rows - 1) and aboveHull.n_elem > 0.0) {
-                endRay = aboveHull[0] + startRay;
-
-                currentNormal = arma::normalise(arma::cross(horizonRays.row(startRay), horizonRays.row(endRay)));
-
-                aboveHull = arma::find(
-                                arma::vec(arma::dot(
-                                    horizonRays.rows(
-                                        startRay,
-                                        horizonRays.n_rows-1),
-                                    currentNormal))
-                                > 0.0);
+            if (endRay != horizonRays.n_rows-1)  {
+                arma::uvec aboveHull = arma::find(
+                                    arma::prod(
+                                        horizonRays.rows(endRay+1, horizonRays.n_rows-1) *
+                                        currentNormal >= 0.0, 1));
+                //keep taking the next value above the hull until we are convex
+                while (endRay < int(horizonRays.n_rows - 1) and aboveHull.n_elem > 0) {
+                    endRay = aboveHull[0] + endRay + 1;
+                    currentNormal = -arma::cross(horizonRays.row(startRay).t(), horizonRays.row(endRay).t());
+                    if (endRay !=  int(horizonRays.n_rows-1)) {
+                        aboveHull = arma::find(
+                                        arma::prod(
+                                            horizonRays.rows(endRay+1, horizonRays.n_rows-1) *
+                                            currentNormal >= 0.0, 1));
+                    } else {
+                        aboveHull = arma::uvec();
+                    }
+                }
+                if (aboveHull.n_elem > 0) {
+                    endRay = aboveHull[0] + endRay + 1;
+                    currentNormal = -arma::cross(horizonRays.row(startRay).t(), horizonRays.row(endRay).t());
+                }
+                horizonNormals.row(totalNormals) = currentNormal.t();
+                ++totalNormals;
+            } else {
+                /*std::cout  << "Final violations: " << arma::find(
+                                    arma::prod(
+                                        horizonRays.rows(0, horizonRays.n_rows-1) *
+                                        currentNormal < 0.0, 1)).t();*/
             }
-
-            horizonNormals.row(totalNormals) = currentNormal.t();
-
+            
             startRay = endRay;
             ++endRay;
-            ++totalNormals;
         }
-
-        horizonNormals.shed_rows(totalNormals,horizonNormals.n_rows-1);
-
+        if (totalNormals < horizonNormals.n_rows) {
+            horizonNormals.shed_rows(totalNormals,horizonNormals.n_rows-1);
+        }
+        
+        std::cout  << std::endl << "Normals:" << std::endl << horizonNormals << std::endl;
         //return the hyperhull
         return std::move(horizonNormals);
     }

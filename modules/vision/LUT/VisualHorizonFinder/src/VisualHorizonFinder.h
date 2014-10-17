@@ -32,7 +32,7 @@ namespace LUT {
 
     class VisualHorizonFinder : public NUClear::Reactor {
     private:
-        double VISUAL_HORIZON_SCAN_RESOLUTION = 0.2; //this is the radians between scanlines
+        double VISUAL_HORIZON_SCAN_RESOLUTION = 0.1; //this is the radians between scanlines
         double VISUAL_HORIZON_BUFFER = 0.1; //this is the radians buffer above the horizon
         double VISUAL_HORIZON_MINIMUM_SEGMENT_SIZE = 0;
         double VISUAL_HORIZON_SUBSAMPLING = 1;

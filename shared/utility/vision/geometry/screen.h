@@ -46,34 +46,25 @@ namespace geometry {
         //returns a mat of vectors of resized rayLength so that rays end at the edge of the image space
         arma::vec scales(rayPositions.n_rows,1);
         if (image.lens.type == Image::Lens::Type::RADIAL) {
-            std::cout << __LINE__ << std::endl;
             //XXX: this is unused - fix it!
-            //const double pixelFOV = image.lens.parameters.radial.fov/image.lens.parameters.radial.pixelPitch;
+            //const double pixelFOV = image.lens.parameters.radial.fov/image.lens.parameters.radial.pitch;
 
             if (rayLength[0] != 0 and rayLength[1] != 0) {
-                std::cout << __LINE__ << std::endl;
                 const arma::mat k = ( rayPositions )/arma::repmat(rayLength.t(),1,rayPositions.n_rows);
-                std::cout << __LINE__ << std::endl;
                 const arma::vec b = 2.0*(k.col(0) + k.col(1));
-                std::cout << __LINE__ << std::endl;
                 const arma::vec sqrtfactor =    arma::sqrt(arma::square(b)-4.0*2.0*arma::sum(arma::square(k),1));
-                std::cout << __LINE__ << std::endl;
                 scales = (-b+sqrtfactor)/4.0;
+                
             } else if (rayLength[1] != 0) {
                 const arma::mat k = ( rayPositions.col(1) )/arma::repmat(rayLength.row(1),1,rayPositions.n_rows);
-                std::cout << __LINE__ << std::endl;
                 const arma::vec b = 2.0*k;
-                std::cout << __LINE__ << std::endl;
                 const arma::vec sqrtfactor =    arma::sqrt(arma::square(b)-4.0*arma::sum(arma::square(k),1));
-                std::cout << __LINE__ << std::endl;
                 scales = (-b+sqrtfactor)/2.0;
+                
             } else if (rayLength[0] != 0) {
                 const arma::mat k = ( rayPositions.col(0) )/arma::repmat(rayLength.row(0),1,rayPositions.n_rows);
-                std::cout << __LINE__ << std::endl;
                 const arma::vec b = 2.0*k;
-                std::cout << __LINE__ << std::endl;
                 const arma::vec sqrtfactor =    arma::sqrt(arma::square(b)-4.0*arma::sum(arma::square(k),1));
-                std::cout << __LINE__ << std::endl;
                 scales = (-b+sqrtfactor)/2.0;
             }
 
@@ -114,9 +105,7 @@ namespace geometry {
                 }
             }
         }
-        std::cout << __LINE__ << std::endl;
-        //XXX: THERE IS SOMETHING VERY WRONG HERE, MAYBE
-        return arma::round( arma::repmat(rayLength,scales.n_rows,1) % arma::repmat(scales,2,1) );
+        return arma::round( arma::repmat(rayLength,1,scales.n_rows) % arma::repmat(scales,1,2).t() );
     }
 
     inline arma::imat trimToImage(const arma::imat& pixels, const Image& image) {
@@ -132,7 +121,7 @@ namespace geometry {
         if (image.lens.type == Image::Lens::Type::RADIAL) {
             //assuming Z is the forward vector
             const double fsize = cos(image.lens.parameters.radial.fov/2);
-            selected = arma::find(rays.col(2) < fsize);
+            selected = arma::find(rays.col(0) > fsize);
 
         } else if (image.lens.type == Image::Lens::Type::EQUIRECTANGULAR) {
             const double fsizex = cos(image.lens.parameters.equirectangular.fov[0]/2.0);
@@ -150,11 +139,12 @@ namespace geometry {
             arma::vec2 imageCenter = arma::vec2({image.lens.parameters.radial.centre[0],
                                                 image.lens.parameters.radial.centre[1]});
 
-            result = rays.cols(0,1);
-
-            arma::vec rads = arma::acos(rays.col(2));
-            result /= arma::repmat(arma::sqrt(arma::sum(arma::square(result),1))*image.lens.parameters.radial.pitch,1,2);
-            result %= arma::repmat(rads,1,2);
+            result = rays.cols(1,2);
+            
+            arma::vec rads = arma::acos(rays.col(0));
+            result /= arma::repmat(arma::sqrt(arma::sum(arma::square(result),1)),1,2);
+            result %= arma::repmat(rads/image.lens.parameters.radial.pitch,1,2);
+            //result.col(1) *= -1.0;
             result += arma::repmat(imageCenter,1,rays.n_rows).t();
 
         } else if (image.lens.type == Image::Lens::Type::EQUIRECTANGULAR) {
@@ -175,30 +165,26 @@ namespace geometry {
 
     inline arma::mat bulkPixel2Ray(const arma::imat& pixels, const Image& image) {
         //convert a matrix of rows of 2d pixels into spherical camera rays
-
+        
         arma::mat result(pixels.n_rows,3);
         if (image.lens.type == Image::Lens::Type::RADIAL) {
-
             arma::vec imageCenter = arma::vec2({image.lens.parameters.radial.centre[0],
                                                 image.lens.parameters.radial.centre[1]});
             //center the pixels
-            const arma::mat px = arma::conv_to<arma::mat>::from(pixels) -
-                                 arma::repmat(imageCenter.t(),1,pixels.n_rows) *
+            const arma::mat px = (arma::conv_to<arma::mat>::from(pixels) -
+                                 arma::repmat(imageCenter.t(),pixels.n_rows,1)) *
                                  image.lens.parameters.radial.pitch;
-
             //get all the radian values
             arma::vec rads = arma::sqrt(
                                 arma::sum(
                                    arma::square(
                                       px),1));
-
             arma::vec sinRadsOnRads = arma::sin(rads)/rads;
 
             //project to the unit sphere
-            result.col(0) = px.col(0) % sinRadsOnRads;
-            result.col(1) = px.col(1) % sinRadsOnRads;
-            result.col(2) = cos(rads);
-
+            result.col(1) = px.col(0) % sinRadsOnRads;
+            result.col(2) = px.col(1) % sinRadsOnRads;
+            result.col(0) = cos(rads);
         } else if (image.lens.type == Image::Lens::Type::EQUIRECTANGULAR) {
 
             arma::vec2 imageCenter = arma::vec2({image.dimensions[1]/2.0,
