@@ -30,9 +30,9 @@ namespace modules {
         using messages::vision::ClassifiedImage;
 
         void LUTClassifier::findHorizon(const Image& image, const LookUpTable&, ClassifiedImage<ObjectClass>& classifiedImage) {
-                
+
                 auto& sensors = *classifiedImage.sensors;
-                
+
                 // Coordinate system: 0,0 is the centre of the screen. pos[0] is along the y axis of the
                 // camera transform, pos[1] is along the z axis (x points out of the camera)
                 classifiedImage.horizon = utility::motion::kinematics::calculateHorizon(sensors.orientationCamToGround.submat(0,0,2,2).t(), FOCAL_LENGTH_PIXELS);
