@@ -46,28 +46,23 @@ namespace geometry {
         //returns a mat of vectors of resized rayLength so that rays end at the edge of the image space
         arma::vec scales(rayPositions.n_rows,1);
         if (image.lens.type == Image::Lens::Type::RADIAL) {
-            //XXX: this is unused - fix it!
-            //const double pixelFOV = image.lens.parameters.radial.fov/image.lens.parameters.radial.pitch;
-
-            if (rayLength[0] != 0 and rayLength[1] != 0) {
-                const arma::mat k = ( rayPositions )/arma::repmat(rayLength.t(),1,rayPositions.n_rows);
-                const arma::vec b = 2.0*(k.col(0) + k.col(1));
-                const arma::vec sqrtfactor =    arma::sqrt(arma::square(b)-4.0*2.0*arma::sum(arma::square(k),1));
-                scales = (-b+sqrtfactor)/4.0;
-                
-            } else if (rayLength[1] != 0) {
-                const arma::mat k = ( rayPositions.col(1) )/arma::repmat(rayLength.row(1),1,rayPositions.n_rows);
-                const arma::vec b = 2.0*k;
-                const arma::vec sqrtfactor =    arma::sqrt(arma::square(b)-4.0*arma::sum(arma::square(k),1));
-                scales = (-b+sqrtfactor)/2.0;
-                
-            } else if (rayLength[0] != 0) {
-                const arma::mat k = ( rayPositions.col(0) )/arma::repmat(rayLength.row(0),1,rayPositions.n_rows);
-                const arma::vec b = 2.0*k;
-                const arma::vec sqrtfactor =    arma::sqrt(arma::square(b)-4.0*arma::sum(arma::square(k),1));
-                scales = (-b+sqrtfactor)/2.0;
-            }
-
+            //radius and centre of circle
+            const double pixelFOV = image.lens.parameters.radial.fov/image.lens.parameters.radial.pitch;
+            arma::vec2 imageCenter = arma::vec2({image.lens.parameters.radial.centre[0],
+                                                image.lens.parameters.radial.centre[1]});
+            //ax^2 + bx + c parameters to solve
+            const double a = arma::dot(rayLength,rayLength);
+            const arma::vec b = 2.0 * ((rayPositions - arma::repmat(imageCenter.t(),rayPositions.n_rows,1)) * rayLength);
+            const arma::vec c = arma::sum(rayPositions % rayPositions, 1) + 
+                                arma::accu(imageCenter % imageCenter) - 
+                                2.0 * (rayPositions * imageCenter) - 
+                                pixelFOV*pixelFOV;
+            
+            //the quadratic formula
+            //std::cout << "A: " << a << std::endl;
+            //std::cout << "B: " << b << std::endl;
+            //std::cout << "C: " << c << std::endl;
+            scales = ( -b + arma::sqrt(b % b - 4.0 * a * c) )/(2.0 * a);
 
         } else if (image.lens.type == Image::Lens::Type::EQUIRECTANGULAR) {
 
@@ -105,7 +100,7 @@ namespace geometry {
                 }
             }
         }
-        return arma::round( arma::repmat(rayLength,1,scales.n_rows) % arma::repmat(scales,1,2).t() );
+        return arma::round( arma::repmat(rayLength,1,scales.n_rows) % arma::repmat(scales,1,2).t() + rayPositions.t() );
     }
 
     inline arma::imat trimToImage(const arma::imat& pixels, const Image& image) {

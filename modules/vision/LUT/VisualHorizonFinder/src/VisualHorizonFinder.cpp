@@ -98,7 +98,9 @@ namespace LUT {
                                         image);
         
         //get the down vector to project rays through
-        arma::vec rayLength = -camTransform.submat(0,2,1,2);//.col(2).rows(0,1).t();
+        //this is a little bit of a hack - we should fix it one day
+        arma::vec rayLength = -camTransform.submat(1,2,2,2);
+        
         //shrink rays until all are the right length
         arma::mat rayEnds = snapToScreen(rayPositions,rayLength,image);
         
@@ -108,7 +110,7 @@ namespace LUT {
         //initialize the horizon points
         arma::imat horizonPts(starts.n_cols,2);
         
-        
+        //std::cout << rayEnds;
         // Scan all our segments
         for(uint i = 0; i < starts.n_cols; ++i) {
             
@@ -167,13 +169,13 @@ namespace LUT {
         std::cout << m2.rows(26,29) << std::endl;
         */
         
-        while (startRay < int(horizonRays.n_rows - 1)) {
+        while (startRay < int(horizonRays.n_rows) - 1) {
             //initialise the starting hyperplane normal
             arma::vec currentNormal = -arma::cross(horizonRays.row(startRay).t(), horizonRays.row(endRay).t());
             
             
             //look for points above the hull
-            if (endRay != horizonRays.n_rows-1)  {
+            if (endRay != int(horizonRays.n_rows) - 1)  {
                 arma::uvec aboveHull = arma::find(
                                     arma::prod(
                                         horizonRays.rows(endRay+1, horizonRays.n_rows-1) *
@@ -195,9 +197,10 @@ namespace LUT {
                     endRay = aboveHull[0] + endRay + 1;
                     currentNormal = -arma::cross(horizonRays.row(startRay).t(), horizonRays.row(endRay).t());
                 }
-                horizonNormals.row(totalNormals) = currentNormal.t();
+                horizonNormals.row(totalNormals) = arma::normalise(currentNormal).t();
                 ++totalNormals;
             } else {
+                //this is an error condition - fix if it becomes a problem
                 /*std::cout  << "Final violations: " << arma::find(
                                     arma::prod(
                                         horizonRays.rows(0, horizonRays.n_rows-1) *
@@ -207,7 +210,7 @@ namespace LUT {
             startRay = endRay;
             ++endRay;
         }
-        if (totalNormals < horizonNormals.n_rows) {
+        if (totalNormals < int(horizonNormals.n_rows)) {
             horizonNormals.shed_rows(totalNormals,horizonNormals.n_rows-1);
         }
         
