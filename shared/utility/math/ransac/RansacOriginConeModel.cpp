@@ -17,16 +17,32 @@
  * Copyright 2013 NUBots <nubots@nubots.net>
  */
 
-#include "RansacOriginPlaneModel.h"
+#include "RansacOriginConeModel.h"
 
 namespace utility {
 namespace math {
 namespace ransac {
 
-    bool RansacOriginPlaneModel::regenerate(const std::vector<DataPoint>& points) {
+    bool RansacOriginConeModel::regenerate(const std::vector<DataPoint>& points) {
 
-        if(points.size() == REQUIRED_POINTS && !arma::all(points[0] == points[1])) {
-            normal = arma::normalise(arma::cross(points[0], points[1]));
+        if (points.size() == REQUIRED_POINTS
+            && !arma::all(points[0] == points[1])
+            && !arma::all(points[0] == points[2])
+            && !arma::all(points[1] == points[2])) {
+
+            // Find the unit vector such that a.d = b.d = c.d = 1
+
+            arma::mat33 matrix;
+            matrix.row(0) = points[0].t();
+            matrix.row(1) = points[1].t();
+            matrix.row(2) = points[2].t();
+
+            // Solve for our centre
+            centre = arma::normalise(arma::solve(matrix, arma::vec3({1, 1, 1})));
+
+            // Solve for our radius
+            radius = std::acos(arma::dot(points[0], centre));
+
             return true;
         }
 
@@ -35,9 +51,10 @@ namespace ransac {
         }
     }
 
-    double RansacOriginPlaneModel::calculateError(const DataPoint& p) const {
-        double cosD = arma::dot(normal, p);
-        return cosD * cosD;
+    double RansacOriginConeModel::calculateError(const DataPoint& p) const {
+
+        double error = radius - std::acos(arma::dot(centre, p));
+        return error * error;
     }
 
 }

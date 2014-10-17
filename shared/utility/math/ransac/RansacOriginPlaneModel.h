@@ -31,7 +31,7 @@ namespace ransac {
         static constexpr size_t REQUIRED_POINTS = 2;
         using DataPoint = arma::vec3;
 
-        RansacOriginPlaneModel() : normal({0, 0, 1}) {}
+        RansacOriginPlaneModel() {}
 
         bool regenerate(const std::vector<DataPoint>& pts);
 
