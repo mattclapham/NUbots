@@ -19,12 +19,25 @@
 
 #include "CoarseObjectFinder.h"
 
+#include "messages/vision/VisualHorizon.h"
+
 namespace modules {
 namespace vision {
 namespace LUT {
 
+    using messages::vision::VisualHorizon;
+
     CoarseObjectFinder::CoarseObjectFinder(std::unique_ptr<NUClear::Environment> environment)
         : Reactor(std::move(environment)) {
+
+
+        on<Trigger<Raw<VisualHorizon>>>([this](const std::shared_ptr<const VisualHorizon>& input) {
+
+            // Call the functions here
+
+            // input->image is image
+            // input->horizon is visual horizon
+        });
 
     }
 
