@@ -23,6 +23,7 @@
 #include <armadillo>
 
 #include "messages/input/Image.h"
+#include "messages/vision/LookUpTable.h"
 
 namespace messages {
     namespace vision {
@@ -31,6 +32,7 @@ namespace messages {
 
             // The image that the horizon is from
             std::shared_ptr<const input::Image> image;
+            std::shared_ptr<const LookUpTable> lut;
 
             // A colleciton of normals to the horizon planes, A vector is above the horizon
             // if a multiplication with this matrix results in only positive values

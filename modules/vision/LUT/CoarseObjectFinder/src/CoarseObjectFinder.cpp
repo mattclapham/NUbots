@@ -33,6 +33,9 @@ namespace LUT {
 
         on<Trigger<Raw<VisualHorizon>>>([this](const std::shared_ptr<const VisualHorizon>& input) {
 
+
+            auto points = scanner.findObjects(*input->image, *input->lut, input->horizon);
+
             // Call the functions here
 
             // input->image is image

@@ -51,11 +51,12 @@ namespace LUT {
     VisualHorizonFinder::VisualHorizonFinder(std::unique_ptr<NUClear::Environment> environment)
         : Reactor(std::move(environment)) {
 
-        on<Trigger<Raw<Image>>, With<LookUpTable>>("Visual Horizon", [this](const std::shared_ptr<const Image>& image, const LookUpTable& lut) {
+        on<Trigger<Raw<Image>>, With<Raw<LookUpTable>>>("Visual Horizon", [this](const std::shared_ptr<const Image>& image, const std::shared_ptr<const LookUpTable>& lut) {
 
             auto horizon = std::make_unique<VisualHorizon>();
             horizon->image = image;
-            horizon->horizon =  findVisualHorizon(*image, lut);
+            horizon->lut = lut;
+            horizon->horizon =  findVisualHorizon(*image, *lut);
 
             emit(std::move(horizon));
         });

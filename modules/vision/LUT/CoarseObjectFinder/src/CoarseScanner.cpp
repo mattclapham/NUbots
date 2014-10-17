@@ -19,8 +19,8 @@
 
 #include "CoarseScanner.h"
 #include <cmath>
-#include <unordered_set>
-#include <unordered_map>
+#include <map>
+#include <set>
 #include <vector>
 #include "utility/vision/geometry/screen.h"
 #include "utility/vision/geometry/sphere.h"
@@ -42,7 +42,7 @@ namespace modules {
             //XXX: do config values
         }*/
 
-        arma::mat CoarseScanner::generateAboveHorizonRays(const Image& image) {
+        arma::mat CoarseScanner::generateAboveHorizonRays(const Image& image) const {
 
             //get the max possible FOV, and the estimated pixel size
             double maxFOV = 0.0;
@@ -99,7 +99,7 @@ namespace modules {
             return scanRays;
         }
 
-        arma::mat CoarseScanner::generateBelowHorizonRays(const Image& image) {
+        arma::mat CoarseScanner::generateBelowHorizonRays(const Image& image) const {
             //get the max possible FOV, and the estimated pixel size
             double maxFOV = 0.0;
             double pixelSize = 0.0;
@@ -156,9 +156,9 @@ namespace modules {
         }
 
         //do a coarse scan for objects
-        std::unordered_map<uint,std::vector<arma::ivec2>> CoarseScanner::findObjects(const messages::input::Image& image,
+        std::map<uint,std::vector<arma::ivec2>> CoarseScanner::findObjects(const messages::input::Image& image,
                                const messages::vision::LookUpTable& lut,
-                               const arma::mat& horizonNormals) {
+                               const arma::mat& horizonNormals) const {
             //world space
             arma::mat33 camTransform = camTiltMatrix(image);
 
@@ -186,9 +186,9 @@ namespace modules {
 
 
             //find all the unique pixels
-            std::unordered_map<uint,std::vector<arma::ivec2>> classifiedAboveHorizon;
-            std::unordered_map<uint,std::vector<arma::ivec2>> classifiedBelowHorizon;
-            std::unordered_set<uint> usedPixels;
+            std::map<uint,std::vector<arma::ivec2>> classifiedAboveHorizon;
+            std::map<uint,std::vector<arma::ivec2>> classifiedBelowHorizon;
+            std::set<uint> usedPixels;
 
             //above horizon classification
             for (uint i = 0; i < aboveHorizonPixels.n_rows; ++i) {

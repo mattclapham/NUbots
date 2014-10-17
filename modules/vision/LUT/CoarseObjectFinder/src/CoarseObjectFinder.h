@@ -22,11 +22,15 @@
 
 #include <nuclear>
 
+#include "CoarseScanner.h"
+
 namespace modules {
 namespace vision {
 namespace LUT {
 
     class CoarseObjectFinder : public NUClear::Reactor {
+    private:
+        CoarseScanner scanner;
     public:
         /// @brief Called by the powerplant to build and setup the CoarseObjectFinder reactor.
         explicit CoarseObjectFinder(std::unique_ptr<NUClear::Environment> environment);
