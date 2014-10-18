@@ -42,8 +42,8 @@ namespace modules {
 
             double MIN_SIZE_PIXELS = 3.0; //this is the radians between scanlines
             double CAMERA_HEIGHT = 1.2; //this is the radians buffer above the horizon
-            double MIN_POST_WIDTH = 0.2;
-            double MIN_POST_HEIGHT = 0.8;
+            double MIN_POST_WIDTH = 10*2.54/100.0;
+            double MIN_POST_HEIGHT = 39*2.54/100.0;
             double MIN_GROUNDOBJ_SIZE = 0.3;
 
             //create a convex hull from the outline polygon, giving us info about obstacles

@@ -139,7 +139,7 @@ namespace geometry {
             arma::vec rads = arma::acos(rays.col(0));
             result /= arma::repmat(arma::sqrt(arma::sum(arma::square(result),1)),1,2);
             result %= arma::repmat(rads/image.lens.parameters.radial.pitch,1,2);
-            //result.col(1) *= -1.0;
+            result.col(1) *= -1.0;
             result += arma::repmat(imageCenter,1,rays.n_rows).t();
 
         } else if (image.lens.type == Image::Lens::Type::EQUIRECTANGULAR) {
@@ -178,7 +178,7 @@ namespace geometry {
 
             //project to the unit sphere
             result.col(1) = px.col(0) % sinRadsOnRads;
-            result.col(2) = px.col(1) % sinRadsOnRads;
+            result.col(2) = -px.col(1) % sinRadsOnRads;
             result.col(0) = cos(rads);
         } else if (image.lens.type == Image::Lens::Type::EQUIRECTANGULAR) {
 
