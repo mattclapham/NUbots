@@ -52,11 +52,13 @@ namespace sphere {
         return tan(objectRadius/d1)*2;
     }
     
-    inline double arcSizeFromBaseRay(const arma::vec3& ray, const double& objectRadius, const double& cameraHeight) {
+    inline double arcSizeFromBaseRay(const arma::vec3& ray, const double& objectSize, const double& cameraHeight) {
         //returns the arcsize for a sphere this ray grazes the bottom of
         
+        const double objectRadius = objectSize/2.0;
+        
         //this is the ground intersection point (in terms of distance along the ray).
-        const double d = cameraHeight / ray[2]; 
+        const double d = abs(cameraHeight / ray[2]); 
         
         //get the radians inclination from straight down.
         const double inclination = acos(ray[2]);
@@ -73,12 +75,14 @@ namespace sphere {
         
     }
     
-    inline double distanceFromCentreRay(const arma::vec3& ray, const double& objectRadius, const double& cameraHeight) {
+    inline double distanceFromCentreRay(const arma::vec3& ray, const double& objectSize, const double& cameraHeight) {
         //returns the distance along the ray of the object using elevation and angle
+        const double objectRadius = objectSize/2.0;
         return abs( (cameraHeight/objectRadius) / ray[2] );
     }
     
-    inline double distanceFromArcSize(const double& arcRadius, const double& objectRadius) {
+    inline double distanceFromArcSize(const double& arcRadius, const double& objectSize) {
+        const double objectRadius = objectSize/2.0;
         //returns the distance along the ray of the object using arcsize
         return abs(objectRadius/sin(arcRadius));
     }

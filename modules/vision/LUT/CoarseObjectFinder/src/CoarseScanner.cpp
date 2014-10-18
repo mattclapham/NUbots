@@ -56,34 +56,40 @@ namespace modules {
             }
 
             //work out our limits - this might need to be replaced by something simpler
-            double angleLimit = std::min(maxFOV, M_PI);
+            double angleLimit = M_PI/4; /*std::min(maxFOV, M_PI);
             angleLimit = std::min(angleLimit,
                          utility::vision::geometry::cylinder::arcSizeFromTopRayVertical(
                                     arma::vec3({cos(M_PI/2),0.0,sin(M_PI/2)}),
                                     arma::vec2({MIN_POST_WIDTH,MIN_POST_HEIGHT}),
-                                    CAMERA_HEIGHT)[1]);
+                                    CAMERA_HEIGHT)[1]);*/
 
             //create our ray matrix
             arma::mat scanRays(0,0);
+            
 
             //define the starting angle to scan from
             double offset = 0.0;
             arma::vec2 halfArcSize = arma::vec2({0.0,0.0});
-
+            
             //loop through creating new rays
             //for loops everywhere, to make Trent proud
-            for (double startAngle = 0.0 + pixelSize*MIN_SIZE_PIXELS/2; startAngle < angleLimit; startAngle += halfArcSize[1]) {
+            for (double startAngle = 0.0 + pixelSize*MIN_SIZE_PIXELS; startAngle < angleLimit; startAngle += halfArcSize[1]) {
                 arma::vec3 camRay = arma::vec3({cos(startAngle),0.0,sin(startAngle)});
                 halfArcSize = utility::vision::geometry::cylinder::arcSizeFromBaseRayVertical(
                                     arma::vec3({cos(M_PI/2.0),0.0,sin(M_PI/2.0)}),
                                     arma::vec2({MIN_POST_WIDTH,MIN_POST_HEIGHT}),
                                     CAMERA_HEIGHT)/2.0;
+                //make arc size conform to our min
+                halfArcSize = arma::max(halfArcSize, arma::vec2({MIN_SIZE_PIXELS*pixelSize,MIN_SIZE_PIXELS*pixelSize}));                
+                
                 //scale because we're mapping in spherical coordinates here
                 double scaledArcWidth = halfArcSize[0];
-
+                
+                //std::cout << "arcWidth: " << halfArcSize.t();
 
                 int numRays = int((maxFOV - offset)/scaledArcWidth);
                 scanRays = arma::resize(scanRays, scanRays.n_rows + numRays, 3);
+                //std::cout << "rays: " << numRays << std::endl;
 
                 double cosSA = cos(startAngle);
                 double sinSA = sin(startAngle);
@@ -112,12 +118,12 @@ namespace modules {
             }
 
             //work out our limits - this might need to be replaced by something simpler
-            double angleLimit = std::min(maxFOV, M_PI);
+            double angleLimit = -M_PI/2; /*std::min(maxFOV, M_PI);
             angleLimit = std::min(angleLimit,
                          utility::vision::geometry::sphere::arcSizeFromTopRay(
                                     arma::vec3({cos(M_PI/2),0.0,sin(M_PI/2)}),
                                     MIN_GROUNDOBJ_SIZE,
-                                    CAMERA_HEIGHT));
+                                    CAMERA_HEIGHT));*/
 
             //create our ray matrix
             arma::mat scanRays(0,0);
@@ -128,12 +134,13 @@ namespace modules {
 
             //loop through creating new rays
             //for loops everywhere, to make Trent proud
-            for (double startAngle = 0.0 + pixelSize*MIN_SIZE_PIXELS/2; startAngle < angleLimit; startAngle += halfArcSize) {
+            for (double startAngle = 0.0 - pixelSize*MIN_SIZE_PIXELS/2; startAngle > angleLimit; startAngle -= halfArcSize) {
                 arma::vec3 camRay = arma::vec3({cos(startAngle),0.0,sin(startAngle)});
                 halfArcSize = utility::vision::geometry::sphere::arcSizeFromBaseRay(
-                                    arma::vec3({cos(M_PI/2.0),0.0,sin(M_PI/2.0)}),
+                                    camRay,
                                     MIN_GROUNDOBJ_SIZE,
-                                    CAMERA_HEIGHT)/2.0;
+                                    CAMERA_HEIGHT)/2.0;    
+                halfArcSize = std::max(halfArcSize, MIN_SIZE_PIXELS*pixelSize);    
                 //scale because we're mapping in spherical coordinates here
                 double scaledArcWidth = halfArcSize;
 
@@ -143,7 +150,6 @@ namespace modules {
 
                 double cosSA = cos(startAngle);
                 double sinSA = sin(startAngle);
-
                 for (int i = 0; i < numRays; ++i) {
                     scanRays.row(scanRays.n_rows - i - 1) = arma::vec3({ cos(double(i)*scaledArcWidth - maxFOV/2.0 + offset) * cosSA,
                                                                          sin(double(i)*scaledArcWidth - maxFOV/2.0 + offset) * cosSA,
@@ -151,7 +157,7 @@ namespace modules {
                 }
 
             }
-
+            
             return scanRays;
         }
 
@@ -167,18 +173,20 @@ namespace modules {
 
             //get scanRays for the correct FOV
             //XXX: cache these eventually
-            arma::mat aboveHorizonRays = camTransform * generateAboveHorizonRays(image);
-            arma::mat belowHorizonRays = camTransform * generateBelowHorizonRays(image);
+            arma::mat aboveHorizonRays = generateAboveHorizonRays(image) * camTransform;
+            arma::mat belowHorizonRays = generateBelowHorizonRays(image) * camTransform;
+            
 
             //trim the scanrays using the visual horizon
             if (horizonNormals.n_elem > 0) {
                 belowHorizonRays = belowHorizonRays.rows(arma::find(arma::prod(belowHorizonRays * horizonNormals.t() < 0.0, 1)));
             }
+            
 
             //trim the scanrays to the field of view
             aboveHorizonRays = trimToFOV(aboveHorizonRays,image);
             belowHorizonRays = trimToFOV(belowHorizonRays,image);
-
+            
 
             //convert to pixels
             arma::imat aboveHorizonPixels = arma::conv_to<arma::imat>::from(bulkRay2Pixel(aboveHorizonRays,image));
@@ -186,8 +194,9 @@ namespace modules {
 
 
             //find all the unique pixels
-            std::map<uint,std::vector<arma::ivec2>> classifiedAboveHorizon;
-            std::map<uint,std::vector<arma::ivec2>> classifiedBelowHorizon;
+            //std::map<uint,std::vector<arma::ivec2>> classifiedAboveHorizon;
+            //std::map<uint,std::vector<arma::ivec2>> classifiedBelowHorizon;
+            std::map<uint,std::vector<arma::ivec2>> classifiedRays;
             std::set<uint> usedPixels;
 
             //above horizon classification
@@ -197,13 +206,13 @@ namespace modules {
                     usedPixels.insert(key);
 
                     const uint lutcolour = lut.getLUTIndex(image(aboveHorizonPixels(i,0), aboveHorizonPixels(i,1)));
-                    classifiedAboveHorizon[lutcolour].push_back( arma::ivec2({aboveHorizonPixels(i,0), aboveHorizonPixels(i,1)}) );
+                    //classifiedAboveHorizon[lutcolour].push_back( arma::ivec2({aboveHorizonPixels(i,0), aboveHorizonPixels(i,1)}) );
+                    classifiedRays[lutcolour].push_back( arma::ivec2({aboveHorizonPixels(i,0), aboveHorizonPixels(i,1)}) );
 
                 }
             }
-
             //this is not actually necessary, but should speed up lookups
-            usedPixels.clear();
+            //usedPixels.clear();
 
             //below horizon classification
             for (uint i = 0; i < belowHorizonPixels.n_rows; ++i) {
@@ -212,13 +221,14 @@ namespace modules {
                     usedPixels.insert(key);
 
                     const uint lutcolour = lut.getLUTIndex(image(belowHorizonPixels(i,0), belowHorizonPixels(i,1)));
-                    classifiedBelowHorizon[lutcolour].push_back( arma::ivec2({belowHorizonPixels(i,0), belowHorizonPixels(i,1)}) );
+                    //classifiedBelowHorizon[lutcolour].push_back( arma::ivec2({belowHorizonPixels(i,0), belowHorizonPixels(i,1)}) );
+                    classifiedRays[lutcolour].push_back( arma::ivec2({belowHorizonPixels(i,0), belowHorizonPixels(i,1)}) );
 
                 }
             }
 
             //XXX: define a message type to return
-            return classifiedBelowHorizon;
+            return classifiedRays;
         }
 
     }  // vision
