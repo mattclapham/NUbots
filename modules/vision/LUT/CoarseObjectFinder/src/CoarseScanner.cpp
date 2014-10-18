@@ -162,7 +162,7 @@ namespace modules {
         }
 
         //do a coarse scan for objects
-        std::map<uint,std::vector<arma::vec3>> CoarseScanner::findObjects(const messages::input::Image& image,
+        std::map<uint,std::vector<arma::ivec2>> CoarseScanner::findObjects(const messages::input::Image& image,
                                const messages::vision::LookUpTable& lut,
                                const arma::mat& horizonNormals) const {
             //world space
