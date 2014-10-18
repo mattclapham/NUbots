@@ -179,7 +179,7 @@ namespace modules {
 
             //trim the scanrays using the visual horizon
             if (horizonNormals.n_elem > 0) {
-                belowHorizonRays = belowHorizonRays.rows(arma::find(arma::prod(belowHorizonRays * horizonNormals.t() < 0.0, 1)));
+                belowHorizonRays = belowHorizonRays.rows(arma::find(arma::prod(belowHorizonRays * horizonNormals.t() >= 0.0, 1)));
             }
 
 
