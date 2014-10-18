@@ -56,7 +56,7 @@ namespace modules {
             }
 
             //work out our limits - this might need to be replaced by something simpler
-            double angleLimit = M_PI/4; /*std::min(maxFOV, M_PI);
+            double angleLimit = M_PI/6; /*std::min(maxFOV, M_PI);
             angleLimit = std::min(angleLimit,
                          utility::vision::geometry::cylinder::arcSizeFromTopRayVertical(
                                     arma::vec3({cos(M_PI/2),0.0,sin(M_PI/2)}),
