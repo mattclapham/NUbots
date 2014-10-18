@@ -174,7 +174,6 @@ namespace geometry {
                                    arma::square(
                                       px),1));
             arma::vec sinRadsOnRads = arma::sin(rads)/rads;
-
             //project to the unit sphere
             result.col(1) = px.col(0) % sinRadsOnRads;
             result.col(2) = -px.col(1) % sinRadsOnRads;

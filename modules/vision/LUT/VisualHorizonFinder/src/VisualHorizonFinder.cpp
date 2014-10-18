@@ -117,12 +117,9 @@ namespace LUT {
         arma::imat starts = arma::conv_to<arma::imat>::from(rayPositions.t());
         arma::imat ends = arma::conv_to<arma::imat>::from(rayEnds);
         
-        std::cout << starts.t() << std::endl << ends.t() << std::endl;
-        
         //initialize the horizon points
         arma::imat horizonPts(starts.n_cols,2);
 
-        //std::cout << rayEnds;
         // Scan all our segments
         for(uint i = 0; i < starts.n_cols; ++i) {
 
@@ -208,7 +205,6 @@ namespace LUT {
                     endRay = aboveHull[0] + endRay + 1;
                     currentNormal = -arma::cross(horizonRays.row(startRay).t(), horizonRays.row(endRay).t());
                 }
-                std::cout << currentNormal.t() << horizonRays.row(startRay) << horizonRays.row(endRay) << startRay << ", " << endRay << std::endl;
                 horizonNormals.row(totalNormals) = arma::normalise(currentNormal).t();
                 ++totalNormals;
             } else {
@@ -226,7 +222,6 @@ namespace LUT {
             horizonNormals.shed_rows(totalNormals,horizonNormals.n_rows-1);
         }
 
-        std::cout  << std::endl << "Normals:" << std::endl << horizonNormals << std::endl;
         //return the hyperhull
         return std::move(horizonNormals);
     }
