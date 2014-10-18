@@ -26,6 +26,7 @@ namespace vision {
 namespace LUT {
 
     using messages::vision::VisualHorizon;
+    using messages::vision::
 
     CoarseObjectFinder::CoarseObjectFinder(std::unique_ptr<NUClear::Environment> environment)
         : Reactor(std::move(environment)) {
@@ -34,7 +35,16 @@ namespace LUT {
         on<Trigger<Raw<VisualHorizon>>>([this](const std::shared_ptr<const VisualHorizon>& input) {
 
 
-            auto points = scanner.findObjects(*input->image, *input->lut, input->horizon);
+            auto points =
+
+
+            auto scan = std::make_unique<ImagePointScan>();
+
+            scan->horizon = input;
+            scan->points = scanner.findObjects(*input->image, *input->lut, input->horizon);
+
+            VisualHorizon horizon;
+            std::map<uint32_t, arma::vec3> points;
 
             // Call the functions here
 

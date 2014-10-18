@@ -65,12 +65,12 @@ namespace modules {
 
             //create our ray matrix
             arma::mat scanRays(0,0);
-            
+
 
             //define the starting angle to scan from
             double offset = 0.0;
             arma::vec2 halfArcSize = arma::vec2({0.0,0.0});
-            
+
             //loop through creating new rays
             //for loops everywhere, to make Trent proud
             for (double startAngle = 0.0 + pixelSize*MIN_SIZE_PIXELS; startAngle < angleLimit; startAngle += halfArcSize[1]) {
@@ -80,11 +80,11 @@ namespace modules {
                                     arma::vec2({MIN_POST_WIDTH,MIN_POST_HEIGHT}),
                                     CAMERA_HEIGHT)/2.0;
                 //make arc size conform to our min
-                halfArcSize = arma::max(halfArcSize, arma::vec2({MIN_SIZE_PIXELS*pixelSize,MIN_SIZE_PIXELS*pixelSize}));                
-                
+                halfArcSize = arma::max(halfArcSize, arma::vec2({MIN_SIZE_PIXELS*pixelSize,MIN_SIZE_PIXELS*pixelSize}));
+
                 //scale because we're mapping in spherical coordinates here
                 double scaledArcWidth = halfArcSize[0];
-                
+
                 //std::cout << "arcWidth: " << halfArcSize.t();
 
                 int numRays = int((maxFOV - offset)/scaledArcWidth);
@@ -139,8 +139,8 @@ namespace modules {
                 halfArcSize = utility::vision::geometry::sphere::arcSizeFromBaseRay(
                                     camRay,
                                     MIN_GROUNDOBJ_SIZE,
-                                    CAMERA_HEIGHT)/2.0;    
-                halfArcSize = std::max(halfArcSize, MIN_SIZE_PIXELS*pixelSize);    
+                                    CAMERA_HEIGHT)/2.0;
+                halfArcSize = std::max(halfArcSize, MIN_SIZE_PIXELS*pixelSize);
                 //scale because we're mapping in spherical coordinates here
                 double scaledArcWidth = halfArcSize;
 
@@ -157,12 +157,12 @@ namespace modules {
                 }
 
             }
-            
+
             return scanRays;
         }
 
         //do a coarse scan for objects
-        std::map<uint,std::vector<arma::ivec2>> CoarseScanner::findObjects(const messages::input::Image& image,
+        std::map<uint,std::vector<arma::vec3>> CoarseScanner::findObjects(const messages::input::Image& image,
                                const messages::vision::LookUpTable& lut,
                                const arma::mat& horizonNormals) const {
             //world space
@@ -175,18 +175,18 @@ namespace modules {
             //XXX: cache these eventually
             arma::mat aboveHorizonRays = generateAboveHorizonRays(image) * camTransform;
             arma::mat belowHorizonRays = generateBelowHorizonRays(image) * camTransform;
-            
+
 
             //trim the scanrays using the visual horizon
             if (horizonNormals.n_elem > 0) {
                 belowHorizonRays = belowHorizonRays.rows(arma::find(arma::prod(belowHorizonRays * horizonNormals.t() < 0.0, 1)));
             }
-            
+
 
             //trim the scanrays to the field of view
             aboveHorizonRays = trimToFOV(aboveHorizonRays,image);
             belowHorizonRays = trimToFOV(belowHorizonRays,image);
-            
+
 
             //convert to pixels
             arma::imat aboveHorizonPixels = arma::conv_to<arma::imat>::from(bulkRay2Pixel(aboveHorizonRays,image));

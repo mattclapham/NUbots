@@ -21,7 +21,7 @@
 
 #include "messages/support/nubugger/proto/Message.pb.h"
 #include "messages/input/Image.h"
-#include "messages/vision/ClassifiedImage.h"
+#include "messages/vision/VisualHorizon.h"
 #include "messages/vision/VisionObjects.h"
 
 #include "utility/time/time.h"
@@ -34,7 +34,7 @@ namespace support {
     using messages::input::Sensors;
     using messages::vision::proto::VisionObject;
     using messages::vision::ObjectClass;
-    using messages::vision::ClassifiedImage;
+    using messages::vision::VisualHorizon;
     using messages::vision::Goal;
     using messages::vision::Ball;
     using messages::input::Image;
@@ -42,9 +42,13 @@ namespace support {
     void NUbugger::provideVision() {
         handles["image"].push_back(on<Trigger<Image>, Options<Single, Priority<NUClear::LOW>>>([this](const Image& image) {
 
+            // TODO SO MUCH HACKS!!!
+            static int cameraId = 0;
+            cameraId = cameraId == 0 ? 1 : 0;
+
             Message message;
             message.set_type(Message::IMAGE);
-            message.set_filter_id(1);
+            message.set_filter_id(cameraId);
             message.set_utc_timestamp(getUtcTimestamp());
 
             auto* imageData = message.mutable_image();
@@ -54,13 +58,10 @@ namespace support {
 
             std::string* imageBytes = imageData->mutable_data();
 
-            // TODO SO MUCH HACKS!!!
-            static int cameraId = 0;
-            cameraId = cameraId == 0 ? 1 : 0;
             imageData->set_camera_id(cameraId);
 
             // TODO work out the format
-            imageData->set_format(messages::input::proto::Image::JPEG);
+            imageData->set_format(messages::input::proto::Image::YCbCr444);
 
             // Reserve enough space in the image data to store the output
             imageBytes->reserve(image.source.size());
@@ -71,65 +72,120 @@ namespace support {
             send(message);
         }));
 
-        handles["classified_image"].push_back(on<Trigger<ClassifiedImage<ObjectClass>>, Options<Single, Priority<NUClear::LOW>>>([this](const ClassifiedImage<ObjectClass>& image) {
+        handles["visual_horizon"].push_back(on<Trigger<VisualHorizon>, Options<Single, Priority<NUClear::LOW>>>([this] (const VisualHorizon& horizon) {
 
             Message message;
-            message.set_type(Message::CLASSIFIED_IMAGE);
+            message.set_type(Message::VISUAL_HORIZON);
             message.set_filter_id(1);
             message.set_utc_timestamp(getUtcTimestamp());
 
-            auto* imageData = message.mutable_classified_image();
+            auto* h = message.mutable_visual_horizon();
 
-            imageData->mutable_dimensions()->set_x(image.dimensions[0]);
-            imageData->mutable_dimensions()->set_y(image.dimensions[1]);
+            h->set_camera_id(0);
 
-            // Add the vertical segments to the list
-            for(const auto& segment : image.verticalSegments) {
-                auto* s = imageData->add_segment();
+            h->mutable_lens()->mutable_radial()->set_fov(horizon.image->lens.parameters.radial.fov);
+            h->mutable_lens()->mutable_radial()->set_pitch(horizon.image->lens.parameters.radial.pitch);
+            h->mutable_lens()->mutable_radial()->mutable_centre()->set_x(horizon.image->lens.parameters.radial.centre[0]);
+            h->mutable_lens()->mutable_radial()->mutable_centre()->set_y(horizon.image->lens.parameters.radial.centre[1]);
 
-                s->set_colour(uint(segment.first));
-                s->set_subsample(segment.second.subsample);
+            for(uint i = 0; i < horizon.horizon.n_rows; ++i) {
+                auto* hPoint = h->add_normals();
 
-                auto* start = s->mutable_start();
-                start->set_x(segment.second.start[0]);
-                start->set_y(segment.second.start[1]);
-
-                auto* end = s->mutable_end();
-                end->set_x(segment.second.end[0]);
-                end->set_y(segment.second.end[1]);
-            }
-
-            // Add the horizontal segments to the list
-            for(const auto& segment : image.horizontalSegments) {
-                auto* s = imageData->add_segment();
-
-                s->set_colour(uint(segment.first));
-                s->set_subsample(segment.second.subsample);
-
-                auto* start = s->mutable_start();
-                start->set_x(segment.second.start[0]);
-                start->set_y(segment.second.start[1]);
-
-                auto* end = s->mutable_end();
-                end->set_x(segment.second.end[0]);
-                end->set_y(segment.second.end[1]);
-            }
-
-            // Add in the actual horizon (the points on the left and right side)
-            auto* horizon = imageData->mutable_horizon();
-            horizon->mutable_normal()->set_x(image.horizon.normal[0]);
-            horizon->mutable_normal()->set_y(image.horizon.normal[1]);
-            horizon->set_distance(image.horizon.distance);
-
-            for(const auto& visualHorizon : image.visualHorizon) {
-                auto* vh = imageData->add_visual_horizon();
-
-                vh->set_x(visualHorizon[0]);
-                vh->set_y(visualHorizon[1]);
+                hPoint->set_x(horizon.horizon(i, 0));
+                hPoint->set_y(horizon.horizon(i, 1));
+                hPoint->set_z(horizon.horizon(i, 2));
             }
 
             send(message);
         }));
+
+
+         handles["point_scan"].push_back(on<Trigger<PointScan>, Options<Single, Priority<NUClear::LOW>>>([this] (const VisualHorizon& horizon) {
+
+            Message message;
+            message.set_type(Message::VISUAL_HORIZON);
+            message.set_filter_id(1);
+            message.set_utc_timestamp(getUtcTimestamp());
+
+            auto* h = message.mutable_visual_horizon();
+
+            h->set_camera_id(0);
+
+            h->mutable_lens()->mutable_radial()->set_fov(horizon.image->lens.parameters.radial.fov);
+            h->mutable_lens()->mutable_radial()->set_pitch(horizon.image->lens.parameters.radial.pitch);
+            h->mutable_lens()->mutable_radial()->mutable_centre()->set_x(horizon.image->lens.parameters.radial.centre[0]);
+            h->mutable_lens()->mutable_radial()->mutable_centre()->set_y(horizon.image->lens.parameters.radial.centre[1]);
+
+            for(uint i = 0; i < horizon.horizon.n_rows; ++i) {
+                auto* hPoint = h->add_normals();
+
+                hPoint->set_x(horizon.horizon(i, 0));
+                hPoint->set_y(horizon.horizon(i, 1));
+                hPoint->set_z(horizon.horizon(i, 2));
+            }
+
+            send(message);
+        }));
+
+        // handles["classified_image"].push_back(on<Trigger<ClassifiedImage<ObjectClass>>, Options<Single, Priority<NUClear::LOW>>>([this](const ClassifiedImage<ObjectClass>& image) {
+
+        //     Message message;
+        //     message.set_type(Message::CLASSIFIED_IMAGE);
+        //     message.set_filter_id(1);
+        //     message.set_utc_timestamp(getUtcTimestamp());
+
+        //     auto* imageData = message.mutable_classified_image();
+
+        //     imageData->mutable_dimensions()->set_x(image.dimensions[0]);
+        //     imageData->mutable_dimensions()->set_y(image.dimensions[1]);
+
+        //     // Add the vertical segments to the list
+        //     for(const auto& segment : image.verticalSegments) {
+        //         auto* s = imageData->add_segment();
+
+        //         s->set_colour(uint(segment.first));
+        //         s->set_subsample(segment.second.subsample);
+
+        //         auto* start = s->mutable_start();
+        //         start->set_x(segment.second.start[0]);
+        //         start->set_y(segment.second.start[1]);
+
+        //         auto* end = s->mutable_end();
+        //         end->set_x(segment.second.end[0]);
+        //         end->set_y(segment.second.end[1]);
+        //     }
+
+        //     // Add the horizontal segments to the list
+        //     for(const auto& segment : image.horizontalSegments) {
+        //         auto* s = imageData->add_segment();
+
+        //         s->set_colour(uint(segment.first));
+        //         s->set_subsample(segment.second.subsample);
+
+        //         auto* start = s->mutable_start();
+        //         start->set_x(segment.second.start[0]);
+        //         start->set_y(segment.second.start[1]);
+
+        //         auto* end = s->mutable_end();
+        //         end->set_x(segment.second.end[0]);
+        //         end->set_y(segment.second.end[1]);
+        //     }
+
+        //     // Add in the actual horizon (the points on the left and right side)
+        //     auto* horizon = imageData->mutable_horizon();
+        //     horizon->mutable_normal()->set_x(image.horizon.normal[0]);
+        //     horizon->mutable_normal()->set_y(image.horizon.normal[1]);
+        //     horizon->set_distance(image.horizon.distance);
+
+        //     for(const auto& visualHorizon : image.visualHorizon) {
+        //         auto* vh = imageData->add_visual_horizon();
+
+        //         vh->set_x(visualHorizon[0]);
+        //         vh->set_y(visualHorizon[1]);
+        //     }
+
+        //     send(message);
+        // }));
 
         handles["balls"].push_back(on<Trigger<std::vector<Ball>>, Options<Single, Priority<NUClear::LOW>>>([this] (const std::vector<Ball>& balls) {
 

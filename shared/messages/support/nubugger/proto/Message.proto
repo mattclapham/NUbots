@@ -19,16 +19,25 @@
 
 package messages.support.nubugger.proto;
 
+// Hardware
 import "messages/input/proto/Sensors.proto";
-import "messages/input/proto/Image.proto";
 import "messages/input/proto/GameState.proto";
 import "messages/support/nuclear/proto/ReactionStatistics.proto";
 import "messages/support/nubugger/proto/DataPoint.proto";
 import "messages/support/nubugger/proto/DrawObjects.proto";
 import "messages/localisation/proto/Localisation.proto";
-import "messages/vision/proto/ClassifiedImage.proto";
+
+// Vision
+import "messages/input/proto/Image.proto";
+import "messages/vision/proto/VisualHorizon.proto";
+import "messages/vision/proto/PointScan.proto";
 import "messages/vision/proto/VisionObject.proto";
 import "messages/vision/proto/LookUpTable.proto";
+
+// Localisation
+
+
+// Behaviour
 import "messages/behaviour/proto/Behaviour.proto";
 
 message Message {
@@ -36,7 +45,7 @@ message Message {
         PING = 1;
         SENSOR_DATA = 2;
         IMAGE = 3;
-        CLASSIFIED_IMAGE = 4;
+        VISUAL_HORIZON = 4;
         VISION_OBJECT = 5;
         LOCALISATION = 6;
         DATA_POINT = 7;
@@ -47,6 +56,7 @@ message Message {
         COMMAND = 12;
         REACTION_HANDLES = 13;
         GAME_STATE = 14;
+        POINT_SCAN = 15;
     }
 
     required Type type = 1;
@@ -55,7 +65,7 @@ message Message {
 
     optional messages.input.proto.Sensors sensor_data = 5;
     optional messages.input.proto.Image image = 6;
-    optional messages.vision.proto.ClassifiedImage classified_image = 7;
+    optional messages.vision.proto.VisualHorizon visual_horizon = 7;
     optional messages.vision.proto.VisionObject vision_object = 8;
     optional messages.localisation.proto.Localisation localisation = 9;
     optional messages.support.nubugger.proto.DataPoint data_point = 10;
@@ -66,6 +76,7 @@ message Message {
     optional messages.input.proto.GameState game_state = 15;
     optional Command command = 16;
     optional ReactionHandles reaction_handles = 17;
+    optional messages.vision.proto.PointScan point_scan = 18;
 
     message Command {
         optional string command = 1;
