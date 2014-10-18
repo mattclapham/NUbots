@@ -109,13 +109,16 @@ namespace LUT {
         //get the down vector to project rays through
         //this is a little bit of a hack - we should fix it one day
         arma::vec rayLength = -camTransform.submat(1,2,2,2);
+        rayLength(1) *= -1;
 
         //shrink rays until all are the right length
         arma::mat rayEnds = snapToScreen(rayPositions,rayLength,image);
 
         arma::imat starts = arma::conv_to<arma::imat>::from(rayPositions.t());
         arma::imat ends = arma::conv_to<arma::imat>::from(rayEnds);
-
+        
+        std::cout << starts.t() << std::endl << ends.t() << std::endl;
+        
         //initialize the horizon points
         arma::imat horizonPts(starts.n_cols,2);
 
@@ -157,7 +160,6 @@ namespace LUT {
                 horizonPts.row(i) = pts.back().t();
             }
         }
-
 
 
         //Remember: untransform to be in camera space
@@ -206,6 +208,7 @@ namespace LUT {
                     endRay = aboveHull[0] + endRay + 1;
                     currentNormal = -arma::cross(horizonRays.row(startRay).t(), horizonRays.row(endRay).t());
                 }
+                std::cout << currentNormal.t() << horizonRays.row(startRay) << horizonRays.row(endRay) << startRay << ", " << endRay << std::endl;
                 horizonNormals.row(totalNormals) = arma::normalise(currentNormal).t();
                 ++totalNormals;
             } else {

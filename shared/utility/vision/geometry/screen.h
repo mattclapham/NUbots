@@ -47,7 +47,7 @@ namespace geometry {
         arma::vec scales(rayPositions.n_rows,1);
         if (image.lens.type == Image::Lens::Type::RADIAL) {
             //radius and centre of circle
-            const double pixelFOV = image.lens.parameters.radial.fov/image.lens.parameters.radial.pitch;
+            const double pixelFOV = image.lens.parameters.radial.fov/2.0/image.lens.parameters.radial.pitch;
             arma::vec2 imageCenter = arma::vec2({image.lens.parameters.radial.centre[0],
                                                 image.lens.parameters.radial.centre[1]});
             //ax^2 + bx + c parameters to solve
@@ -133,7 +133,6 @@ namespace geometry {
 
             arma::vec2 imageCenter = arma::vec2({image.lens.parameters.radial.centre[0],
                                                 image.lens.parameters.radial.centre[1]});
-
             result = rays.cols(1,2);
             
             arma::vec rads = arma::acos(rays.col(0));
@@ -153,8 +152,8 @@ namespace geometry {
 
             result += arma::repmat(imageCenter,1,rays.n_rows);
         }
-
-
+        
+        
         return arma::round(result);
     }
 
