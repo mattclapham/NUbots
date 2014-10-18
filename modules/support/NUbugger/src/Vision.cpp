@@ -22,6 +22,7 @@
 #include "messages/support/nubugger/proto/Message.pb.h"
 #include "messages/input/Image.h"
 #include "messages/vision/VisualHorizon.h"
+#include "messages/vision/ImagePointScan.h"
 #include "messages/vision/VisionObjects.h"
 
 #include "utility/time/time.h"
@@ -35,6 +36,7 @@ namespace support {
     using messages::vision::proto::VisionObject;
     using messages::vision::ObjectClass;
     using messages::vision::VisualHorizon;
+    using messages::vision::ImagePointScan;
     using messages::vision::Goal;
     using messages::vision::Ball;
     using messages::input::Image;
@@ -100,28 +102,30 @@ namespace support {
         }));
 
 
-         handles["point_scan"].push_back(on<Trigger<PointScan>, Options<Single, Priority<NUClear::LOW>>>([this] (const VisualHorizon& horizon) {
+         handles["point_scan"].push_back(on<Trigger<ImagePointScan>, Options<Single, Priority<NUClear::LOW>>>([this] (const ImagePointScan& scan) {
 
             Message message;
-            message.set_type(Message::VISUAL_HORIZON);
+            message.set_type(Message::POINT_SCAN);
             message.set_filter_id(1);
             message.set_utc_timestamp(getUtcTimestamp());
 
-            auto* h = message.mutable_visual_horizon();
+            auto* s = message.mutable_point_scan();
 
-            h->set_camera_id(0);
+            s->set_camera_id(0);
 
-            h->mutable_lens()->mutable_radial()->set_fov(horizon.image->lens.parameters.radial.fov);
-            h->mutable_lens()->mutable_radial()->set_pitch(horizon.image->lens.parameters.radial.pitch);
-            h->mutable_lens()->mutable_radial()->mutable_centre()->set_x(horizon.image->lens.parameters.radial.centre[0]);
-            h->mutable_lens()->mutable_radial()->mutable_centre()->set_y(horizon.image->lens.parameters.radial.centre[1]);
+            s->mutable_lens()->mutable_radial()->set_fov(scan.horizon->image->lens.parameters.radial.fov);
+            s->mutable_lens()->mutable_radial()->set_pitch(scan.horizon->image->lens.parameters.radial.pitch);
+            s->mutable_lens()->mutable_radial()->mutable_centre()->set_x(scan.horizon->image->lens.parameters.radial.centre[0]);
+            s->mutable_lens()->mutable_radial()->mutable_centre()->set_y(scan.horizon->image->lens.parameters.radial.centre[1]);
 
-            for(uint i = 0; i < horizon.horizon.n_rows; ++i) {
-                auto* hPoint = h->add_normals();
+            for(auto& set : scan.points) {
+                for(auto& point : set.second) {
+                    auto* p = s->add_points();
 
-                hPoint->set_x(horizon.horizon(i, 0));
-                hPoint->set_y(horizon.horizon(i, 1));
-                hPoint->set_z(horizon.horizon(i, 2));
+                    p->set_colour(set.first);
+                    p->mutable_ray()->set_x(point[0]);
+                    p->mutable_ray()->set_y(point[1]);
+                }
             }
 
             send(message);

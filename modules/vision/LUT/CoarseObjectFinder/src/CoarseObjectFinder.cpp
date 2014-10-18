@@ -20,23 +20,20 @@
 #include "CoarseObjectFinder.h"
 
 #include "messages/vision/VisualHorizon.h"
+#include "messages/vision/ImagePointScan.h"
 
 namespace modules {
 namespace vision {
 namespace LUT {
 
     using messages::vision::VisualHorizon;
-    using messages::vision::
+    using messages::vision::ImagePointScan;
 
     CoarseObjectFinder::CoarseObjectFinder(std::unique_ptr<NUClear::Environment> environment)
         : Reactor(std::move(environment)) {
 
 
         on<Trigger<Raw<VisualHorizon>>>([this](const std::shared_ptr<const VisualHorizon>& input) {
-
-
-            auto points =
-
 
             auto scan = std::make_unique<ImagePointScan>();
 
@@ -46,10 +43,8 @@ namespace LUT {
             VisualHorizon horizon;
             std::map<uint32_t, arma::vec3> points;
 
-            // Call the functions here
+            emit(std::move(scan));
 
-            // input->image is image
-            // input->horizon is visual horizon
         });
 
     }
