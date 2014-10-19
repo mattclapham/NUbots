@@ -39,7 +39,7 @@ namespace modules {
             return static_cast<size_t>(((width/2 + (int)sqrt(radius*radius - (ptHeight-height/2)*(ptHeight-height/2))) / 2) * 2);
         }
 
-        Image captureBayer(FlyCapture2::Image& image) {
+        Image<0> captureBayer(FlyCapture2::Image& image) {
 
             // Return an image with bayer
 
@@ -49,9 +49,9 @@ namespace modules {
 
             std::memcpy(data.data(), reinterpret_cast<char*>(image.GetData()), size);
 
-            Image output;
+            Image<0> output;
             output.timestamp = NUClear::clock::now();
-            output.format =  Image::SourceFormat::BGGR;
+            output.format =  Image<0>::SourceFormat::BGGR;
             output.dimensions = { 1280, 960 };
             output.source = std::move(data);
 

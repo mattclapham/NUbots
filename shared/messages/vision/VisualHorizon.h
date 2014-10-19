@@ -28,10 +28,11 @@
 namespace messages {
     namespace vision {
 
+        template <int camID>
         struct VisualHorizon {
 
             // The image that the horizon is from
-            std::shared_ptr<const input::Image> image;
+            std::shared_ptr<const input::Image<camID>> image;
             std::shared_ptr<const LookUpTable> lut;
 
             // A colleciton of normals to the horizon planes, A vector is above the horizon

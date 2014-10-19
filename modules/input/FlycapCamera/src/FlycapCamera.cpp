@@ -78,7 +78,7 @@ FlycapCamera::FlycapCamera(std::unique_ptr<NUClear::Environment> environment) : 
                 }
 
                 // Insert our new camera
-                camera = cameras.insert(std::make_pair(deviceId, std::make_pair(Image::Lens(), std::move(newCam)))).first;
+                camera = cameras.insert(std::make_pair(deviceId, std::make_pair(Image<0>::Lens(), std::move(newCam)))).first;
 
                 // Stop all the cameras streaming
                 for (auto &cam : cameras) {
@@ -90,7 +90,7 @@ FlycapCamera::FlycapCamera(std::unique_ptr<NUClear::Environment> environment) : 
             auto& lens = camera->second.first;
 
             if(config["lens"]["type"].as<std::string>() == "RADIAL") {
-                lens.type = Image::Lens::Type::RADIAL;
+                lens.type = Image<0>::Lens::Type::RADIAL;
                 lens.parameters.radial.fov = config["lens"]["fov"].as<double>();
                 lens.parameters.radial.pitch = config["lens"]["pixel_pitch"].as<double>();
                 lens.parameters.radial.centre[0] = config["lens"]["image_centre"][0].as<double>();
@@ -174,8 +174,25 @@ FlycapCamera::FlycapCamera(std::unique_ptr<NUClear::Environment> environment) : 
 
             cam.RetrieveBuffer(&image);
 
-            auto img = std::make_unique<Image>(captureBayer(image));
+            auto img = std::make_unique<Image<0>>(captureBayer(image));
             img->lens = lens;
+
+            // Based on what camera this is, cast Image to another type and emit (WOW! MUCH BAD! VERY HACK!)
+
+            switch(0) {
+                case 0:
+                    emit(std::unique_ptr<Image<0>>(reinterpret_cast<Image<0>*>(img.release())));
+                    break;
+                case 1:
+                    emit(std::unique_ptr<Image<1>>(reinterpret_cast<Image<1>*>(img.release())));
+                    break;
+                case 2:
+                    emit(std::unique_ptr<Image<2>>(reinterpret_cast<Image<2>*>(img.release())));
+                    break;
+                case 3:
+                    emit(std::unique_ptr<Image<3>>(reinterpret_cast<Image<3>*>(img.release())));
+                    break;
+            }
 
             emit(std::move(img));
         }

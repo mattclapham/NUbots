@@ -95,21 +95,49 @@ namespace support {
                         // Get the image data
                         std::vector<uint8_t> data(source.begin(), source.end());
 
-                        auto image = std::make_unique<Image>();
-                        image->timestamp = NUClear::clock::now();
-                        image->format =  Image::SourceFormat::BGGR;
-                        image->dimensions = { 1280, 960 };
-                        image->cameraToGround = arma::eye(4,4);
-                        image->source = std::move(data);
+                        static int cam = 0;
+                        cam = !cam;
+                        switch(cam) {
+                            case 0: {
+                                auto image = std::make_unique<Image<0>>();
+                                image->timestamp = NUClear::clock::now();
+                                image->format =  Image<0>::SourceFormat::BGGR;
+                                image->dimensions = { 1280, 960 };
+                                image->cameraToGround = arma::eye(4,4);
+                                image->source = std::move(data);
 
-                        // The lens! (hardcoded :P)
-                        image->lens.type = Image::Lens::Type::RADIAL;
-                        image->lens.parameters.radial.fov = M_PI;
-                        image->lens.parameters.radial.pitch = 0.0025;
-                        image->lens.parameters.radial.centre[0] = 640;
-                        image->lens.parameters.radial.centre[1] = 480;
+                                // The lens! (hardcoded :P)
+                                image->lens.type = Image<0>::Lens::Type::RADIAL;
+                                image->lens.parameters.radial.fov = M_PI;
+                                image->lens.parameters.radial.pitch = 0.0025;
+                                image->lens.parameters.radial.centre[0] = 640;
+                                image->lens.parameters.radial.centre[1] = 480;
 
-                        emit(std::move(image));
+                                emit(std::move(image));
+
+                            } break;
+
+                            case 1: {
+                                auto image = std::make_unique<Image<1>>();
+                                image->timestamp = NUClear::clock::now();
+                                image->format =  Image<1>::SourceFormat::BGGR;
+                                image->dimensions = { 1280, 960 };
+                                image->cameraToGround = arma::eye(4,4);
+                                image->source = std::move(data);
+
+                                // The lens! (hardcoded :P)
+                                image->lens.type = Image<1>::Lens::Type::RADIAL;
+                                image->lens.parameters.radial.fov = M_PI;
+                                image->lens.parameters.radial.pitch = 0.0025;
+                                image->lens.parameters.radial.centre[0] = 640;
+                                image->lens.parameters.radial.centre[1] = 480;
+
+                                emit(std::move(image));
+
+                            } break;
+                        }
+
+
                     }
 
                 }

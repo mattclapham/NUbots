@@ -28,6 +28,7 @@
 namespace messages {
     namespace vision {
 
+        template <int camID>
         struct ImageSegmentScan {
 
             struct Segment {

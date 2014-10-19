@@ -51,12 +51,43 @@ namespace LUT {
     VisualHorizonFinder::VisualHorizonFinder(std::unique_ptr<NUClear::Environment> environment)
         : Reactor(std::move(environment)) {
 
-        on<Trigger<Raw<Image>>, With<Raw<LookUpTable>>>("Visual Horizon", [this](const std::shared_ptr<const Image>& image, const std::shared_ptr<const LookUpTable>& lut) {
+        on<Trigger<Raw<Image<0>>>, With<Raw<LookUpTable>>>("Visual Horizon", [this](const std::shared_ptr<const Image<0>>& image, const std::shared_ptr<const LookUpTable>& lut) {
 
-            auto horizon = std::make_unique<VisualHorizon>();
+            auto horizon = std::make_unique<VisualHorizon<0>>();
             horizon->image = image;
             horizon->lut = lut;
-            horizon->horizon =  findVisualHorizon(*image, *lut);
+
+            horizon->horizon =  findVisualHorizon(*reinterpret_cast<const Image<0>*>(image.get()), *lut);
+
+            emit(std::move(horizon));
+        });
+
+        on<Trigger<Raw<Image<1>>>, With<Raw<LookUpTable>>>("Visual Horizon", [this](const std::shared_ptr<const Image<1>>& image, const std::shared_ptr<const LookUpTable>& lut) {
+
+            auto horizon = std::make_unique<VisualHorizon<1>>();
+            horizon->image = image;
+            horizon->lut = lut;
+            horizon->horizon =  findVisualHorizon(*reinterpret_cast<const Image<0>*>(image.get()), *lut);
+
+            emit(std::move(horizon));
+        });
+
+        on<Trigger<Raw<Image<2>>>, With<Raw<LookUpTable>>>("Visual Horizon", [this](const std::shared_ptr<const Image<2>>& image, const std::shared_ptr<const LookUpTable>& lut) {
+
+            auto horizon = std::make_unique<VisualHorizon<2>>();
+            horizon->image = image;
+            horizon->lut = lut;
+            horizon->horizon =  findVisualHorizon(*reinterpret_cast<const Image<0>*>(image.get()), *lut);
+
+            emit(std::move(horizon));
+        });
+
+        on<Trigger<Raw<Image<3>>>, With<Raw<LookUpTable>>>("Visual Horizon", [this](const std::shared_ptr<const Image<3>>& image, const std::shared_ptr<const LookUpTable>& lut) {
+
+            auto horizon = std::make_unique<VisualHorizon<3>>();
+            horizon->image = image;
+            horizon->lut = lut;
+            horizon->horizon =  findVisualHorizon(*reinterpret_cast<const Image<0>*>(image.get()), *lut);
 
             emit(std::move(horizon));
         });
@@ -83,7 +114,7 @@ namespace LUT {
     }
 
     //find the IMU horizon, visual horizon and convex hull of the visual horizon
-    arma::mat VisualHorizonFinder::findVisualHorizon(const Image& image,
+    arma::mat VisualHorizonFinder::findVisualHorizon(const Image<0>& image,
                            const LookUpTable& lut) {
 
         //initialize camera tilt matrix
@@ -92,9 +123,9 @@ namespace LUT {
         //get scanRays for the correct FOV
         //XXX: cache these eventually
         arma::mat scanRays;
-        if (image.lens.type == Image::Lens::Type::RADIAL) {
+        if (image.lens.type == Image<0>::Lens::Type::RADIAL) {
             scanRays = generateScanRays(image.lens.parameters.radial.fov, image.lens.parameters.radial.fov, false);
-        } else if (image.lens.type == Image::Lens::Type::EQUIRECTANGULAR) {
+        } else if (image.lens.type == Image<0>::Lens::Type::EQUIRECTANGULAR) {
             scanRays = generateScanRays(image.lens.parameters.equirectangular.fov[0],image.lens.parameters.equirectangular.fov[1],true);
         }
 
@@ -116,7 +147,7 @@ namespace LUT {
 
         arma::imat starts = arma::conv_to<arma::imat>::from(rayPositions.t());
         arma::imat ends = arma::conv_to<arma::imat>::from(rayEnds);
-        
+
         //initialize the horizon points
         arma::imat horizonPts(starts.n_cols,2);
 

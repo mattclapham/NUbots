@@ -42,15 +42,16 @@ namespace modules {
             //XXX: do config values
         }*/
 
-        arma::mat CoarseScanner::generateAboveHorizonRays(const Image& image) const {
+        template <int camID>
+        arma::mat CoarseScanner::generateAboveHorizonRays(const Image<camID>& image) const {
 
             //get the max possible FOV, and the estimated pixel size
             double maxFOV = 0.0;
             double pixelSize = 0.0;
-            if (image.lens.type == Image::Lens::Type::RADIAL) {
+            if (image.lens.type == Image<camID>::Lens::Type::RADIAL) {
                 maxFOV  = image.lens.parameters.radial.fov;
                 pixelSize = image.lens.parameters.radial.pitch;
-            } else if (image.lens.type == Image::Lens::Type::EQUIRECTANGULAR) {
+            } else if (image.lens.type == Image<camID>::Lens::Type::EQUIRECTANGULAR) {
                 maxFOV = arma::norm(arma::vec2({image.lens.parameters.equirectangular.fov[0], image.lens.parameters.equirectangular.fov[1]}));
                 pixelSize = maxFOV/arma::norm(arma::vec2({double(image.dimensions[0]), double(image.dimensions[1])}));
             }
@@ -105,14 +106,15 @@ namespace modules {
             return scanRays;
         }
 
-        arma::mat CoarseScanner::generateBelowHorizonRays(const Image& image) const {
+        template <int camID>
+        arma::mat CoarseScanner::generateBelowHorizonRays(const Image<camID>& image) const {
             //get the max possible FOV, and the estimated pixel size
             double maxFOV = 0.0;
             double pixelSize = 0.0;
-            if (image.lens.type == Image::Lens::Type::RADIAL) {
+            if (image.lens.type == Image<camID>::Lens::Type::RADIAL) {
                 maxFOV  = image.lens.parameters.radial.fov;
                 pixelSize = image.lens.parameters.radial.pitch;
-            } else if (image.lens.type == Image::Lens::Type::EQUIRECTANGULAR) {
+            } else if (image.lens.type == Image<camID>::Lens::Type::EQUIRECTANGULAR) {
                 maxFOV = arma::norm(arma::vec2({image.lens.parameters.equirectangular.fov[0], image.lens.parameters.equirectangular.fov[1]}));
                 pixelSize = maxFOV/arma::norm(arma::vec2({double(image.dimensions[0]), double(image.dimensions[1])}));
             }
@@ -162,7 +164,8 @@ namespace modules {
         }
 
         //do a coarse scan for objects
-        std::map<uint,std::vector<arma::ivec2>> CoarseScanner::findObjects(const messages::input::Image& image,
+        template <int camID>
+        std::map<uint,std::vector<arma::ivec2>> CoarseScanner::findObjects(const messages::input::Image<camID>& image,
                                const messages::vision::LookUpTable& lut,
                                const arma::mat& horizonNormals) const {
             //world space

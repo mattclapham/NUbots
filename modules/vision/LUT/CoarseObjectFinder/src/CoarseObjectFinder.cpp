@@ -33,15 +33,45 @@ namespace LUT {
         : Reactor(std::move(environment)) {
 
 
-        on<Trigger<Raw<VisualHorizon>>>([this](const std::shared_ptr<const VisualHorizon>& input) {
+        on<Trigger<Raw<VisualHorizon<0>>>>([this](const std::shared_ptr<const VisualHorizon<0>>& input) {
 
-            auto scan = std::make_unique<ImagePointScan>();
+            auto scan = std::make_unique<ImagePointScan<0>>();
 
             scan->horizon = input;
             scan->points = scanner.findObjects(*input->image, *input->lut, input->horizon);
 
-            VisualHorizon horizon;
-            std::map<uint32_t, arma::vec3> points;
+            emit(std::move(scan));
+
+        });
+
+        on<Trigger<Raw<VisualHorizon<1>>>>([this](const std::shared_ptr<const VisualHorizon<1>>& input) {
+
+            auto scan = std::make_unique<ImagePointScan<1>>();
+
+            scan->horizon = input;
+            scan->points = scanner.findObjects(*input->image, *input->lut, input->horizon);
+
+            emit(std::move(scan));
+
+        });
+
+        on<Trigger<Raw<VisualHorizon<2>>>>([this](const std::shared_ptr<const VisualHorizon<2>>& input) {
+
+            auto scan = std::make_unique<ImagePointScan<2>>();
+
+            scan->horizon = input;
+            scan->points = scanner.findObjects(*input->image, *input->lut, input->horizon);
+
+            emit(std::move(scan));
+
+        });
+
+        on<Trigger<Raw<VisualHorizon<3>>>>([this](const std::shared_ptr<const VisualHorizon<3>>& input) {
+
+            auto scan = std::make_unique<ImagePointScan<3>>();
+
+            scan->horizon = input;
+            scan->points = scanner.findObjects(*input->image, *input->lut, input->horizon);
 
             emit(std::move(scan));
 

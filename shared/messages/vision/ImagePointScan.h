@@ -28,8 +28,9 @@
 namespace messages {
     namespace vision {
 
+        template <int camID>
         struct ImagePointScan {
-            std::shared_ptr<const VisualHorizon> horizon;
+            std::shared_ptr<const VisualHorizon<camID>> horizon;
             std::map<uint32_t, std::vector<arma::ivec2>> points;
         };
 

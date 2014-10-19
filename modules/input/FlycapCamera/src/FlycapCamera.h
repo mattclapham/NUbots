@@ -42,14 +42,9 @@ namespace modules {
 
         private:
             /// @brief Our internal camera class that interacts with the physical device
-            std::map<uint, std::pair<messages::input::Image::Lens, std::unique_ptr<FlyCapture2::Camera>>> cameras;
+            std::map<uint, std::pair<messages::input::Image<0>::Lens, std::unique_ptr<FlyCapture2::Camera>>> cameras;
 
         public:
-
-            void inline emitImage(std::unique_ptr<messages::input::Image>&& image) {
-                emit(std::move(image));
-            }
-
             /// @brief Our configuration file for this class
             static constexpr const char* CONFIGURATION_PATH = "FlycapCameras";
 

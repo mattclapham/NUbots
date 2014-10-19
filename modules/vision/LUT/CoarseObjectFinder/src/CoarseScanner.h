@@ -47,20 +47,25 @@ namespace modules {
             double MIN_GROUNDOBJ_SIZE = 0.3;
 
             //create a convex hull from the outline polygon, giving us info about obstacles
-            arma::mat generateAboveHorizonRays(const messages::input::Image& image) const;
+            template <int camID>
+            arma::mat generateAboveHorizonRays(const messages::input::Image<camID>& image) const;
 
             //scan the horizon to find the horizon outline polygon
-            arma::mat generateBelowHorizonRays(const messages::input::Image& image) const;
+            template <int camID>
+            arma::mat generateBelowHorizonRays(const messages::input::Image<camID>& image) const;
 
         public:
             //find the IMU horizon, visual horizon and convex hull of the visual horizon
-            std::map<uint,std::vector<arma::ivec2>> findObjects(const messages::input::Image& image,
+            template<int camID>
+            std::map<uint,std::vector<arma::ivec2>> findObjects(const messages::input::Image<camID>& image,
                              const messages::vision::LookUpTable& lut,
                              const arma::mat& horizonNormals) const;
         };
 
     }  // vision
 }  // modules
+
+#include "CoarseScanner.ipp"
 
 #endif  // MODULES_VISION_QUEXLUTCLASSIFIER_H
 

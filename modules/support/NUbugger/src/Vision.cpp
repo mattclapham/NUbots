@@ -23,7 +23,7 @@
 #include "messages/input/Image.h"
 #include "messages/vision/VisualHorizon.h"
 #include "messages/vision/ImagePointScan.h"
-#include "messages/vision/VisionObjects.h"
+// #include "messages/vision/VisionObjects.h"
 
 #include "utility/time/time.h"
 
@@ -32,25 +32,17 @@ namespace support {
     using messages::support::nubugger::proto::Message;
     using utility::time::getUtcTimestamp;
 
-    using messages::input::Sensors;
     using messages::vision::proto::VisionObject;
-    using messages::vision::ObjectClass;
     using messages::vision::VisualHorizon;
     using messages::vision::ImagePointScan;
-    using messages::vision::Goal;
-    using messages::vision::Ball;
     using messages::input::Image;
 
     void NUbugger::provideVision() {
-        handles["image"].push_back(on<Trigger<Image>, Options<Single, Priority<NUClear::LOW>>>([this](const Image& image) {
-
-            // TODO SO MUCH HACKS!!!
-            static int cameraId = 0;
-            cameraId = cameraId == 0 ? 1 : 0;
+        handles["image"].push_back(on<Trigger<Image<0>>, Options<Single, Priority<NUClear::LOW>>>([this](const Image<0>& image) {
 
             Message message;
             message.set_type(Message::IMAGE);
-            message.set_filter_id(cameraId);
+            message.set_filter_id(1);
             message.set_utc_timestamp(getUtcTimestamp());
 
             auto* imageData = message.mutable_image();
@@ -60,7 +52,7 @@ namespace support {
 
             std::string* imageBytes = imageData->mutable_data();
 
-            imageData->set_camera_id(cameraId);
+            imageData->set_camera_id(0);
 
             // TODO work out the format
             imageData->set_format(messages::input::proto::Image::YCbCr444);
@@ -74,7 +66,91 @@ namespace support {
             send(message);
         }));
 
-        handles["visual_horizon"].push_back(on<Trigger<VisualHorizon>, Options<Single, Priority<NUClear::LOW>>>([this] (const VisualHorizon& horizon) {
+        handles["image"].push_back(on<Trigger<Image<1>>, Options<Single, Priority<NUClear::LOW>>>([this](const Image<1>& image) {
+
+            Message message;
+            message.set_type(Message::IMAGE);
+            message.set_filter_id(2);
+            message.set_utc_timestamp(getUtcTimestamp());
+
+            auto* imageData = message.mutable_image();
+
+            imageData->mutable_dimensions()->set_x(image.width());
+            imageData->mutable_dimensions()->set_y(image.height());
+
+            std::string* imageBytes = imageData->mutable_data();
+
+            imageData->set_camera_id(1);
+
+            // TODO work out the format
+            imageData->set_format(messages::input::proto::Image::YCbCr444);
+
+            // Reserve enough space in the image data to store the output
+            imageBytes->reserve(image.source.size());
+
+            imageBytes->insert(imageBytes->begin(), std::begin(image.source), std::end(image.source));
+
+
+            send(message);
+        }));
+
+        handles["image"].push_back(on<Trigger<Image<2>>, Options<Single, Priority<NUClear::LOW>>>([this](const Image<2>& image) {
+
+            Message message;
+            message.set_type(Message::IMAGE);
+            message.set_filter_id(3);
+            message.set_utc_timestamp(getUtcTimestamp());
+
+            auto* imageData = message.mutable_image();
+
+            imageData->mutable_dimensions()->set_x(image.width());
+            imageData->mutable_dimensions()->set_y(image.height());
+
+            std::string* imageBytes = imageData->mutable_data();
+
+            imageData->set_camera_id(2);
+
+            // TODO work out the format
+            imageData->set_format(messages::input::proto::Image::YCbCr444);
+
+            // Reserve enough space in the image data to store the output
+            imageBytes->reserve(image.source.size());
+
+            imageBytes->insert(imageBytes->begin(), std::begin(image.source), std::end(image.source));
+
+
+            send(message);
+        }));
+
+        handles["image"].push_back(on<Trigger<Image<3>>, Options<Single, Priority<NUClear::LOW>>>([this](const Image<3>& image) {
+
+            Message message;
+            message.set_type(Message::IMAGE);
+            message.set_filter_id(4);
+            message.set_utc_timestamp(getUtcTimestamp());
+
+            auto* imageData = message.mutable_image();
+
+            imageData->mutable_dimensions()->set_x(image.width());
+            imageData->mutable_dimensions()->set_y(image.height());
+
+            std::string* imageBytes = imageData->mutable_data();
+
+            imageData->set_camera_id(3);
+
+            // TODO work out the format
+            imageData->set_format(messages::input::proto::Image::YCbCr444);
+
+            // Reserve enough space in the image data to store the output
+            imageBytes->reserve(image.source.size());
+
+            imageBytes->insert(imageBytes->begin(), std::begin(image.source), std::end(image.source));
+
+
+            send(message);
+        }));
+
+        handles["visual_horizon"].push_back(on<Trigger<VisualHorizon<0>>, Options<Single, Priority<NUClear::LOW>>>([this] (const VisualHorizon<0>& horizon) {
 
             Message message;
             message.set_type(Message::VISUAL_HORIZON);
@@ -102,7 +178,89 @@ namespace support {
         }));
 
 
-         handles["point_scan"].push_back(on<Trigger<ImagePointScan>, Options<Single, Priority<NUClear::LOW>>>([this] (const ImagePointScan& scan) {
+        handles["visual_horizon"].push_back(on<Trigger<VisualHorizon<1>>, Options<Single, Priority<NUClear::LOW>>>([this] (const VisualHorizon<1>& horizon) {
+
+            Message message;
+            message.set_type(Message::VISUAL_HORIZON);
+            message.set_filter_id(2);
+            message.set_utc_timestamp(getUtcTimestamp());
+
+            auto* h = message.mutable_visual_horizon();
+
+            h->set_camera_id(1);
+
+            h->mutable_lens()->mutable_radial()->set_fov(horizon.image->lens.parameters.radial.fov);
+            h->mutable_lens()->mutable_radial()->set_pitch(horizon.image->lens.parameters.radial.pitch);
+            h->mutable_lens()->mutable_radial()->mutable_centre()->set_x(horizon.image->lens.parameters.radial.centre[0]);
+            h->mutable_lens()->mutable_radial()->mutable_centre()->set_y(horizon.image->lens.parameters.radial.centre[1]);
+
+            for(uint i = 0; i < horizon.horizon.n_rows; ++i) {
+                auto* hPoint = h->add_normals();
+
+                hPoint->set_x(horizon.horizon(i, 0));
+                hPoint->set_y(horizon.horizon(i, 1));
+                hPoint->set_z(horizon.horizon(i, 2));
+            }
+
+            send(message);
+        }));
+
+        handles["visual_horizon"].push_back(on<Trigger<VisualHorizon<2>>, Options<Single, Priority<NUClear::LOW>>>([this] (const VisualHorizon<2>& horizon) {
+
+            Message message;
+            message.set_type(Message::VISUAL_HORIZON);
+            message.set_filter_id(3);
+            message.set_utc_timestamp(getUtcTimestamp());
+
+            auto* h = message.mutable_visual_horizon();
+
+            h->set_camera_id(2);
+
+            h->mutable_lens()->mutable_radial()->set_fov(horizon.image->lens.parameters.radial.fov);
+            h->mutable_lens()->mutable_radial()->set_pitch(horizon.image->lens.parameters.radial.pitch);
+            h->mutable_lens()->mutable_radial()->mutable_centre()->set_x(horizon.image->lens.parameters.radial.centre[0]);
+            h->mutable_lens()->mutable_radial()->mutable_centre()->set_y(horizon.image->lens.parameters.radial.centre[1]);
+
+            for(uint i = 0; i < horizon.horizon.n_rows; ++i) {
+                auto* hPoint = h->add_normals();
+
+                hPoint->set_x(horizon.horizon(i, 0));
+                hPoint->set_y(horizon.horizon(i, 1));
+                hPoint->set_z(horizon.horizon(i, 2));
+            }
+
+            send(message);
+        }));
+
+
+        handles["visual_horizon"].push_back(on<Trigger<VisualHorizon<3>>, Options<Single, Priority<NUClear::LOW>>>([this] (const VisualHorizon<3>& horizon) {
+
+            Message message;
+            message.set_type(Message::VISUAL_HORIZON);
+            message.set_filter_id(4);
+            message.set_utc_timestamp(getUtcTimestamp());
+
+            auto* h = message.mutable_visual_horizon();
+
+            h->set_camera_id(3);
+
+            h->mutable_lens()->mutable_radial()->set_fov(horizon.image->lens.parameters.radial.fov);
+            h->mutable_lens()->mutable_radial()->set_pitch(horizon.image->lens.parameters.radial.pitch);
+            h->mutable_lens()->mutable_radial()->mutable_centre()->set_x(horizon.image->lens.parameters.radial.centre[0]);
+            h->mutable_lens()->mutable_radial()->mutable_centre()->set_y(horizon.image->lens.parameters.radial.centre[1]);
+
+            for(uint i = 0; i < horizon.horizon.n_rows; ++i) {
+                auto* hPoint = h->add_normals();
+
+                hPoint->set_x(horizon.horizon(i, 0));
+                hPoint->set_y(horizon.horizon(i, 1));
+                hPoint->set_z(horizon.horizon(i, 2));
+            }
+
+            send(message);
+        }));
+
+        handles["point_scan"].push_back(on<Trigger<ImagePointScan<0>>, Options<Single, Priority<NUClear::LOW>>>([this] (const ImagePointScan<0>& scan) {
 
             Message message;
             message.set_type(Message::POINT_SCAN);
@@ -112,6 +270,93 @@ namespace support {
             auto* s = message.mutable_point_scan();
 
             s->set_camera_id(0);
+
+            s->mutable_lens()->mutable_radial()->set_fov(scan.horizon->image->lens.parameters.radial.fov);
+            s->mutable_lens()->mutable_radial()->set_pitch(scan.horizon->image->lens.parameters.radial.pitch);
+            s->mutable_lens()->mutable_radial()->mutable_centre()->set_x(scan.horizon->image->lens.parameters.radial.centre[0]);
+            s->mutable_lens()->mutable_radial()->mutable_centre()->set_y(scan.horizon->image->lens.parameters.radial.centre[1]);
+
+            for(auto& set : scan.points) {
+                for(auto& point : set.second) {
+                    auto* p = s->add_points();
+
+                    p->set_colour(set.first);
+                    p->mutable_ray()->set_x(point[0]);
+                    p->mutable_ray()->set_y(point[1]);
+                }
+            }
+
+            send(message);
+        }));
+
+        handles["point_scan"].push_back(on<Trigger<ImagePointScan<1>>, Options<Single, Priority<NUClear::LOW>>>([this] (const ImagePointScan<1>& scan) {
+
+            Message message;
+            message.set_type(Message::POINT_SCAN);
+            message.set_filter_id(2);
+            message.set_utc_timestamp(getUtcTimestamp());
+
+            auto* s = message.mutable_point_scan();
+
+            s->set_camera_id(1);
+
+            s->mutable_lens()->mutable_radial()->set_fov(scan.horizon->image->lens.parameters.radial.fov);
+            s->mutable_lens()->mutable_radial()->set_pitch(scan.horizon->image->lens.parameters.radial.pitch);
+            s->mutable_lens()->mutable_radial()->mutable_centre()->set_x(scan.horizon->image->lens.parameters.radial.centre[0]);
+            s->mutable_lens()->mutable_radial()->mutable_centre()->set_y(scan.horizon->image->lens.parameters.radial.centre[1]);
+
+            for(auto& set : scan.points) {
+                for(auto& point : set.second) {
+                    auto* p = s->add_points();
+
+                    p->set_colour(set.first);
+                    p->mutable_ray()->set_x(point[0]);
+                    p->mutable_ray()->set_y(point[1]);
+                }
+            }
+
+            send(message);
+        }));
+
+        handles["point_scan"].push_back(on<Trigger<ImagePointScan<2>>, Options<Single, Priority<NUClear::LOW>>>([this] (const ImagePointScan<2>& scan) {
+
+            Message message;
+            message.set_type(Message::POINT_SCAN);
+            message.set_filter_id(3);
+            message.set_utc_timestamp(getUtcTimestamp());
+
+            auto* s = message.mutable_point_scan();
+
+            s->set_camera_id(2);
+
+            s->mutable_lens()->mutable_radial()->set_fov(scan.horizon->image->lens.parameters.radial.fov);
+            s->mutable_lens()->mutable_radial()->set_pitch(scan.horizon->image->lens.parameters.radial.pitch);
+            s->mutable_lens()->mutable_radial()->mutable_centre()->set_x(scan.horizon->image->lens.parameters.radial.centre[0]);
+            s->mutable_lens()->mutable_radial()->mutable_centre()->set_y(scan.horizon->image->lens.parameters.radial.centre[1]);
+
+            for(auto& set : scan.points) {
+                for(auto& point : set.second) {
+                    auto* p = s->add_points();
+
+                    p->set_colour(set.first);
+                    p->mutable_ray()->set_x(point[0]);
+                    p->mutable_ray()->set_y(point[1]);
+                }
+            }
+
+            send(message);
+        }));
+
+        handles["point_scan"].push_back(on<Trigger<ImagePointScan<3>>, Options<Single, Priority<NUClear::LOW>>>([this] (const ImagePointScan<3>& scan) {
+
+            Message message;
+            message.set_type(Message::POINT_SCAN);
+            message.set_filter_id(4);
+            message.set_utc_timestamp(getUtcTimestamp());
+
+            auto* s = message.mutable_point_scan();
+
+            s->set_camera_id(3);
 
             s->mutable_lens()->mutable_radial()->set_fov(scan.horizon->image->lens.parameters.radial.fov);
             s->mutable_lens()->mutable_radial()->set_pitch(scan.horizon->image->lens.parameters.radial.pitch);
@@ -191,61 +436,61 @@ namespace support {
         //     send(message);
         // }));
 
-        handles["balls"].push_back(on<Trigger<std::vector<Ball>>, Options<Single, Priority<NUClear::LOW>>>([this] (const std::vector<Ball>& balls) {
+        // handles["balls"].push_back(on<Trigger<std::vector<Ball>>, Options<Single, Priority<NUClear::LOW>>>([this] (const std::vector<Ball>& balls) {
 
-            Message message;
-            message.set_type(Message::VISION_OBJECT);
-            message.set_filter_id(1);
-            message.set_utc_timestamp(getUtcTimestamp());
+        //     Message message;
+        //     message.set_type(Message::VISION_OBJECT);
+        //     message.set_filter_id(1);
+        //     message.set_utc_timestamp(getUtcTimestamp());
 
-            auto* object = message.mutable_vision_object();
-            object->set_type(VisionObject::BALL);
+        //     auto* object = message.mutable_vision_object();
+        //     object->set_type(VisionObject::BALL);
 
-            for(const auto& b : balls) {
+        //     for(const auto& b : balls) {
 
-                auto* ball = object->add_ball();
+        //         auto* ball = object->add_ball();
 
-                auto* circle = ball->mutable_circle();
-                circle->set_radius(b.circle.radius);
-                circle->mutable_centre()->set_x(b.circle.centre[0]);
-                circle->mutable_centre()->set_y(b.circle.centre[1]);
-            }
+        //         auto* circle = ball->mutable_circle();
+        //         circle->set_radius(b.circle.radius);
+        //         circle->mutable_centre()->set_x(b.circle.centre[0]);
+        //         circle->mutable_centre()->set_y(b.circle.centre[1]);
+        //     }
 
-            send(message);
+        //     send(message);
 
-        }));
+        // }));
 
-        handles["goals"].push_back(on<Trigger<std::vector<Goal>>, Options<Single, Priority<NUClear::LOW>>>([this] (const std::vector<Goal>& goals) {
+        // handles["goals"].push_back(on<Trigger<std::vector<Goal>>, Options<Single, Priority<NUClear::LOW>>>([this] (const std::vector<Goal>& goals) {
 
-            Message message;
-            message.set_type(Message::VISION_OBJECT);
-            message.set_filter_id(2);
-            message.set_utc_timestamp(getUtcTimestamp());
+        //     Message message;
+        //     message.set_type(Message::VISION_OBJECT);
+        //     message.set_filter_id(2);
+        //     message.set_utc_timestamp(getUtcTimestamp());
 
-            auto* object = message.mutable_vision_object();
+        //     auto* object = message.mutable_vision_object();
 
-            object->set_type(VisionObject::GOAL);
+        //     object->set_type(VisionObject::GOAL);
 
-            for(const auto& g : goals) {
-                auto* goal = object->add_goal();
+        //     for(const auto& g : goals) {
+        //         auto* goal = object->add_goal();
 
-                goal->set_side(g.side == Goal::Side::LEFT ? VisionObject::Goal::LEFT
-                             : g.side == Goal::Side::RIGHT ? VisionObject::Goal::RIGHT
-                             : VisionObject::Goal::UNKNOWN);
+        //         goal->set_side(g.side == Goal::Side::LEFT ? VisionObject::Goal::LEFT
+        //                      : g.side == Goal::Side::RIGHT ? VisionObject::Goal::RIGHT
+        //                      : VisionObject::Goal::UNKNOWN);
 
-                auto* quad = goal->mutable_quad();
-                quad->mutable_tl()->set_x(g.quad.getTopLeft()[0]);
-                quad->mutable_tl()->set_y(g.quad.getTopLeft()[1]);
-                quad->mutable_tr()->set_x(g.quad.getTopRight()[0]);
-                quad->mutable_tr()->set_y(g.quad.getTopRight()[1]);
-                quad->mutable_bl()->set_x(g.quad.getBottomLeft()[0]);
-                quad->mutable_bl()->set_y(g.quad.getBottomLeft()[1]);
-                quad->mutable_br()->set_x(g.quad.getBottomRight()[0]);
-                quad->mutable_br()->set_y(g.quad.getBottomRight()[1]);
-            }
+        //         auto* quad = goal->mutable_quad();
+        //         quad->mutable_tl()->set_x(g.quad.getTopLeft()[0]);
+        //         quad->mutable_tl()->set_y(g.quad.getTopLeft()[1]);
+        //         quad->mutable_tr()->set_x(g.quad.getTopRight()[0]);
+        //         quad->mutable_tr()->set_y(g.quad.getTopRight()[1]);
+        //         quad->mutable_bl()->set_x(g.quad.getBottomLeft()[0]);
+        //         quad->mutable_bl()->set_y(g.quad.getBottomLeft()[1]);
+        //         quad->mutable_br()->set_x(g.quad.getBottomRight()[0]);
+        //         quad->mutable_br()->set_y(g.quad.getBottomRight()[1]);
+        //     }
 
-            send(message);
-        }));
+        //     send(message);
+        // }));
     }
 }
 }

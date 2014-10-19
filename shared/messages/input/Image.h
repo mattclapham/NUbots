@@ -29,6 +29,7 @@
 namespace messages {
     namespace input {
 
+        template <int camID>
         class Image {
         public:
 
