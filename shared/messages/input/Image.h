@@ -60,6 +60,8 @@ namespace messages {
                         double centre[2];
                     } radial;
                 } parameters;
+
+                uint cameraID;
             };
 
             inline char get(const uint& x, const uint& y) const {
