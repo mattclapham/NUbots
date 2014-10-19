@@ -61,8 +61,29 @@ namespace messages {
                 } parameters;
             };
 
-            inline arma::Col<uint8_t>::fixed<3> operator()(uint x, uint y) const {
-                return {0, 0, 0};//source[x + y * width()]; // TODO do the bayer conversion here
+            inline char get(const uint& x, const uint& y) const {
+                return source[y * width() + x];
+            }
+
+            inline arma::Col<uint8_t>::fixed<3> operator()(const uint& x, const uint& y) const {
+
+                arma::Col<uint8_t>::fixed<3> output;
+
+                bool oX = x % 2;
+                bool oY = y % 2;
+
+                if(oX != oY) {
+                    output[ oY * 3] = (get(x - 1, y) + get(x + 1, y))                                                             / 2; // Left right
+                    output[2]       = (get(x, y) + get(x - 1, y - 1) + get(x + 1, y - 1) + get(x + 1, y + 1) + get(x - 1, y + 1)) / 5; // Diag + mid
+                    output[!oY * 3] = (get(x, y - 1) + get(x, y + 1))                                                             / 2; // Top base
+                }
+                else {
+                    output[ oY * 3] = get(x, y); // Centre
+                    output[2]       = (get(x, y - 1) + get(x, y + 1) + get(x - 1, y) + get(x + 1, y))                             / 4; // Top/Bottom/Left/Right
+                    output[!oY * 3] = (get(x - 1, y - 1) + get(x + 1, y - 1) + get(x + 1, y + 1) + get(x - 1, y + 1))             / 4; // diags
+                }
+
+                return output;
             }
 
             inline uint width() const {
