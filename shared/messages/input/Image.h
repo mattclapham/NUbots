@@ -61,30 +61,8 @@ namespace messages {
                 } parameters;
             };
 
-
-
-            function get(x, y) {
-            if (x < 0 || x >= width || y < 0 || y >= height) {
-                return null;
-            }
-            return data[y * width + x];
-        }
-        function getAvg() {
-            var sum = 0;
-            var count = 0;
-            for (var i = 0; i < arguments.length; i++) {
-                var coord = arguments[i];
-                var color = get(coord[0], coord[1]);
-                if (color !== null) {
-                    sum += color;
-                    count++;
-                }
-            }
-            return sum / count;
-        }
-
-            inline char get(uint x, uint y) {
-
+            inline char get(const uint& x, const uint& y) const {
+                return source[y * width() + x];
             }
 
             inline arma::Col<uint8_t>::fixed<3> operator()(const uint& x, const uint& y) const {
@@ -95,54 +73,17 @@ namespace messages {
                 bool oY = y % 2;
 
                 if(oX != oY) {
-                    output[ oY * 3] = get(x - 1, y) + get(x + 1, y); // Left right
-                    output[2]       = get(x - 1, y - 1), get(); // all 5
-                    output[!oY * 3] = get(x, y - 1) + get(x + 1, y + 1); // Top base
+                    output[ oY * 3] = (get(x - 1, y) + get(x + 1, y))                                                             / 2; // Left right
+                    output[2]       = (get(x, y) + get(x - 1, y - 1) + get(x + 1, y - 1) + get(x + 1, y + 1) + get(x - 1, y + 1)) / 5; // Diag + mid
+                    output[!oY * 3] = (get(x, y - 1) + get(x, y + 1))                                                             / 2; // Top base
                 }
                 else {
                     output[ oY * 3] = get(x, y); // Centre
-                    output[2]       = ; // Top/Bottom/Left/Right
-                    output[!oY * 3] = ; // diags
-                    // 4 search
+                    output[2]       = (get(x, y - 1) + get(x, y + 1) + get(x - 1, y) + get(x + 1, y))                             / 4; // Top/Bottom/Left/Right
+                    output[!oY * 3] = (get(x - 1, y - 1) + get(x + 1, y - 1) + get(x + 1, y + 1) + get(x - 1, y + 1))             / 4; // diags
                 }
 
-                if (y % 2 === 0) {
-                    // B G
-                    if (x % 2 === 1) {
-                        // B
-
-                        data[y * width + x]
-
-
-
-                        output[0] = getAvg([x - 1, y - 1], [x + 1, y - 1], [x + 1, y + 1], [x - 1, y + 1]); // 4 surrounding
-                        output[1] = getAvg([x, y - 1], [x + 1, y], [x, y + 1], [x - 1, y]); // 4 surrounding
-                        output[2] = get(x, y); // self
-                    } else {
-                        // G
-                        output[0] = getAvg([x, y - 1], [x, y + 1]); // 2 surrounding
-                        output[1] = getAvg([x - 1, y - 1], [x + 1, y - 1], [x + 1, y + 1], [x - 1, y + 1], [x, y]); // 5 surrounding
-                        output[2] = getAvg([x - 1, y], [x + 1, y]); // 2 surrounding
-                    }
-                } else {
-                    // G R
-                    if (x % 2 === 1) {
-                        // G
-                        output[0] = getAvg([x - 1, y], [x + 1, y]); // 2 surrounding
-                        output[1] = getAvg([x - 1, y - 1], [x + 1, y - 1], [x + 1, y + 1], [x - 1, y + 1], [x, y]); // 5 surrounding
-                        output[2] = getAvg([x, y - 1], [x, y + 1]); // 2 surrounding
-                    } else {
-                        // R
-                        output[0] = get(x, y); // self
-                        output[1] = getAvg([x, y - 1], [x + 1, y], [x, y + 1], [x - 1, y]); // 4 surrounding
-                        output[2] = getAvg([x - 1, y - 1], [x + 1, y - 1], [x + 1, y + 1], [x - 1, y + 1]); // 4 surrounding
-                    }
-                }
-
-                //DEBAYERSZEFOISEJFOISEJFOISEJFOPISEJ
-
-
-                return {0, 0, 0};//source[x + y * width()]; // TODO do the bayer conversion here
+                return output;
             }
 
             inline uint width() const {
