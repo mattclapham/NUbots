@@ -46,7 +46,9 @@ namespace geometry {
     template <int camID>
     inline arma::mat snapToScreen(const arma::mat& rayPositions, const arma::vec& rayLength, const Image<camID>& image) {
         //returns a mat of vectors of resized rayLength so that rays end at the edge of the image space
-        arma::vec scales(rayPositions.n_rows,1);
+
+        arma::vec scales(rayPositions.n_rows);
+        scales.fill(std::numeric_limits<double>::max());
         if (image.lens.type == Image<camID>::Lens::Type::RADIAL) {
             //radius and centre of circle
             const double pixelFOV = image.lens.parameters.radial.fov/2.0/image.lens.parameters.radial.pitch;
@@ -65,41 +67,38 @@ namespace geometry {
             //std::cout << "B: " << b << std::endl;
             //std::cout << "C: " << c << std::endl;
             scales = ( -b + arma::sqrt(b % b - 4.0 * a * c) )/(2.0 * a);
+        }
 
-        } else if (image.lens.type == Image<camID>::Lens::Type::EQUIRECTANGULAR) {
+        //this makes sure the ray is on screen as well
+        //check which direction to calculate the x edge of image intercept from
+        if (rayLength[0] > 0) {
+            //calculate the positive x intercept
+            scales = arma::min((image.dimensions[0]/2-rayPositions.col(0))/rayLength[0], scales);
 
-            //check which direction to calculate the x edge of image intercept from
-            if (rayLength[0] > 0) {
+        } else if (rayLength[0] < 0) {
+            //calculate the positive x intercept
+            scales = arma::min( (rayPositions.col(0)-image.dimensions[0]/2)/rayLength[0], scales);
+        }
+        //now do y edge of image intercepts
+        if (rayLength[0] == 0) {
+            if (rayLength[1] > 0) {
                 //calculate the positive x intercept
-                scales = (image.dimensions[0]/2-rayPositions.col(0))/rayLength[0];
+                scales = (image.dimensions[1]-rayPositions.col(1))/rayLength[1];
 
-            } else if (rayLength[0] < 0) {
+            } else if (rayLength[1] < 0) {
                 //calculate the positive x intercept
-                scales = (rayPositions.col(0)-image.dimensions[0]/2)/rayLength[0];
+                scales = (rayPositions.col(1)-image.dimensions[1])/rayLength[1];
 
             }
+        } else {
+            if (rayLength[1] > 0) {
+                //calculate the positive x intercept
+                scales = arma::min( (image.dimensions[1]-rayPositions.col(1))/rayLength[1], scales);
 
-            //now do y edge of image intercepts
-            if (rayLength[0] == 0) {
-                if (rayLength[1] > 0) {
-                    //calculate the positive x intercept
-                    scales = (image.dimensions[1]/2-rayPositions.col(1))/rayLength[1];
+            } else if (rayLength[1] < 0) {
+                //calculate the positive x intercept
+                scales = arma::min( (rayPositions.col(1)-image.dimensions[1])/rayLength[1], scales);
 
-                } else if (rayLength[1] < 0) {
-                    //calculate the positive x intercept
-                    scales = (rayPositions.col(1)-image.dimensions[1]/2)/rayLength[1];
-
-                }
-            } else {
-                if (rayLength[1] > 0) {
-                    //calculate the positive x intercept
-                    scales = arma::min( (image.dimensions[1]/2-rayPositions.col(1))/rayLength[1], scales);
-
-                } else if (rayLength[1] < 0) {
-                    //calculate the positive x intercept
-                    scales = arma::min( (rayPositions.col(1)-image.dimensions[1]/2)/rayLength[1], scales);
-
-                }
             }
         }
         return arma::round( arma::repmat(rayLength,1,scales.n_rows) % arma::repmat(scales,1,2).t() + rayPositions.t() );

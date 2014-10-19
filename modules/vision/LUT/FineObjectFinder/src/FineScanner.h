@@ -42,7 +42,8 @@ namespace modules {
             double MAX_SPHERE_SIZE = 0.58;
             arma::vec2 MAX_POST_WIDTH = 39*2.56/100.0;
             double CAMERA_HEIGHT = 1.2;
-            int MIN_SURROUNDING_PIXELS;
+            int MIN_SURROUNDING_PIXELS = 5;
+            int CROSSHATCH_LINES = 10;
             
 
             //create a classification outline

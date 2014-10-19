@@ -160,7 +160,6 @@ namespace LUT {
             const arma::ivec2 e = ends.col(i);
 
             auto pts = utility::vision::bresenhamLine(s, e);
-
             std::vector<char> l;
             l.reserve(pts.size());
 
