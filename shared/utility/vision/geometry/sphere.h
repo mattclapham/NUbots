@@ -52,26 +52,27 @@ namespace sphere {
         return tan(objectRadius/d1)*2;
     }
     
-    inline double arcSizeFromBaseRay(const arma::vec3& ray, const double& objectSize, const double& cameraHeight) {
+    inline arma::vec arcSizeFromBaseRay(const arma::mat& ray, const double& objectSize, const double& cameraHeight) {
         //returns the arcsize for a sphere this ray grazes the bottom of
+        //NOTE: a ray is a list of colvecs
         
         const double objectRadius = objectSize/2.0;
         
         //this is the ground intersection point (in terms of distance along the ray).
-        const double d = abs(cameraHeight / ray[2]); 
+        const arma::vec d = arma::abs(cameraHeight / ray.row(2)); 
         
         //get the radians inclination from straight down.
-        const double inclination = acos(ray[2]);
+        const arma::vec inclination = arma::acos(ray.row(2));
         
         //this is the distance along the ray from the sphere intersection to the far ground point.
         //NOTE: this is different to the above formula for top rays!
-        const double d2 = objectRadius / atan(M_PI/4 + inclination/2);
+        const arma::vec d2 = objectRadius / atan(M_PI/4 + inclination/2);
         
         //this is the distance along the ray from the origin to the sphere intersection.
-        const double d1 = d - d2;
+        const arma::vec d1 = d - d2;
         
         //using bisection of a kite, this is the arc angle of the sphere.
-        return tan(objectRadius/d1)*2;
+        return arma::tan(objectRadius/d1)*2;
         
     }
     

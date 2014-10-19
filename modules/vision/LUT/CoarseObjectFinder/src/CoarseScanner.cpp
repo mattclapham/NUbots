@@ -139,7 +139,7 @@ namespace modules {
                 halfArcSize = utility::vision::geometry::sphere::arcSizeFromBaseRay(
                                     camRay,
                                     MIN_GROUNDOBJ_SIZE,
-                                    CAMERA_HEIGHT)/2.0;
+                                    CAMERA_HEIGHT)[0]/2.0;
                 halfArcSize = std::max(halfArcSize, MIN_SIZE_PIXELS*pixelSize);
                 //scale because we're mapping in spherical coordinates here
                 double scaledArcWidth = halfArcSize;
