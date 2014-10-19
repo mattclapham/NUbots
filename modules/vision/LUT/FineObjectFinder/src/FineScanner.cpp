@@ -39,14 +39,48 @@ namespace modules {
         
         arma::mat FineScanner::fineScanClassify(const std::vector<arma::ivec>& allpts, 
                                                 const arma::uvec& selectedpts, 
-                                                const double radialSize,
                                                 const messages::input::Image& image) const {
-            arma::running_stat_vec<arma::ivec2> stats;
             
+            //collect data on our points
+            arma::running_stat_vec<arma::ivec2> stats;
             for (uint i = 0; i < selectedpts.n_rows; ++i) {
                 stats.stat(allpts[selectedpts[i]]);
             }
             
+            double radialDiameterPx = vision::geometry::arcSizeFromBaseRay(
+                                    bulkPixel2Ray(arma::conv_to<vec2>::from(stats.min()).t(),image),
+                                    MAX_OBJECT_SIZE,CAMERA_HEIGHT));
+            
+            if (image.lens.type == Image::Lens::Type::RADIAL) {
+                radialDiameterPx *= image.lens.parameters.radial.pitch;
+            } else if (image.lens.type == Image::Lens::Type::EQUIRECTANGULAR) {
+                //XXX: zen hack
+                pitch = sqrt(image.lens.parameters.equirectangular.fov[0]*image.lens.parameters.equirectangular.fov[0]
+                             image.lens.parameters.equirectangular.fov[1]*image.lens.parameters.equirectangular.fov[1]) / 
+                             sqrt(image.dimensions[0]*image.dimensions[0] + image.dimension[1]*image.dimensions[1]);
+                radialDiameterPx *= pitch;
+            }
+            
+            arma::ivec2 center = (stats.max() + stats.min());
+            //find the diameter of the object
+            int diameter = int(std::min<double>(arma::norm(arma::conv_to<arma::vec2>::from(stats.max() - stats.min())), 
+                                radialDiameterPx) +
+                                MIN_SURROUNDING_PIXELS + 0.5);
+            
+            //make horizontal lines
+            int minPixelY = std::max(center[1]-diameter,0);
+            int maxPixelY = std::min(center[1]+diameter,image.dimensions[1]);
+            int increment = std::max(diameter/CROSSHATCH_LINES,1);
+            
+            for (int i = minPixelY; i < maxPixelY; i += increment) {
+                int diff = int(sqrt(diameter - i*i));
+                int leftX = std::max(centre[0]-diff, 0);
+                int rightX = std::min(centre[0]+diff, image.dimensions[0]);
+            }
+            
+            //XXX: make vertical lines
+            
+            //XXX: return lines
             return arma::mat();
         }
         
@@ -72,12 +106,7 @@ namespace modules {
             //XXX: rewrite distances to work with mats in bulk?
             for (const auto& c : candidateClours) {
                 //with matrix based version
-                pointSizes[c] = vision::geometry::spheredist(something);
-                
-                /*pointSizes[c] = arma::vec(colourRays[c].n_rows);
-                for (uint i = 0; i < colourRays[c].n_rows; ++i) {
-                    pointSizes[c][i] = vision::geometry::spheredist(something);
-                }*/
+                pointSizes[c] = vision::geometry::arcSizeFromBaseRay(colourRays[c].t(),MAX_OBJECT_SIZE,CAMERA_HEIGHT);
             }
             
             //3. build cosine distances for each colour of interest ( a * b.t() )
@@ -97,7 +126,8 @@ namespace modules {
             
             std::vector<arma::imat> fineScanLines;
             for (const auto& c : candidateClours) {
-                arma::ivec active(colourRays[c].size(),1);
+                arma::ivec active(colourRays[c].size());
+                active = 1;
                 for (uint i = 0; i < colourRays[c].n_rows; ++i) {
                     
                     if (active[i]) {
