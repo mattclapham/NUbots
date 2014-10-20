@@ -64,7 +64,7 @@ namespace messages {
                 uint cameraID;
             };
 
-            inline char get(const uint& x, const uint& y) const {
+            inline uint get(const uint& x, const uint& y) const {
                 return source[y * width() + x];
             }
 
@@ -76,14 +76,14 @@ namespace messages {
                 bool oY = y % 2;
 
                 if(oX != oY) {
-                    output[ oY * 3] = (get(x - 1, y) + get(x + 1, y))                                                             / 2; // Left right
-                    output[2]       = (get(x, y) + get(x - 1, y - 1) + get(x + 1, y - 1) + get(x + 1, y + 1) + get(x - 1, y + 1)) / 5; // Diag + mid
-                    output[!oY * 3] = (get(x, y - 1) + get(x, y + 1))                                                             / 2; // Top base
+                    output[ oY * 3] = uint8_t((get(x - 1, y) + get(x + 1, y))                                                             / 2); // Left right
+                    output[2]       = uint8_t((get(x, y) + get(x - 1, y - 1) + get(x + 1, y - 1) + get(x + 1, y + 1) + get(x - 1, y + 1)) / 5); // Diag + mid
+                    output[!oY * 3] = uint8_t((get(x, y - 1) + get(x, y + 1))                                                             / 2); // Top base
                 }
                 else {
-                    output[ oY * 3] = get(x, y); // Centre
-                    output[2]       = (get(x, y - 1) + get(x, y + 1) + get(x - 1, y) + get(x + 1, y))                             / 4; // Top/Bottom/Left/Right
-                    output[!oY * 3] = (get(x - 1, y - 1) + get(x + 1, y - 1) + get(x + 1, y + 1) + get(x - 1, y + 1))             / 4; // diags
+                    output[ oY * 3] = uint8_t(get(x, y)); // Centre
+                    output[2]       = uint8_t((get(x, y - 1) + get(x, y + 1) + get(x - 1, y) + get(x + 1, y))                             / 4); // Top/Bottom/Left/Right
+                    output[!oY * 3] = uint8_t((get(x - 1, y - 1) + get(x + 1, y - 1) + get(x + 1, y + 1) + get(x - 1, y + 1))             / 4); // diags
                 }
 
                 return output;
