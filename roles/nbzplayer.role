@@ -12,5 +12,6 @@ ADD_ROLE(
         vision::LUT::LUTLoader;
         vision::LUT::VisualHorizonFinder;
         vision::LUT::CoarseObjectFinder;
+        vision::LUT::FineObjectFinder;
 )
 

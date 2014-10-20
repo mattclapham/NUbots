@@ -18,6 +18,7 @@
  */
 
 #include "FineObjectFinder.h"
+#include "FineScanner.h"
 
 namespace modules {
 namespace vision {

@@ -37,82 +37,95 @@ namespace modules {
         using utility::vision::geometry::bulkPixel2Ray;
         using utility::vision::geometry::trimToFOV;
         
-        arma::mat FineScanner::fineScanClassify(const std::vector<arma::ivec>& allpts, 
+        arma::imat FineScanner::fineScanClassify(const std::vector<arma::ivec2>& allpts, 
                                                 const arma::uvec& selectedpts, 
                                                 const messages::input::Image& image) const {
             
             //collect data on our points
             arma::running_stat_vec<arma::ivec2> stats;
             for (uint i = 0; i < selectedpts.n_rows; ++i) {
-                stats.stat(allpts[selectedpts[i]]);
+                stats(allpts[selectedpts[i]]);
             }
             
-            double radialDiameterPx = vision::geometry::arcSizeFromBaseRay(
-                                    bulkPixel2Ray(arma::conv_to<vec2>::from(stats.min()).t(),image),
-                                    MAX_OBJECT_SIZE,CAMERA_HEIGHT));
+            double radialDiameterPx = utility::vision::geometry::sphere::arcSizeFromBaseRay(
+                                    bulkPixel2Ray(
+                                        arma::ivec({(stats.min()[0]), 
+                                        (stats.min()[1])}).t(),image),
+                                    MAX_OBJECT_SIZE,CAMERA_HEIGHT)[0];
             
             if (image.lens.type == Image::Lens::Type::RADIAL) {
                 radialDiameterPx *= image.lens.parameters.radial.pitch;
             } else if (image.lens.type == Image::Lens::Type::EQUIRECTANGULAR) {
                 //XXX: zen hack
-                pitch = sqrt(image.lens.parameters.equirectangular.fov[0]*image.lens.parameters.equirectangular.fov[0]
+                const double pitch = sqrt(image.lens.parameters.equirectangular.fov[0]*image.lens.parameters.equirectangular.fov[0] +
                              image.lens.parameters.equirectangular.fov[1]*image.lens.parameters.equirectangular.fov[1]) / 
-                             sqrt(image.dimensions[0]*image.dimensions[0] + image.dimension[1]*image.dimensions[1]);
+                             sqrt(image.dimensions[0]*image.dimensions[0] + image.dimensions[1]*image.dimensions[1]);
                 radialDiameterPx *= pitch;
             }
             
             arma::ivec2 center = (stats.max() + stats.min());
             //find the diameter of the object
-            int diameter = int(std::min<double>(arma::norm(arma::conv_to<arma::vec2>::from(stats.max() - stats.min())), 
+            int diameter = int(std::min<double>(arma::norm(arma::conv_to<arma::vec>::from(arma::ivec(stats.max() - stats.min()))), 
                                 radialDiameterPx) +
                                 MIN_SURROUNDING_PIXELS + 0.5);
             
             //make horizontal lines
-            int minPixelY = std::max(center[1]-diameter,0);
-            int maxPixelY = std::min(center[1]+diameter,image.dimensions[1]);
+            int minPixel = std::max<int>(center[1]-diameter,0);
+            int maxPixel = std::min<int>(center[1]+diameter,image.dimensions[1]);
             int increment = std::max(diameter/CROSSHATCH_LINES,1);
             
-            for (int i = minPixelY; i < maxPixelY; i += increment) {
+            for (int i = minPixel; i < maxPixel; i += increment) {
                 int diff = int(sqrt(diameter - i*i));
-                int leftX = std::max(centre[0]-diff, 0);
-                int rightX = std::min(centre[0]+diff, image.dimensions[0]);
+                int leftX = std::max<int>(center[0]-diff, 0);
+                int rightX = std::min<int>(center[0]+diff, image.dimensions[0]);
             }
             
-            //XXX: make vertical lines
+            //make vertical lines
+            minPixel = std::max<int>(center[0]-diameter,0);
+            maxPixel = std::min<int>(center[0]+diameter,image.dimensions[0]);
+            
+            for (int i = minPixel; i < maxPixel; i += increment) {
+                int diff = int(sqrt(diameter - i*i));
+                int topY = std::max<int>(center[1]-diff, 0);
+                int bottomY = std::min<int>(center[1]+diff, image.dimensions[1]);
+            }
             
             //XXX: return lines
-            return arma::mat();
+            return arma::imat();
         }
         
         std::map<uint,std::vector<arma::ivec2>> FineScanner::findObjects(const messages::input::Image& image,
                                                             const messages::vision::LookUpTable& lut,
                                                             const arma::mat& horizonNormals,
                                                             const std::map<uint,std::vector<arma::ivec2>>& coarseScan) const {
+            //XXX: implement dynamic candidates
+            std::vector<uint> candidateColours;
+            
             
             //1. build matrices for each colour of interest (from the std::vecs of pixels in the input)
             //(1.5) - convert to rays
             std::map<uint,arma::mat> colourRays;
-            for (const auto& c : candidateClours) {
-                arma::imat tmp(coarseScan[c].size(),2);
-                for (uint i = 0; i < coarseScan[c].size(); ++i) {
-                    tmp.row(i) = coarseScan[c][i].t();
+            for (const uint& c : candidateColours) {
+                arma::imat tmp(coarseScan.at(c).size(),2);
+                for (uint i = 0; i < coarseScan.at(c).size(); ++i) {
+                    tmp.row(i) = coarseScan.at(c)[i].t();
                 }
-                colourRays[c] = bulkPixel2Ray(tmp);
+                colourRays[c] = bulkPixel2Ray(tmp,image);
             }
             
             //2. query size estimates for each colour of interest (from vision::geometry)
             // (create a vec of these)
             std::map<uint,arma::vec> pointSizes;
             //XXX: rewrite distances to work with mats in bulk?
-            for (const auto& c : candidateClours) {
+            for (const auto& c : candidateColours) {
                 //with matrix based version
-                pointSizes[c] = vision::geometry::arcSizeFromBaseRay(colourRays[c].t(),MAX_OBJECT_SIZE,CAMERA_HEIGHT);
+                pointSizes[c] = utility::vision::geometry::sphere::arcSizeFromBaseRay(colourRays[c].t(),MAX_OBJECT_SIZE,CAMERA_HEIGHT);
             }
             
             //3. build cosine distances for each colour of interest ( a * b.t() )
             // (will be a square matrix)
-            std::map<uint,arma::mat pointDists;
-            for (const auto& c : candidateClours) {
+            std::map<uint,arma::mat> pointDists;
+            for (const auto& c : candidateColours) {
                 pointDists[c] = colourRays[c] * colourRays[c].t();
             }
             
@@ -125,16 +138,16 @@ namespace modules {
             // - proceed to the next unmarked row
             
             std::vector<arma::imat> fineScanLines;
-            for (const auto& c : candidateClours) {
+            for (const auto& c : candidateColours) {
                 arma::ivec active(colourRays[c].size());
-                active = 1;
+                active.fill(1);
                 for (uint i = 0; i < colourRays[c].n_rows; ++i) {
                     
                     if (active[i]) {
-                        arma::uvec activePixels = arma::find(pointDists[c][i] <= std::max(pointSizes[c][i], MIN_ANGULAR_SIZE));
-                        active(activePixels) = 0;
+                        arma::uvec activePixels = arma::find(pointDists[c].col(i) <= std::max(pointSizes[c][i], MIN_ANGULAR_SIZE));
+                        active.rows(activePixels).fill(0);
                         
-                        fineScanLines.push_back( fineScan( coarseScan[c], activePixels , image ) );
+                        fineScanLines.push_back( fineScanClassify( coarseScan.at(c), activePixels , image ) );
                     }
                 }
             }
