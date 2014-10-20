@@ -319,6 +319,7 @@ namespace support {
         }
 
         if(fileEnabled && outputFile) {
+            std::lock_guard<std::mutex> lock(fileMutex);
             // Append the number of bytes to the file (so we can re-read it)
             outputFile << uint32_t(message.ByteSize());
             // Append the protocol buffer to the file
