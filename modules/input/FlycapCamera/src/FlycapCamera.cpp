@@ -94,7 +94,7 @@ FlycapCamera::FlycapCamera(std::unique_ptr<NUClear::Environment> environment) : 
                 lens.parameters.radial.fov = config["lens"]["fov"].as<double>();
                 lens.parameters.radial.pitch = config["lens"]["pixel_pitch"].as<double>();
                 lens.parameters.radial.centre[0] = config["lens"]["image_centre"][0].as<double>();
-                lens.parameters.radial.centre[1] = config["lens"]["image_centre"][0].as<double>();
+                lens.parameters.radial.centre[1] = config["lens"]["image_centre"][1].as<double>();
                 lens.cameraID = config["camera_id"].as<uint>();
             }
 

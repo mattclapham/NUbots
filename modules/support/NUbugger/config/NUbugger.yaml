@@ -13,8 +13,10 @@ reaction_handles:
   game_controller: false
   behaviour: false
   sensors: false
-  image: true
+  image: false
   classified_image: false
   goals: false
   balls: false
   localisation: false
+  visual_horizon: false
+  point_scan: true
