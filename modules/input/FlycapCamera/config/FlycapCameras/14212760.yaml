@@ -9,6 +9,11 @@ FOV_X: 1.0472
 FOV_Y: 0.785398
 DISTORTION_FACTOR: -0.000018
 
+lens:
+  type: RADIAL
+  fov: 3.141592653589793
+  pixel_pitch: 0.0025
+  image_centre: [ 640, 480 ]
 
 # Gain control. This is effectively turning up the "Volume" of the signal, including the noise.
 # (int): min=160 max=842 step=1 default=160 float range is -5.63035, 24.0001 - unsure if both must be set)
@@ -30,7 +35,7 @@ white_balance_temperature_red: 550
 white_balance_temperature_blue: 810
 # auto is supported (bool): default=1
 #IMPLEMENTATION NOTE: auto white is a separate setting to balance even though it has an auto flag
-auto_white_balance: false
+auto_white_balance: true
 
 # Determines the exposure time of the camera sensor. The exposure time is limited by the frame interval.
 # Drivers should interpret the values as 100 µs units, where the value 1 stands for 1/10000th of a second, 10000 for 1 second and 100000 for 10 seconds.
