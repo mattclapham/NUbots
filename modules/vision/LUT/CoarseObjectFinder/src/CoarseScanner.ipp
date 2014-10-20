@@ -36,6 +36,7 @@ namespace modules {
         using utility::vision::geometry::bulkRay2Pixel;
         using utility::vision::geometry::bulkPixel2Ray;
         using utility::vision::geometry::trimToFOV;
+        using utility::vision::geometry::trimToImage;
 
         /*CoarseScanner(Config& config) {
 
@@ -176,7 +177,7 @@ namespace modules {
 
             //get scanRays for the correct FOV
             //XXX: cache these eventually
-            arma::mat aboveHorizonRays = generateAboveHorizonRays(image) * camTransform;
+            // arma::mat aboveHorizonRays = generateAboveHorizonRays(image) * camTransform;
             arma::mat belowHorizonRays = generateBelowHorizonRays(image) * camTransform;
 
 
@@ -187,13 +188,13 @@ namespace modules {
 
 
             //trim the scanrays to the field of view
-            aboveHorizonRays = trimToFOV(aboveHorizonRays,image);
+            // aboveHorizonRays = trimToFOV(aboveHorizonRays,image);
             belowHorizonRays = trimToFOV(belowHorizonRays,image);
 
 
             //convert to pixels
-            arma::imat aboveHorizonPixels = arma::conv_to<arma::imat>::from(bulkRay2Pixel(aboveHorizonRays,image));
-            arma::imat belowHorizonPixels = arma::conv_to<arma::imat>::from(bulkRay2Pixel(belowHorizonRays,image));
+            // arma::imat aboveHorizonPixels = arma::conv_to<arma::imat>::from(bulkRay2Pixel(aboveHorizonRays,image));
+            arma::imat belowHorizonPixels = trimToImage(arma::conv_to<arma::imat>::from(bulkRay2Pixel(belowHorizonRays,image)), image);
 
 
             //find all the unique pixels
@@ -203,17 +204,17 @@ namespace modules {
             std::set<uint> usedPixels;
 
             //above horizon classification
-            for (uint i = 0; i < aboveHorizonPixels.n_rows; ++i) {
-                const uint key = aboveHorizonPixels(i,0)+aboveHorizonPixels(i,1)*image.dimensions[0];
-                if (usedPixels.count(key) == 0) {
-                    usedPixels.insert(key);
+            // for (uint i = 0; i < aboveHorizonPixels.n_rows; ++i) {
+            //     const uint key = aboveHorizonPixels(i,0)+aboveHorizonPixels(i,1)*image.dimensions[0];
+            //     if (usedPixels.count(key) == 0) {
+            //         usedPixels.insert(key);
 
-                    const uint lutcolour = lut.getLUTIndex(image(aboveHorizonPixels(i,0), aboveHorizonPixels(i,1)));
-                    //classifiedAboveHorizon[lutcolour].push_back( arma::ivec2({aboveHorizonPixels(i,0), aboveHorizonPixels(i,1)}) );
-                    classifiedRays[lutcolour].push_back( arma::ivec2({aboveHorizonPixels(i,0), aboveHorizonPixels(i,1)}) );
+            //         const uint lutcolour = lut.getLUTIndex(image(aboveHorizonPixels(i,0), aboveHorizonPixels(i,1)));
+            //         //classifiedAboveHorizon[lutcolour].push_back( arma::ivec2({aboveHorizonPixels(i,0), aboveHorizonPixels(i,1)}) );
+            //         classifiedRays[lutcolour].push_back( arma::ivec2({aboveHorizonPixels(i,0), aboveHorizonPixels(i,1)}) );
 
-                }
-            }
+            //     }
+            // }
             //this is not actually necessary, but should speed up lookups
             //usedPixels.clear();
 
@@ -223,7 +224,7 @@ namespace modules {
                 if (usedPixels.count(key) == 0) {
                     usedPixels.insert(key);
 
-                    const uint lutcolour = lut.getLUTIndex(image(belowHorizonPixels(i,0), belowHorizonPixels(i,1)));
+                    const uint lutcolour = lut(image(belowHorizonPixels(i,0), belowHorizonPixels(i,1)));
                     //classifiedBelowHorizon[lutcolour].push_back( arma::ivec2({belowHorizonPixels(i,0), belowHorizonPixels(i,1)}) );
                     classifiedRays[lutcolour].push_back( arma::ivec2({belowHorizonPixels(i,0), belowHorizonPixels(i,1)}) );
 
