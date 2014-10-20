@@ -107,8 +107,8 @@ namespace geometry {
     template <int camID>
     inline arma::imat trimToImage(const arma::imat& pixels, const Image<camID>& image) {
         //remove any pixel references not within the image area
-        arma::imat result = pixels(arma::find( (pixels.col(1) >= 0) % (pixels.col(1) < image.dimensions[0]) ));
-        result = result.rows(arma::find( (result.col(0) >= 0) % (result.col(0) < image.dimensions[1]) ));
+        arma::imat result = pixels.rows(arma::find( (pixels.col(1) >= 0) % (pixels.col(1) < image.dimensions[1]) ));
+        result = result.rows(arma::find( (result.col(0) >= 0) % (result.col(0) < image.dimensions[0]) ));
         return std::move(result);
     }
 
