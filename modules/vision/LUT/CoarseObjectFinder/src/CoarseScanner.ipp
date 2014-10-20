@@ -174,28 +174,23 @@ namespace modules {
 
             //x = forward tilted cam space
             arma::mat alignedTransform = camTiltMatrix(image);
-
             //get scanRays for the correct FOV
             //XXX: cache these eventually
             // arma::mat aboveHorizonRays = generateAboveHorizonRays(image) * camTransform;
             arma::mat belowHorizonRays = generateBelowHorizonRays(image) * camTransform;
 
-
             //trim the scanrays using the visual horizon
             if (horizonNormals.n_elem > 0) {
-                belowHorizonRays = belowHorizonRays.rows(arma::find(arma::prod(belowHorizonRays * horizonNormals.t() >= 0.0, 1)));
+                ; //belowHorizonRays = belowHorizonRays.rows(arma::find(arma::prod(belowHorizonRays * horizonNormals.t() >= 0.0, 1)));
             }
-
 
             //trim the scanrays to the field of view
             // aboveHorizonRays = trimToFOV(aboveHorizonRays,image);
             belowHorizonRays = trimToFOV(belowHorizonRays,image);
 
-
             //convert to pixels
             // arma::imat aboveHorizonPixels = arma::conv_to<arma::imat>::from(bulkRay2Pixel(aboveHorizonRays,image));
             arma::imat belowHorizonPixels = trimToImage(arma::conv_to<arma::imat>::from(bulkRay2Pixel(belowHorizonRays,image)), image);
-
 
             //find all the unique pixels
             //std::map<uint,std::vector<arma::ivec2>> classifiedAboveHorizon;
@@ -217,20 +212,20 @@ namespace modules {
             // }
             //this is not actually necessary, but should speed up lookups
             //usedPixels.clear();
-
             //below horizon classification
             for (uint i = 0; i < belowHorizonPixels.n_rows; ++i) {
                 const uint key = belowHorizonPixels(i,0)+belowHorizonPixels(i,1)*image.dimensions[0];
                 if (usedPixels.count(key) == 0) {
                     usedPixels.insert(key);
-
-                    const uint lutcolour = lut(image(belowHorizonPixels(i,0), belowHorizonPixels(i,1)));
+                    const auto& img = image(belowHorizonPixels(i,0), belowHorizonPixels(i,1));
+                    
+                    const uint lutcolour = lut(img);
                     //classifiedBelowHorizon[lutcolour].push_back( arma::ivec2({belowHorizonPixels(i,0), belowHorizonPixels(i,1)}) );
+                    
                     classifiedRays[lutcolour].push_back( arma::ivec2({belowHorizonPixels(i,0), belowHorizonPixels(i,1)}) );
 
                 }
             }
-
             //XXX: define a message type to return
             return classifiedRays;
         }
