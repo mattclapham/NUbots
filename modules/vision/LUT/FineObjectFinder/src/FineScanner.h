@@ -38,23 +38,25 @@ namespace modules {
          */
         class FineScanner {
         private:
-            
+
             double MAX_OBJECT_SIZE = 0.58;
             //double MAX_POST_WIDTH = 39*2.56/100.0;
             double CAMERA_HEIGHT = 1.2;
             int MIN_SURROUNDING_PIXELS = 5;
             double MIN_ANGULAR_SIZE = 0.005;
             int CROSSHATCH_LINES = 10;
-            
+
 
             //create a classification outline
-            arma::imat fineScanClassify( const std::vector<arma::ivec2>& allpts, 
-                                        const arma::uvec& selectedpts, 
-                                        const messages::input::Image& image) const;
+            template <int camID>
+            arma::imat fineScanClassify( const std::vector<arma::ivec2>& allpts,
+                                        const arma::uvec& selectedpts,
+                                        const messages::input::Image<camID>& image) const;
 
         public:
             //find the IMU horizon, visual horizon and convex hull of the visual horizon
-            std::map<uint,std::vector<arma::ivec2>> findObjects(const messages::input::Image& image,
+            template <int camID>
+            std::map<uint,std::vector<arma::ivec2>> findObjects(const messages::input::Image<camID>& image,
                              const messages::vision::LookUpTable& lut,
                              const arma::mat& horizonNormals,
                              const std::map<uint,std::vector<arma::ivec2>>& coarseScan) const;
@@ -62,6 +64,8 @@ namespace modules {
 
     }  // vision
 }  // modules
+
+#include "FineScanner.ipp"
 
 #endif  // MODULES_VISION_QUEXLUTCLASSIFIER_H
 
