@@ -1,0 +1,12 @@
+ADD_ROLE(
+    NAME tdboxtester
+    MODULES
+        # Support
+        support::SignalCatcher
+        support::logging::ConsoleLogHandler
+        support::configuration::ConfigSystem
+        support::configuration::GlobalConfig
+
+        # Vision
+        support::TDBoxClient;
+)
