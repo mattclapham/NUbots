@@ -78,6 +78,8 @@ namespace support {
 
     void TDBoxClient::sendNMEA(const std::vector<std::string>& messages) {
 
+        std::lock_guard<std::mutex> lock(sendMutex);
+
         std::stringstream s;
 
         // Output the start
