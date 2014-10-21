@@ -32,6 +32,11 @@
 #include <netinet/in.h>
 #include <netdb.h>
 
+extern "C" {
+    #include <sys/socket.h>
+    #include <arpa/inet.h>
+}
+
 #include "messages/support/Configuration.h"
 
 namespace modules {
@@ -54,12 +59,11 @@ namespace support {
 
         // Get the information we need to connect
         sockaddr_in serverAddress;
-        hostent* h = gethostbyname(host.c_str());
 
         std::memset(&serverAddress, 0, sizeof(sockaddr_in));
         serverAddress.sin_family = AF_INET;
         serverAddress.sin_port = htons(port);
-        std::memcpy(h->h_addr, &serverAddress.sin_addr.s_addr, h->h_length);
+        serverAddress.sin_addr.s_addr = inet_addr(host.c_str());
 
         if (connect(fd, reinterpret_cast<sockaddr*>(&serverAddress), sizeof(serverAddress)) < 0) {
             std::system_error(errno, std::system_category(), "Failed to connect to the Technical Director Box");
@@ -77,6 +81,8 @@ namespace support {
     }
 
     void TDBoxClient::sendNMEA(const std::vector<std::string>& messages) {
+
+        std::lock_guard<std::mutex> lock(sendMutex);
 
         std::stringstream s;
 
@@ -141,7 +147,7 @@ namespace support {
                 "",            // Longitude Direction
                 "NCSTL",       // Team ID
                 "1",           // Vehicle Mode (1 = rc, 2 = autonomous)
-                "SLACKING OFF" // Current task
+                "BEER" // Current task
             });
         });
 

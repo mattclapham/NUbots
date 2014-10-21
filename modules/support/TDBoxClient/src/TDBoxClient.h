@@ -27,6 +27,8 @@ namespace support {
 
     class TDBoxClient : public NUClear::Reactor {
     private:
+        std::mutex sendMutex;
+
         int fd;
 
         int port;
