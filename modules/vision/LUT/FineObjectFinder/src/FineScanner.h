@@ -25,8 +25,9 @@
 
 #include "messages/input/Image.h"
 #include "messages/vision/LookUpTable.h"
-#include "messages/vision/LookUpTable.h"
+#include "messages/vision/ImageSegmentScan.h"
 #include "messages/support/Configuration.h"
+
 
 namespace modules {
     namespace vision {
@@ -49,14 +50,12 @@ namespace modules {
 
             //create a classification outline
             template <int camID>
-            arma::imat fineScanClassify( const std::vector<arma::ivec2>& allpts,
-                                        const arma::uvec& selectedpts,
-                                        const messages::input::Image<camID>& image) const;
+            void insertSegments(messages::vision::ImageSegmentScan<camID>& image, std::vector<std::pair<uint32_t,uint32_t>>& segments, const uint& line, bool vertical);
 
         public:
             //find the IMU horizon, visual horizon and convex hull of the visual horizon
             template <int camID>
-            std::map<uint,std::vector<arma::ivec2>> findObjects(const messages::input::Image<camID>& image,
+            messages::vision::ImageSegmentScan<camID> findObjects(const messages::input::Image<camID>& image,
                              const messages::vision::LookUpTable& lut,
                              const arma::mat& horizonNormals,
                              const std::map<uint,std::vector<arma::ivec2>>& coarseScan) const;

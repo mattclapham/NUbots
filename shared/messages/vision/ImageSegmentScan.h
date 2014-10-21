@@ -39,8 +39,8 @@ namespace messages {
                 Segment* next;
             };
 
-            std::map<uint32_t, Segment> segments;
-            ImagePointScan pointScan;
+            std::multimap<uint32_t, Segment> segments;
+            std::shared_ptr<const ImagePointScan<camID>> pointScan;
         };
 
     }  // vision
