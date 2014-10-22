@@ -77,13 +77,13 @@ namespace vision {
             measurement_elevation_variance = config["measurement_elevation_variance"].as<double>();
         });
 
-        on<Trigger<Raw<ClassifiedImage<ObjectClass>>>, With<Optional<FieldDescription>>, Options<Single>>("Ball Detector", [this](
-            const std::shared_ptr<const ClassifiedImage<ObjectClass>>& rawImage, const std::shared_ptr<const FieldDescription>& field) {
+        on<Trigger<Raw<ClassifiedImage<ObjectClass,0>>>, With<Optional<FieldDescription>>, Options<Single>>("Ball Detector", [this](
+            const std::shared_ptr<const ClassifiedImage<ObjectClass,0>>& rawImage, const std::shared_ptr<const FieldDescription>& field) {
             if (field == nullptr) {
                 NUClear::log(__FILE__, ", ", __LINE__, ": FieldDescription Update: support::configuration::SoccerConfig module might not be installed.");
                 throw std::runtime_error("FieldDescription Update: support::configuration::SoccerConfig module might not be installed");
             }
-            const auto& image = *rawImage;
+            const ClassifiedImage<ObjectClass,0>& image = *rawImage;
             // This holds our points that may be a part of the ball
             //std::vector<arma::ivec2> ballPoints;
             const auto& sensors = *image.sensors;
@@ -116,7 +116,7 @@ namespace vision {
                         && segment.next
                         && (!segment.next->next || segment.next->next->colour != ObjectClass::BALL)) {
 
-                        ballPoints.row(total) = arma::irowvec2({ (end[0]), (end[1]) });
+                        ballPoints.row(total) = arma::ivec({ (end[0]), (end[1]) }).t();
                         ++total;
                     }
 
@@ -125,7 +125,7 @@ namespace vision {
                         && segment.previous
                         && (!segment.previous->previous || segment.previous->previous->colour != ObjectClass::BALL)) {
 
-                        ballPoints.row(total) = arma::irowvec2({ (start[0]), (start[1]) });
+                        ballPoints.row(total) = arma::ivec({ (start[0]), (start[1]) }).t();
                         ++total;
                     }
                 }
@@ -147,12 +147,12 @@ namespace vision {
                                                                     , MAXIMUM_FITTED_MODELS
                                                                     , CONSENSUS_ERROR_THRESHOLD);
 
-            auto balls = std::make_unique<std::vector<Ball>>();
+            auto balls = std::make_unique<std::vector<Ball<0>>>();
             balls->reserve(ransacResults.size());
 
             for(auto& result : ransacResults) {
 
-                std::vector<VisionObject::Measurement> measurements;
+                std::vector<VisionObject<0>::Measurement> measurements;
                 measurements.reserve(2);
 
                 // Transform our centre into kinematics coordinates
@@ -169,17 +169,19 @@ namespace vision {
                 // Get a unit vector pointing to the centre of the ball
                 arma::vec3 ballCentreRay = result.model.centre;
                 
-                arma::vec3 worldBallCentreRay = image.camToGround * ballCentreRay.submat(0,0,2,2);
-                double cameraHeight = image.camToGround(2, 3);
+                arma::vec3 worldBallCentreRay = sensors.orientationCamToGround.submat(0,0,2,2) * ballCentreRay;
+                double cameraHeight = sensors.orientationCamToGround(2, 3);
                 
                 //these are the possible buoy sizes
                 std::vector<double> sizes;
-                sizes.push_back(0.58);
+                sizes.push_back(0.4318);
+                sizes.push_back(0.6858);
+                sizes.push_back(0.9398);
                 
                 //calculate distances as (tandist,widthdist) for all sizes
                 double groundDist = 1000.0;
                 double widthDist = 0.0;
-                for (uint i = 0; i < sizes.size; ++i) {
+                for (uint i = 0; i < sizes.size(); ++i) {
                     double distMultiplier = (cameraHeight- sizes[i]/2.0) / worldBallCentreRay[2];
                     
                     double gd = arma::norm( worldBallCentreRay.rows(0,1) * distMultiplier);
@@ -216,7 +218,7 @@ namespace vision {
                  *  IF VALID BUILD OUR BALL
                  */
                 if(widthDist > cameraHeight / 2.0 && std::abs((ballCentreGroundWidth[0] - ballCentreGroundProj[0]) / ballCentreGroundProj[0]) > MAXIMUM_DISAGREEMENT_RATIO) {
-                    Ball b;
+                    Ball<0> b;
 
                     // On screen visual shape
                     b.circle.radius = result.model.radius;
