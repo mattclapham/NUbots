@@ -10,8 +10,7 @@ ADD_ROLE(
 
         # Vision
         input::FlycapCamera
-        vision::LUT::VisualHorizonFinder
-        vision::LUT::CoarseObjectFinder
+	vision::LUTClassifier	
 
         # Debugging
         support::NUbugger

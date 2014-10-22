@@ -43,6 +43,11 @@ namespace modules {
 
         LUTClassifier::LUTClassifier(std::unique_ptr<NUClear::Environment> environment) : Reactor(std::move(environment)), quex(new QuexClassifier) {
 
+            // TODO emit real sensors sometime
+            auto fakeSensors = std::make_unique<Sensors>();
+            fakeSensors->orientationCamToGround.eye();
+            emit(std::move(fakeSensors));
+
             on<Trigger<Configuration<LUTLocation>>>([this](const Configuration<LUTLocation>& config) {
                 emit(std::make_unique<LookUpTable>(config.config.as<LookUpTable>()));
             });
@@ -55,19 +60,19 @@ namespace modules {
             on<Trigger<Configuration<LUTClassifier>>>([this] (const Configuration<LUTClassifier>& config) {
 
                 struct Hack {
-                    double focalLengthPixels = 1;
-                    double pixelsToTanThetaFactor[2] = { 1, 1 };
+                    double focalLengthPixels = 1.0/0.0025;
+                    double pixelsToTanThetaFactor[2] = { M_PI, M_PI };
                 } cam;
 
                 // Visual horizon detector
-                VISUAL_HORIZON_SPACING = cam.focalLengthPixels * tan(config["visual_horizon"]["spacing"].as<double>());
-                VISUAL_HORIZON_BUFFER = cam.focalLengthPixels * tan(config["visual_horizon"]["horizon_buffer"].as<double>());
-                VISUAL_HORIZON_SUBSAMPLING = std::max(1, int(cam.focalLengthPixels * tan(config["visual_horizon"]["subsampling"].as<double>())));
-                VISUAL_HORIZON_MINIMUM_SEGMENT_SIZE = cam.focalLengthPixels * tan(config["visual_horizon"]["minimum_segment_size"].as<double>());
+                VISUAL_HORIZON_SPACING = cam.focalLengthPixels * config["visual_horizon"]["spacing"].as<double>();
+                VISUAL_HORIZON_BUFFER = cam.focalLengthPixels * config["visual_horizon"]["horizon_buffer"].as<double>();
+                VISUAL_HORIZON_SUBSAMPLING = std::max(1, int(cam.focalLengthPixels * config["visual_horizon"]["subsampling"].as<double>()));
+                VISUAL_HORIZON_MINIMUM_SEGMENT_SIZE = cam.focalLengthPixels * config["visual_horizon"]["minimum_segment_size"].as<double>();
 
                 // Goal detector
-                GOAL_LINE_SPACING = cam.focalLengthPixels * tan(config["goals"]["spacing"].as<double>());
-                GOAL_SUBSAMPLING = std::max(1, int(cam.focalLengthPixels * tan(config["goals"]["subsampling"].as<double>())));
+                GOAL_LINE_SPACING = cam.focalLengthPixels * config["goals"]["spacing"].as<double>();
+                GOAL_SUBSAMPLING = std::max(1, int(cam.focalLengthPixels * config["goals"]["subsampling"].as<double>()));
                 GOAL_EXTENSION_SCALE = config["goals"]["extension_scale"].as<double>() / 2;
                 GOAL_LINE_DENSITY = config["goals"]["line_density"].as<int>();
 
@@ -75,7 +80,7 @@ namespace modules {
                 BALL_MINIMUM_INTERSECTIONS_COARSE = config["ball"]["intersections_coarse"].as<double>();
                 BALL_MINIMUM_INTERSECTIONS_FINE = config["ball"]["intersections_fine"].as<double>();
                 BALL_SEARCH_CIRCLE_SCALE = config["ball"]["search_circle_scale"].as<double>();
-                BALL_MAXIMUM_VERTICAL_CLUSTER_SPACING = std::max(1, int(cam.focalLengthPixels * tan(config["ball"]["maximum_vertical_cluster_spacing"].as<double>())));
+                BALL_MAXIMUM_VERTICAL_CLUSTER_SPACING = std::max(1, int(cam.focalLengthPixels * config["ball"]["maximum_vertical_cluster_spacing"].as<double>()));
                 BALL_HORIZONTAL_SUBSAMPLE_FACTOR = config["ball"]["horizontal_subsample_factor"].as<double>();
 
                 // Camera settings
@@ -107,133 +112,16 @@ namespace modules {
                 findVisualHorizon(image, lut, *classifiedImage);
 
                 // Find our goals
-                findGoals(image, lut, *classifiedImage);
+                // findGoals(image, lut, *classifiedImage);
 
                 // Enhance our goals
-                enhanceGoals(image, lut, *classifiedImage);
+                // enhanceGoals(image, lut, *classifiedImage);
 
                 // Find our ball (also helps with the bottom of goals)
                 findBall(image, lut, *classifiedImage);
 
                 // Enhance our ball
-                enhanceBall(image, lut, *classifiedImage);
-
-                // Emit our classified image
-                emit(std::move(classifiedImage));
-            });
-
-            on<Trigger<Raw<Image<1>>>, With<LookUpTable>, With<Raw<Sensors>>, Options<Single>>("Classify Image", [this](
-                const std::shared_ptr<const Image<1>>& rawImage, const LookUpTable& lut, const std::shared_ptr<const Sensors>& sensors) {
-
-                const auto& image = *rawImage;
-
-                // Our classified image
-                auto classifiedImage = std::make_unique<ClassifiedImage<ObjectClass, 1>>();
-
-                // Set our width and height
-                classifiedImage->dimensions = { image.width(), image.height() };
-
-                // Attach our sensors
-                classifiedImage->sensors = sensors;
-
-                // Attach the image
-                classifiedImage->image = rawImage;
-
-                // Find our horizon
-                findHorizon(image, lut, *classifiedImage);
-
-                // Find our visual horizon
-                findVisualHorizon(image, lut, *classifiedImage);
-
-                // Find our goals
-                findGoals(image, lut, *classifiedImage);
-
-                // Enhance our goals
-                enhanceGoals(image, lut, *classifiedImage);
-
-                // Find our ball (also helps with the bottom of goals)
-                findBall(image, lut, *classifiedImage);
-
-                // Enhance our ball
-                enhanceBall(image, lut, *classifiedImage);
-
-                // Emit our classified image
-                emit(std::move(classifiedImage));
-            });
-
-            on<Trigger<Raw<Image<2>>>, With<LookUpTable>, With<Raw<Sensors>>, Options<Single>>("Classify Image", [this](
-                const std::shared_ptr<const Image<2>>& rawImage, const LookUpTable& lut, const std::shared_ptr<const Sensors>& sensors) {
-
-                const auto& image = *rawImage;
-
-                // Our classified image
-                auto classifiedImage = std::make_unique<ClassifiedImage<ObjectClass, 2>>();
-
-                // Set our width and height
-                classifiedImage->dimensions = { image.width(), image.height() };
-
-                // Attach our sensors
-                classifiedImage->sensors = sensors;
-
-                // Attach the image
-                classifiedImage->image = rawImage;
-
-                // Find our horizon
-                findHorizon(image, lut, *classifiedImage);
-
-                // Find our visual horizon
-                findVisualHorizon(image, lut, *classifiedImage);
-
-                // Find our goals
-                findGoals(image, lut, *classifiedImage);
-
-                // Enhance our goals
-                enhanceGoals(image, lut, *classifiedImage);
-
-                // Find our ball (also helps with the bottom of goals)
-                findBall(image, lut, *classifiedImage);
-
-                // Enhance our ball
-                enhanceBall(image, lut, *classifiedImage);
-
-                // Emit our classified image
-                emit(std::move(classifiedImage));
-            });
-
-            on<Trigger<Raw<Image<3>>>, With<LookUpTable>, With<Raw<Sensors>>, Options<Single>>("Classify Image", [this](
-                const std::shared_ptr<const Image<3>>& rawImage, const LookUpTable& lut, const std::shared_ptr<const Sensors>& sensors) {
-
-                const auto& image = *rawImage;
-
-                // Our classified image
-                auto classifiedImage = std::make_unique<ClassifiedImage<ObjectClass, 3>>();
-
-                // Set our width and height
-                classifiedImage->dimensions = { image.width(), image.height() };
-
-                // Attach our sensors
-                classifiedImage->sensors = sensors;
-
-                // Attach the image
-                classifiedImage->image = rawImage;
-
-                // Find our horizon
-                findHorizon(image, lut, *classifiedImage);
-
-                // Find our visual horizon
-                findVisualHorizon(image, lut, *classifiedImage);
-
-                // Find our goals
-                findGoals(image, lut, *classifiedImage);
-
-                // Enhance our goals
-                enhanceGoals(image, lut, *classifiedImage);
-
-                // Find our ball (also helps with the bottom of goals)
-                findBall(image, lut, *classifiedImage);
-
-                // Enhance our ball
-                enhanceBall(image, lut, *classifiedImage);
+                //enhanceBall(image, lut, *classifiedImage);
 
                 // Emit our classified image
                 emit(std::move(classifiedImage));

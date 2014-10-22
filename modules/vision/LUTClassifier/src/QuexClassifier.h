@@ -36,13 +36,9 @@ namespace modules {
         class QuexClassifier {
         private:
             static constexpr size_t BUFFER_SIZE = 2000;
-            uint8_t buffer[BUFFER_SIZE]; // This should be big enough for now
-            quex::Lexer lexer;
-            size_t& tknNumber;
+
 
         public:
-            QuexClassifier();
-
             template <int camID>
             std::vector<typename messages::vision::ClassifiedImage<messages::vision::ObjectClass, camID>::Segment> classify(const messages::input::Image<camID>& image, const messages::vision::LookUpTable& lut, const arma::ivec2& start, const arma::ivec2& end, const uint& stratification = 1);
         };

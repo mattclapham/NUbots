@@ -387,6 +387,7 @@ namespace support {
             message.set_utc_timestamp(getUtcTimestamp());
 
             auto* imageData = message.mutable_classified_image();
+            imageData->set_camera_id(0);
 
             imageData->mutable_dimensions()->set_x(image.dimensions[0]);
             imageData->mutable_dimensions()->set_y(image.dimensions[1]);
