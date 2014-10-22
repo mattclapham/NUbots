@@ -29,7 +29,7 @@ import "messages/localisation/proto/Localisation.proto";
 
 // Vision
 import "messages/input/proto/Image.proto";
-import "messages/vision/proto/VisualHorizon.proto";
+import "messages/vision/proto/ClassifiedImage.proto";
 import "messages/vision/proto/PointScan.proto";
 import "messages/vision/proto/VisionObject.proto";
 import "messages/vision/proto/LookUpTable.proto";
@@ -45,7 +45,7 @@ message Message {
         PING = 1;
         SENSOR_DATA = 2;
         IMAGE = 3;
-        VISUAL_HORIZON = 4;
+        CLASSIFIED_IMAGE = 4;
         VISION_OBJECT = 5;
         LOCALISATION = 6;
         DATA_POINT = 7;
@@ -65,7 +65,7 @@ message Message {
 
     optional messages.input.proto.Sensors sensor_data = 5;
     optional messages.input.proto.Image image = 6;
-    optional messages.vision.proto.VisualHorizon visual_horizon = 7;
+    optional messages.vision.proto.ClassifiedImage classified_image = 7;
     optional messages.vision.proto.VisionObject vision_object = 8;
     optional messages.localisation.proto.Localisation localisation = 9;
     optional messages.support.nubugger.proto.DataPoint data_point = 10;
