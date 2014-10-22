@@ -75,15 +75,15 @@ namespace messages {
                 bool oX = x % 2;
                 bool oY = y % 2;
 
-                if(oX != oY) {
-                    output[ oY * 3] = uint8_t((get(x - 1, y) + get(x + 1, y))                                                             / 2); // Left right
-                    output[2]       = uint8_t((get(x, y) + get(x - 1, y - 1) + get(x + 1, y - 1) + get(x + 1, y + 1) + get(x - 1, y + 1)) / 5); // Diag + mid
-                    output[!oY * 3] = uint8_t((get(x, y - 1) + get(x, y + 1))                                                             / 2); // Top base
+                if(oX == oY) {
+                    output[!oY * 2] = uint8_t((get(x - 1, y) + get(x + 1, y))                                                             / 2); // Left right
+                    output[1]       = uint8_t((get(x, y) + get(x - 1, y - 1) + get(x + 1, y - 1) + get(x + 1, y + 1) + get(x - 1, y + 1)) / 5); // Diag + mid
+                    output[ oY * 2] = uint8_t((get(x, y - 1) + get(x, y + 1))                                                             / 2); // Top base
                 }
                 else {
-                    output[ oY * 3] = uint8_t(get(x, y)); // Centre
-                    output[2]       = uint8_t((get(x, y - 1) + get(x, y + 1) + get(x - 1, y) + get(x + 1, y))                             / 4); // Top/Bottom/Left/Right
-                    output[!oY * 3] = uint8_t((get(x - 1, y - 1) + get(x + 1, y - 1) + get(x + 1, y + 1) + get(x - 1, y + 1))             / 4); // diags
+                    output[!oY * 2] = uint8_t(get(x, y));                                                                                       // Centre
+                    output[1]       = uint8_t((get(x, y - 1) + get(x, y + 1) + get(x - 1, y) + get(x + 1, y))                             / 4); // Top/Bottom/Left/Right
+                    output[ oY * 2] = uint8_t((get(x - 1, y - 1) + get(x + 1, y - 1) + get(x + 1, y + 1) + get(x - 1, y + 1))             / 4); // diags
                 }
 
                 return output;
