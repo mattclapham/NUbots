@@ -13,5 +13,6 @@ ADD_ROLE(
         vision::LUT::VisualHorizonFinder;
         vision::LUT::CoarseObjectFinder;
         vision::LUT::FineObjectFinder;
+        vision::BuoyDetector
 )
 

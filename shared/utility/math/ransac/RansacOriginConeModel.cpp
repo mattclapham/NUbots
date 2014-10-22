@@ -41,7 +41,7 @@ namespace ransac {
             centre = arma::normalise(arma::solve(matrix, arma::vec3({1, 1, 1})));
 
             // Solve for our radius
-            radius = std::acos(arma::dot(points[0], centre));
+            radius = arma::dot(points[0], centre);
 
             return true;
         }
@@ -53,7 +53,7 @@ namespace ransac {
 
     double RansacOriginConeModel::calculateError(const DataPoint& p) const {
 
-        double error = radius - std::acos(arma::dot(centre, p));
+        double error = radius - arma::dot(centre, p);
         return error * error;
     }
 
