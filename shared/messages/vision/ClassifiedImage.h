@@ -47,7 +47,7 @@ namespace messages {
          *
          * @tparam TClass the object that dividess different classes in the image.
          */
-        template <typename TClass>
+        template <typename TClass, int camID>
         struct ClassifiedImage {
 
             struct Segment {
@@ -69,7 +69,7 @@ namespace messages {
             std::shared_ptr<const messages::input::Sensors> sensors;
 
             // The image that was used to create this classified image
-            std::shared_ptr<const messages::input::Image> image;
+            std::shared_ptr<const messages::input::Image<camID>> image;
 
             // Our images dimensions
             arma::uvec2 dimensions;
