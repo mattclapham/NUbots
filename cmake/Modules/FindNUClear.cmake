@@ -21,6 +21,7 @@ else (NUCLEAR_LIBRARIES AND NUCLEAR_INCLUDE_DIRS)
   find_path(NUCLEAR_INCLUDE_DIR
     NAMES
       nuclear
+      eigen3
     PATHS
       /usr/include
       /usr/local/include
