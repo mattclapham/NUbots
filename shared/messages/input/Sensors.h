@@ -81,6 +81,10 @@ namespace messages {
             arma::mat44 kinematicsBodyToGround;
             arma::mat44 kinematicsCamToGround;
 
+            arma::fvec vehicleStateMean;
+            arma::fmat vehicleStateCovariance;
+            uint64_t vehicleStateTImestamp;
+
             std::vector<Servo> servos;
         };
     }
