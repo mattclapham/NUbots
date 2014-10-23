@@ -151,7 +151,7 @@ namespace vision {
                 // Get a unit vector pointing to the centre of the ball
                 arma::vec3 ballCentreRay = result.model.centre;
                 arma::vec3 worldBallCentreRay = sensors.orientationCamToGround.submat(0,0,2,2) * ballCentreRay;
-                double cameraHeight = sensors.orientationCamToGround(2, 3);
+                double cameraHeight = 1.2; //sensors.orientationCamToGround(2, 3);
                 
                 //these are the possible buoy sizes
                 std::vector<double> sizes;
@@ -216,7 +216,7 @@ namespace vision {
                     balls->push_back(std::move(b));
                 }
             }
-            
+            /*
             for(auto a = balls->begin(); a != balls->end(); ++a) {
                 for(auto b = a + 1; b != balls->end();) {
 
@@ -239,7 +239,7 @@ namespace vision {
                         ++b;
                     }
                 }
-            }
+            }*/
             emit(std::move(balls));
         });
     }

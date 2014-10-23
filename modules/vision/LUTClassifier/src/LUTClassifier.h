@@ -58,7 +58,7 @@ namespace modules {
 
             double BALL_MINIMUM_INTERSECTIONS_COARSE = 1;
             double BALL_MINIMUM_INTERSECTIONS_FINE = 1;
-            double BALL_SEARCH_CIRCLE_SCALE = 2;
+            double BALL_SEARCH_CIRCLE_SCALE = 0.5;
             double BALL_MAXIMUM_VERTICAL_CLUSTER_SPACING = 1;
             double BALL_HORIZONTAL_SUBSAMPLE_FACTOR = 1;
             double BALL_RADIUS = 0.05;
