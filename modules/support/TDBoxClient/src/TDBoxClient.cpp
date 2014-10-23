@@ -38,11 +38,13 @@ extern "C" {
 }
 
 #include "messages/support/Configuration.h"
+#include "messages/input/GPS.h"
 
 namespace modules {
 namespace support {
 
     using messages::support::Configuration;
+    using messages::input::GPS;
 
     void TDBoxClient::reconnect() {
         // Open a file descriptor to the target address
@@ -136,15 +138,21 @@ namespace support {
             reconnect();
         });
 
-        on<Trigger<Every<1, std::chrono::seconds>>>([this](const time_t&) {
+        on<Trigger<Every<1, std::chrono::seconds>>, With<GPS>>([this](const time_t&, const GPS& gps) {
+
+            // Get our GPS strings
+            std::string la = std::to_string(std::fabs(gps.lattitude));
+            std::string ns = gps.lattitude > 0 ? "N" : "S";
+            std::string lo = std::to_string(std::fabs(gps.longitude));
+            std::string ew = gps.longitude > 0 ? "E" : "W";
 
             sendNMEA({
                 "RXHRT",       // Header
                 nmeaUTCTime(), // Time
-                "",            // Latitude
-                "",            // Latitude Direction
-                "",            // Longitude
-                "",            // Longitude Direction
+                la,            // Latitude
+                ns,            // Latitude Direction
+                lo,            // Longitude
+                ew,            // Longitude Direction
                 "NCSTL",       // Team ID
                 "1",           // Vehicle Mode (1 = rc, 2 = autonomous)
                 "BEER" // Current task

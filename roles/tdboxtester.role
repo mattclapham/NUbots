@@ -7,6 +7,6 @@ ADD_ROLE(
         support::configuration::ConfigSystem
         support::configuration::GlobalConfig
 
-        # Vision
+        robotx::Communicator
         support::TDBoxClient;
 )

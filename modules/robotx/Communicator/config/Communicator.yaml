@@ -1,5 +1,4 @@
-{
-    "listenPort" : "64000",
-    "stmIPAddress" : "192.168.1.20"
-    "stmPort" : "65000"
-}
+listenPort: 64000
+stmIPAddress: 192.168.1.20
+stmPort: "65000"
+
