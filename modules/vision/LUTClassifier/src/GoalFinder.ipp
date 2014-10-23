@@ -33,7 +33,8 @@ namespace modules {
 
         using utility::math::geometry::Line;
 
-        void LUTClassifier::findGoals(const Image& image, const LookUpTable& lut, ClassifiedImage<ObjectClass>& classifiedImage) {
+        template <int camID>
+        void LUTClassifier::findGoals(const Image<camID>& image, const LookUpTable& lut, ClassifiedImage<ObjectClass, camID>& classifiedImage) {
 
             /*
                Here we cast classification lines to attempt to locate the general area of the goals.
@@ -42,13 +43,10 @@ namespace modules {
              */
 
             // Cast lines upward to find the goals
-            for(double y = -image.cam.fov[1] / 2; y < image.cam.fov[1] / 2; y += GOAL_LINE_SPACING) {
+            for(int y = 0; y < int(image.height() - 1); y += GOAL_LINE_SPACING) {
 
-                // Get the y value in pixel space
-                int p = image.cam.pixel({ 0, y })[1];
-
-                arma::ivec2 start = { 0, p };
-                arma::ivec2 end = { int(image.width() - 1), p };
+                arma::ivec2 start = { 0, y };
+                arma::ivec2 end = { int(image.width() - 1), y };
 
                 // Insert our segments
                 auto segments = quex->classify(image, lut, start, end, GOAL_SUBSAMPLING);

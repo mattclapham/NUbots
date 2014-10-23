@@ -208,8 +208,33 @@ namespace modules {
                         }
                         
                         
-                        //create a convex hull
-                        candidatePos = convexHull(arma::sort(candidatePos));
+                        
+                        //XXX: don't do convex hull if we have < 3 pts.
+                        if (candidatePos.n_rows == 1) {
+                            candidatePos << candidatePos(0,0) + pointSizes[c][i]/2 << candidatePos(0,0) << arma::endr
+                                         << candidatePos(0,0) << candidatePos(0,0) + pointSizes[c][i]/2 << arma::endr
+                                         << candidatePos(0,0) - pointSizes[c][i]/2 << candidatePos(0,0) << arma::endr
+                                         << candidatePos(0,0) << candidatePos(0,0) - pointSizes[c][i]/2;
+                        } else if (candidatePos.n_rows == 2) {
+                            
+                            arma::rowvec offset = arma::norm( candidatePos.row(0) - candidatePos.row(1) ) * pointSizes[c][i]/2;
+                            
+                            arma::mat newPos(6,2);
+                            
+                            newPos.row(0) = candidatePos.row(0) + offset;
+                            newPos.row(1) = candidatePos.row(0) + arma::rowvec2({-offset[1],offset[0]});
+                            newPos.row(2) = candidatePos.row(1) + arma::rowvec2({-offset[1],offset[0]});
+                            newPos.row(3) = candidatePos.row(1) - offset;
+                            newPos.row(4) = candidatePos.row(1) - arma::rowvec2({-offset[1],offset[0]});
+                            newPos.row(5) = candidatePos.row(0) - arma::rowvec2({-offset[1],offset[0]});
+                            
+                            candidatePos = newPos;
+                            
+                        } else {
+                            
+                            //create a convex hull
+                            candidatePos = convexHull(arma::sort(candidatePos));
+                        }
                         
                         //expand the hull
                         arma::mat finalPts(candidatePos.n_rows,candidatePos.n_cols);

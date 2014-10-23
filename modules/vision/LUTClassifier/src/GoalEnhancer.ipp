@@ -28,7 +28,8 @@ namespace modules {
         using messages::vision::ObjectClass;
         using messages::vision::ClassifiedImage;
 
-        void LUTClassifier::enhanceGoals(const Image& image, const LookUpTable& lut, ClassifiedImage<ObjectClass>& classifiedImage) {
+        template <int camID>
+        void LUTClassifier::enhanceGoals(const Image<camID>& image, const LookUpTable& lut, ClassifiedImage<ObjectClass, camID>& classifiedImage) {
 
             /*
                 Here we improve the classification of goals.
@@ -37,7 +38,7 @@ namespace modules {
                 We first generate segments above and below that are 2x the width of the segment
              */
 
-            std::vector<ClassifiedImage<ObjectClass>::Segment> newSegments;
+            std::vector<typename ClassifiedImage<ObjectClass, camID>::Segment> newSegments;
             auto goalSegments = classifiedImage.horizontalSegments.equal_range(ObjectClass::GOAL);
 
             // Draw 2n + 1 lines each n/(2n - 1) apart

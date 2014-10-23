@@ -9,9 +9,7 @@ ADD_ROLE(
 
         support::NBZPlayer
 
-        vision::LUT::LUTLoader;
-        vision::LUT::VisualHorizonFinder;
-        vision::LUT::CoarseObjectFinder;
-        vision::LUT::FineObjectFinder;
+        vision::LUTClassifier
+        vision::BuoyDetector
 )
 

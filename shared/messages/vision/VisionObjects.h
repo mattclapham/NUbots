@@ -30,7 +30,8 @@
 
 namespace messages {
     namespace vision {
-
+        
+        template <int camID>
         struct VisionObject {
 
             /**
@@ -58,14 +59,16 @@ namespace messages {
             std::shared_ptr<const messages::input::Sensors> sensors;
 
             // The classified image that was used to detect this object
-            std::shared_ptr<const messages::vision::ClassifiedImage<messages::vision::ObjectClass>> classifiedImage;
+            std::shared_ptr<const messages::vision::ClassifiedImage<messages::vision::ObjectClass,camID>> classifiedImage;
         };
-
-        struct Ball : public VisionObject {
+        
+        template <int camID>
+        struct Ball : public VisionObject<camID> {
             utility::math::geometry::Circle circle;
         };
-
-        struct Goal : public VisionObject {
+        
+        template <int camID>
+        struct Goal : public VisionObject<camID> {
             enum class Side {
                 UNKNOWN,
                 LEFT,
@@ -74,8 +77,9 @@ namespace messages {
 
             utility::math::geometry::Quad quad;
         };
-
-        struct Obstacle : public VisionObject {
+        
+        template <int camID>
+        struct Obstacle : public VisionObject<camID> {
 
             enum class Team {
                 NONE,

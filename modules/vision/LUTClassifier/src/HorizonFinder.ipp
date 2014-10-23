@@ -29,7 +29,8 @@ namespace modules {
         using messages::vision::ObjectClass;
         using messages::vision::ClassifiedImage;
 
-        void LUTClassifier::findHorizon(const Image& image, const LookUpTable&, ClassifiedImage<ObjectClass>& classifiedImage) {
+        template <int camID>
+        void LUTClassifier::findHorizon(const Image<camID>& image, const LookUpTable&, ClassifiedImage<ObjectClass, camID>& classifiedImage) {
 
                 auto& sensors = *classifiedImage.sensors;
 

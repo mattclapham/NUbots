@@ -40,7 +40,8 @@ namespace modules {
         using utility::math::vision::screenToImage;
         using utility::math::vision::imageToScreen;
 
-        void LUTClassifier::findBall(const Image& image, const LookUpTable& lut, ClassifiedImage<ObjectClass>& classifiedImage) {
+        template <int camID>
+        void LUTClassifier::findBall(const Image<camID>& image, const LookUpTable& lut, ClassifiedImage<ObjectClass, camID>& classifiedImage) {
 
             /*
                 Here we cast lines to find balls.
@@ -64,7 +65,7 @@ namespace modules {
             auto xb = getGroundPointFromScreen({ 0, -double(image.height() - 1) / 2}, sensors.orientationCamToGround, FOCAL_LENGTH_PIXELS);
             auto xt = getGroundPointFromScreen(topY, sensors.orientationCamToGround, FOCAL_LENGTH_PIXELS);
             double dx = 2 * BALL_RADIUS / BALL_MINIMUM_INTERSECTIONS_COARSE;
-            double cameraHeight = sensors.orientationCamToGround(2,3) + 0.6;
+            double cameraHeight = sensors.orientationCamToGround(2,3);
 
             // This describes the direction of travel
             arma::vec3 direction = arma::normalise(xb);

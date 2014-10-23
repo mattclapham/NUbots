@@ -1,4 +1,4 @@
-BuoyDetector
+BallDetector
 ============
 
 ## Description

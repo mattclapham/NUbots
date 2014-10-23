@@ -26,8 +26,21 @@ namespace modules {
 namespace vision {
 
     class BuoyDetector : public NUClear::Reactor {
+    private:
+        uint MINIMUM_POINTS_FOR_CONSENSUS;
+        uint MAXIMUM_ITERATIONS_PER_FITTING;
+        uint MAXIMUM_FITTED_MODELS;
+        double CONSENSUS_ERROR_THRESHOLD;
+        double MAXIMUM_DISAGREEMENT_RATIO;
+        double measurement_distance_variance_factor;
+        double measurement_bearing_variance;
+        double measurement_elevation_variance;
+
     public:
-        /// @brief Called by the powerplant to build and setup the BuoyDetector reactor.
+
+        static constexpr const char* CONFIGURATION_PATH = "BuoyDetector.yaml";
+
+        /// @brief Called by the powerplant to build and setup the BallDetector reactor.
         explicit BuoyDetector(std::unique_ptr<NUClear::Environment> environment);
     };
 

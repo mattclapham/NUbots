@@ -41,29 +41,12 @@ namespace modules {
         using messages::support::Configuration;
         using messages::support::SaveConfiguration;
 
-        void LUTClassifier::insertSegments(ClassifiedImage<ObjectClass>& image, std::vector<ClassifiedImage<ObjectClass>::Segment>& segments, bool vertical) {
-            ClassifiedImage<ObjectClass>::Segment* previous = nullptr;
-            ClassifiedImage<ObjectClass>::Segment* current = nullptr;
-
-            auto& target = vertical ? image.verticalSegments : image.horizontalSegments;
-
-            for (auto& s : segments) {
-
-                // Move in the data
-                current = &(target.insert(std::make_pair(s.colour, std::move(s)))->second);
-
-                // Link up the results
-                current->previous = previous;
-                if(previous) {
-                    previous->next = current;
-                }
-
-                // Get ready for our next one
-                previous = current;
-            }
-        }
-
         LUTClassifier::LUTClassifier(std::unique_ptr<NUClear::Environment> environment) : Reactor(std::move(environment)), quex(new QuexClassifier) {
+
+            // TODO emit real sensors sometime
+            auto fakeSensors = std::make_unique<Sensors>();
+            fakeSensors->orientationCamToGround.eye();
+            emit(std::move(fakeSensors));
 
             on<Trigger<Configuration<LUTLocation>>>([this](const Configuration<LUTLocation>& config) {
                 emit(std::make_unique<LookUpTable>(config.config.as<LookUpTable>()));
@@ -76,15 +59,20 @@ namespace modules {
             // Trigger the same function when either update
             on<Trigger<Configuration<LUTClassifier>>>([this] (const Configuration<LUTClassifier>& config) {
 
+                struct Hack {
+                    double focalLengthPixels = 1.0/0.0025;
+                    double pixelsToTanThetaFactor[2] = { M_PI, M_PI };
+                } cam;
+
                 // Visual horizon detector
-                VISUAL_HORIZON_SPACING = config["visual_horizon"]["spacing"].as<double>();
-                VISUAL_HORIZON_BUFFER = config["visual_horizon"]["horizon_buffer"].as<double>();
-                VISUAL_HORIZON_SUBSAMPLING = config["visual_horizon"]["subsampling"].as<double>();
-                VISUAL_HORIZON_MINIMUM_SEGMENT_SIZE = config["visual_horizon"]["minimum_segment_size"].as<double>();
+                VISUAL_HORIZON_SPACING = cam.focalLengthPixels * config["visual_horizon"]["spacing"].as<double>();
+                VISUAL_HORIZON_BUFFER = cam.focalLengthPixels * config["visual_horizon"]["horizon_buffer"].as<double>();
+                VISUAL_HORIZON_SUBSAMPLING = std::max(1, int(cam.focalLengthPixels * config["visual_horizon"]["subsampling"].as<double>()));
+                VISUAL_HORIZON_MINIMUM_SEGMENT_SIZE = cam.focalLengthPixels * config["visual_horizon"]["minimum_segment_size"].as<double>();
 
                 // Goal detector
-                GOAL_LINE_SPACING = config["goals"]["spacing"].as<double>();
-                GOAL_SUBSAMPLING = config["goals"]["subsampling"].as<double>();
+                GOAL_LINE_SPACING = cam.focalLengthPixels * config["goals"]["spacing"].as<double>();
+                GOAL_SUBSAMPLING = std::max(1, int(cam.focalLengthPixels * config["goals"]["subsampling"].as<double>()));
                 GOAL_EXTENSION_SCALE = config["goals"]["extension_scale"].as<double>() / 2;
                 GOAL_LINE_DENSITY = config["goals"]["line_density"].as<int>();
 
@@ -92,17 +80,21 @@ namespace modules {
                 BALL_MINIMUM_INTERSECTIONS_COARSE = config["ball"]["intersections_coarse"].as<double>();
                 BALL_MINIMUM_INTERSECTIONS_FINE = config["ball"]["intersections_fine"].as<double>();
                 BALL_SEARCH_CIRCLE_SCALE = config["ball"]["search_circle_scale"].as<double>();
-                BALL_MAXIMUM_VERTICAL_CLUSTER_SPACING = config["ball"]["maximum_vertical_cluster_spacing"].as<double>();
+                BALL_MAXIMUM_VERTICAL_CLUSTER_SPACING = std::max(1, int(cam.focalLengthPixels * config["ball"]["maximum_vertical_cluster_spacing"].as<double>()));
                 BALL_HORIZONTAL_SUBSAMPLE_FACTOR = config["ball"]["horizontal_subsample_factor"].as<double>();
+
+                // Camera settings
+                ALPHA = cam.pixelsToTanThetaFactor[1];
+                FOCAL_LENGTH_PIXELS = cam.focalLengthPixels;
             });
 
-            on<Trigger<Raw<Image>>, With<LookUpTable>, With<Raw<Sensors>>, Options<Single>>("Classify Image", [this](
-                const std::shared_ptr<const Image>& rawImage, const LookUpTable& lut, const std::shared_ptr<const Sensors>& sensors) {
+            on<Trigger<Raw<Image<0>>>, With<LookUpTable>, With<Raw<Sensors>>, Options<Single>>("Classify Image", [this](
+                const std::shared_ptr<const Image<0>>& rawImage, const LookUpTable& lut, const std::shared_ptr<const Sensors>& sensors) {
 
                 const auto& image = *rawImage;
 
                 // Our classified image
-                auto classifiedImage = std::make_unique<ClassifiedImage<ObjectClass>>();
+                auto classifiedImage = std::make_unique<ClassifiedImage<ObjectClass, 0>>();
 
                 // Set our width and height
                 classifiedImage->dimensions = { image.width(), image.height() };
@@ -120,16 +112,16 @@ namespace modules {
                 findVisualHorizon(image, lut, *classifiedImage);
 
                 // Find our goals
-                findGoals(image, lut, *classifiedImage);
+                // findGoals(image, lut, *classifiedImage);
 
                 // Enhance our goals
-                enhanceGoals(image, lut, *classifiedImage);
+                // enhanceGoals(image, lut, *classifiedImage);
 
                 // Find our ball (also helps with the bottom of goals)
                 findBall(image, lut, *classifiedImage);
 
                 // Enhance our ball
-                enhanceBall(image, lut, *classifiedImage);
+                //enhanceBall(image, lut, *classifiedImage);
 
                 // Emit our classified image
                 emit(std::move(classifiedImage));
@@ -138,9 +130,16 @@ namespace modules {
         }
 
         LUTClassifier::~LUTClassifier() {
-            // TODO work out how to fix pimpl and fix it dammit!!
+            // TODO work out how to fix pimpl and fix it damnit!!
             delete quex;
         }
 
     }  // vision
 }  // modules
+
+#include "HorizonFinder.ipp"
+#include "VisualHorizonFinder.ipp"
+#include "GoalFinder.ipp"
+#include "GoalEnhancer.ipp"
+#include "BallFinder.ipp"
+#include "BallEnhancer.ipp"
