@@ -30,7 +30,7 @@ namespace geometry {
     public:
         double radius;
         double radiusSq;
-        arma::vec2 centre;
+        arma::vec centre;
 
         Circle();
 

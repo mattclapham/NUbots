@@ -121,7 +121,7 @@ namespace modules {
                 findBall(image, lut, *classifiedImage);
 
                 // Enhance our ball
-                //enhanceBall(image, lut, *classifiedImage);
+                enhanceBall(image, lut, *classifiedImage);
 
                 // Emit our classified image
                 emit(std::move(classifiedImage));

@@ -21,7 +21,8 @@
 #include "QuexClassifier.h"
 
 #include "utility/math/geometry/Line.h"
-
+#include "utility/vision/geometry/sphere.h"
+#include "utility/vision/geometry/screen.h"
 #include "utility/math/vision.h"
 
 namespace modules {
@@ -39,6 +40,8 @@ namespace modules {
         using utility::math::vision::projectWorldPointToScreen;
         using utility::math::vision::screenToImage;
         using utility::math::vision::imageToScreen;
+        using utility::vision::geometry::sphere::arcSizeFromBaseRay;
+        using utility::vision::geometry::bulkPixel2Ray;
 
         template <int camID>
         void LUTClassifier::findBall(const Image<camID>& image, const LookUpTable& lut, ClassifiedImage<ObjectClass, camID>& classifiedImage) {
@@ -52,121 +55,36 @@ namespace modules {
                 These lines are cast from slightly above the visual horizon to a point where it is needed
                 (for the logrithmic grid)
              */
-
-            auto& visualHorizon = classifiedImage.visualHorizon;
-            auto& minHorizon = classifiedImage.minVisualHorizon;
-            auto& sensors = *classifiedImage.sensors;
-
-            arma::vec2 topY = imageToScreen(arma::ivec2({ classifiedImage.minVisualHorizon->at(0), int(classifiedImage.minVisualHorizon->at(1)) })
-                                          , classifiedImage.dimensions);
-            topY[0] = 0;    //Choose centre of screen
-
-            // Get the positions of the top of our green horizion, and the bottom of the screen
-            auto xb = getGroundPointFromScreen({ 0, -double(image.height() - 1) / 2}, sensors.orientationCamToGround, FOCAL_LENGTH_PIXELS);
-            auto xt = getGroundPointFromScreen(topY, sensors.orientationCamToGround, FOCAL_LENGTH_PIXELS);
-            double dx = 2 * BALL_RADIUS / BALL_MINIMUM_INTERSECTIONS_COARSE;
-            double cameraHeight = sensors.orientationCamToGround(2,3);
-
-            // This describes the direction of travel
-            arma::vec3 direction = arma::normalise(xb);
-
-            // Don't bother drawing lines if we know it's going to fail
-            if(direction[0] < 0) {
-                return;
-            }
-
-            // Our start and end points
-            double xStart = arma::norm(xb);
-            xStart += dx - fmod(xStart, dx);
-            double xEnd = arma::norm(xt);
-
-            auto movement = arma::normalise(xb) * dx;
-
-            auto hLeft = visualHorizon.begin();
-            auto hRight = visualHorizon.end() - 1;
-
-
-            // Do our inital calculation to get our first Y
-            arma::vec4 worldPosition = arma::ones(4);
-            worldPosition.rows(0, 2) = xStart * direction;
-            auto camPoint = projectWorldPointToScreen(worldPosition, sensors.orientationCamToGround, FOCAL_LENGTH_PIXELS);
-            int y = screenToImage(camPoint, classifiedImage.dimensions)[1];
-
-            for(double x = xStart; x < xEnd && y >= 0; x += std::max(dx, (dx * x) / (cameraHeight - dx))) {
-
-                // Calculate our next Y
-                worldPosition.rows(0, 2) = (x + std::max(dx, (dx * x) / (cameraHeight - dx))) * direction;
-                camPoint = projectWorldPointToScreen(worldPosition, sensors.orientationCamToGround, FOCAL_LENGTH_PIXELS);
-                int nextY = screenToImage(camPoint, classifiedImage.dimensions)[1];
-
-                // Work out our details
-                arma::ivec2 start = { 0, y };
-                arma::ivec2 end = { int(image.width() - 1), y };
-                int subsample = std::max(1, int(lround((y - nextY) * BALL_HORIZONTAL_SUBSAMPLE_FACTOR)));
-
-                // If our left hand side is in range, or we are over the top
-                if(hLeft->at(1) >= y) {
-
-                    while(hLeft < minHorizon) {
-
-                        auto p1 = hLeft;
-                        auto p2 = hLeft + 1;
-
-                        if(y <= p1->at(1) && y >= p2->at(1)) {
-
-                            // Make a line from the two points and find our x
-                            Line l({ double(p1->at(0)), double(p1->at(1))}, {double(p2->at(0)), double(p2->at(1))});
-
-                            if(l.isHorizontal()) {
-                                start[0] = p2->at(0);
-                            }
-                            else {
-                                start[0] = round(l.x(y));
-                            }
-
-                            break;
-                        }
-                        // Try our previous point
-                        else {
-                            ++hLeft;
-                        }
-                    }
-                }
-
-                // If our right hand side is in range and has not gone out of scope
-                if(hRight->at(1) >= y) {
-
-                    while(hRight > minHorizon) {
-
-                        auto p1 = hRight - 1;
-                        auto p2 = hRight;
-
-                        if(y >= p1->at(1) && y <= p2->at(1)) {
-
-                            // Make a line from the two points and find our x
-                            Line l({ double(p1->at(0)), double(p1->at(1))}, {double(p2->at(0)), double(p2->at(1))});
-
-                            if(l.isHorizontal()) {
-                                end[0] = p1->at(0);
-                            }
-                            else {
-                                end[0] = round(l.x(y));
-                            }
-
-                            break;
-                        }
-                        // Try our previous point
-                        else {
-                            --hRight;
-                        }
-                    }
-                }
-
-                // Our Y is now our next y
-                y = nextY;
-
-                auto segments = quex->classify(image, lut, start, end, subsample);
+            
+            double radius = image.lens.parameters.radial.fov/2/image.lens.parameters.radial.pitch;
+            
+            
+            int dx = 3;
+            
+            
+            for(double y = 0; y <= 400; y += dx) {
+                
+                
+                double xSize = std::sqrt(radius*radius - y*y);
+                int xStart = int(image.lens.parameters.radial.centre[0] - radius);
+                int xEnd = int(image.lens.parameters.radial.centre[0] + radius);
+                
+                
+                auto segments = quex->classify(image, lut, arma::ivec2({xStart,int(y+image.lens.parameters.radial.centre[1])}),
+                                                           arma::ivec2({xEnd,int(y+image.lens.parameters.radial.centre[1])}), dx);
+                
+                
                 insertSegments(classifiedImage, segments, false);
+                
+                
+                arma::mat ray = bulkPixel2Ray(arma::ivec2({0, int(y+image.lens.parameters.radial.centre[1])}).t(), image );
+                double arcSize = arcSizeFromBaseRay(ray.t(), 
+                                                    0.4826, 
+                                                    1.2 )[0];
+                dx = std::max(
+                        int(arcSize / 2.0 /image.lens.parameters.radial.pitch),
+                        3);
+                
             }
 
         }
