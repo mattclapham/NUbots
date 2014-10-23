@@ -19,10 +19,7 @@ namespace robotx {
     void TcpServerStream::init(uint port)
     {
         endpoint = boost::asio::ip::tcp::endpoint(tcp::v4(), port);
-        acceptor.close();
-        acceptor.bind(endpoint);
-        acceptor.set_option(boost::asio::ip::tcp::acceptor::reuse_address(true));
-        acceptor.listen();
+        acceptor = boost::asio::ip::tcp::acceptor(io_service, endpoint);
         worker_thread.reset(new std::thread(std::bind(&TcpServerStream::doWork, this )));
     }
 

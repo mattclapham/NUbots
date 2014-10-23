@@ -50,51 +50,135 @@ namespace robotx {
             remote_connector.reset(new RemoteConnector(server_stream));
 
             remote_connector->registerMessageHandler<MessageType::ACTUATORS_ON>([this] (bool& on) {
-                stm_connector->send<MessageType::ACTUATORS_ON>(on);
+                try
+                {
+                    stm_connector->send<MessageType::ACTUATORS_ON>(on);
+                }
+                catch(std::exception& ex)
+                {
+                    NUClear::log(static_cast<std::string>("ACTUATORS_ON ERROR: ") + ex.what());
+                }
             });
 
             remote_connector->registerMessageHandler<MessageType::STATE_ESTIMATOR_PARAMETERS>([this] (StateEstimatorParameters& params) {
-                stm_connector->send<MessageType::STATE_ESTIMATOR_PARAMETERS>(params);
+                try
+                {
+                    stm_connector->send<MessageType::STATE_ESTIMATOR_PARAMETERS>(params);
+                }
+                catch(std::exception& ex)
+                {
+                    NUClear::log(static_cast<std::string>("STATE_ESTIMATOR_PARAMETERS ERROR: ") + ex.what());
+                }
             });
 
             remote_connector->registerMessageHandler<MessageType::INITIAL_CONDITIONS>([this] (InitialConditions& initial_conditions) {
-                stm_connector->send<MessageType::INITIAL_CONDITIONS>(initial_conditions);
+                try
+                {
+                    stm_connector->send<MessageType::INITIAL_CONDITIONS>(initial_conditions);
+                }
+                catch(std::exception& ex)
+                {
+                     NUClear::log(static_cast<std::string>("INITIAL_CONDITIONS ERROR: ") + ex.what());
+                }
             });
 
             remote_connector->registerMessageHandler<MessageType::HEADING_PID>([this] (PID& pid) {
-                stm_connector->send<MessageType::HEADING_PID>(pid);
+                try
+                {
+                    stm_connector->send<MessageType::HEADING_PID>(pid);
+                }
+                catch(std::exception& ex)
+                {
+                     NUClear::log(static_cast<std::string>("HEADING_PID ERROR: ") + ex.what());
+                }
             });
 
             remote_connector->registerMessageHandler<MessageType::VELOCITY_PID>([this] (PID& pid) {
-                stm_connector->send<MessageType::VELOCITY_PID>(pid);
+                try
+                {
+                    stm_connector->send<MessageType::VELOCITY_PID>(pid);
+                }
+                catch(std::exception& ex)
+                {
+                     NUClear::log(static_cast<std::string>("VELOCITY_PID ERROR: ") + ex.what());
+                }
             });
 
             remote_connector->registerMessageHandler<MessageType::LEFT_ACTUATOR_PID>([this] (PID& pid) {
-                stm_connector->send<MessageType::LEFT_ACTUATOR_PID>(pid);
+                try
+                {
+                    stm_connector->send<MessageType::LEFT_ACTUATOR_PID>(pid);
+                }
+                catch(std::exception& ex)
+                {
+                     NUClear::log(static_cast<std::string>("LEFT_ACTUATOR_PID ERROR: ") + ex.what());
+                }
             });
 
             remote_connector->registerMessageHandler<MessageType::RIGHT_ACTUATOR_PID>([this] (PID& pid) {
-                stm_connector->send<MessageType::RIGHT_ACTUATOR_PID>(pid);
+                try
+                {
+                    stm_connector->send<MessageType::RIGHT_ACTUATOR_PID>(pid);
+                }
+                catch(std::exception& ex)
+                {
+                     NUClear::log(static_cast<std::string>("RIGHT_ACTUATOR_PID ERROR: ") + ex.what());
+                }
             });
 
             remote_connector->registerMessageHandler<MessageType::CONTROL_MODE>([this] (ControlMode& mode) {
-                stm_connector->send<MessageType::CONTROL_MODE>(mode);
+                try
+                {
+                    stm_connector->send<MessageType::CONTROL_MODE>(mode);
+                }
+                catch(std::exception& ex)
+                {
+                     NUClear::log(static_cast<std::string>("CONTROL_MODE ERROR: ") + ex.what());
+                }
             });
 
             remote_connector->registerMessageHandler<MessageType::ACTUATOR_COMMAND>([this] (ActuatorCommand& command) {
-                stm_connector->send<MessageType::ACTUATOR_COMMAND>(command);
+                try
+                {
+                    stm_connector->send<MessageType::ACTUATOR_COMMAND>(command);
+                }
+                catch(std::exception& ex)
+                {
+                    log(static_cast<std::string>("ACTUATOR_COMMAND ERROR: ") + ex.what());
+                }
             });
 
             remote_connector->registerMessageHandler<MessageType::DATA_LOGGING_ON>([this] (bool& log) {
-                stm_connector->send<MessageType::DATA_LOGGING_ON>(log);
+                try
+                {
+                    stm_connector->send<MessageType::DATA_LOGGING_ON>(log);
+                }
+                catch(std::exception& ex)
+                {
+                     NUClear::log(static_cast<std::string>("DATA_LOGGING_ON ERROR: ") + ex.what());
+                }
             });
 
             stm_connector->registerMessageHandler<MessageType::ACTUATOR_STATUS>([this] (ActuatorStatus& status) {
-                remote_connector->send<MessageType::ACTUATOR_STATUS>(status);
+                try
+                {
+                    remote_connector->send<MessageType::ACTUATOR_STATUS>(status);
+                }
+                catch(std::exception& ex)
+                {
+                     NUClear::log(static_cast<std::string>("ACTUATOR_STATUS ERROR: ") + ex.what());
+                }
             });
 
             stm_connector->registerMessageHandler<MessageType::TUNING_PARAMETERS>([this] (TuningParameters& params) {
-                remote_connector->send<MessageType::TUNING_PARAMETERS>(params);
+                try
+                {
+                    remote_connector->send<MessageType::TUNING_PARAMETERS>(params);
+                }
+                catch(std::exception& ex)
+                {
+                     NUClear::log(static_cast<std::string>("TUNING_PARAMETERS ERROR: ") + ex.what());
+                }
             });
 
             stm_connector->registerMessageHandler<MessageType::VEHICLE_GPS>([this] (VehicleGPS& vehicle_gps) {
@@ -106,7 +190,14 @@ namespace robotx {
             });
 
             stm_connector->registerMessageHandler<MessageType::STATE_ESTIMATE>([this] (State& state) {
-                remote_connector->send<MessageType::STATE_ESTIMATE>(state);
+                try
+                {
+                    remote_connector->send<MessageType::STATE_ESTIMATE>(state);
+                }
+                catch(std::exception& ex)
+                {
+                     NUClear::log(static_cast<std::string>("STATE_ESTIMATE ERROR: ") + ex.what());
+                }
 
                 auto sensors = std::make_unique<Sensors>();
 
