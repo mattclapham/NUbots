@@ -8,5 +8,5 @@ ADD_ROLE(
         support::configuration::GlobalConfig
 
         robotx::Communicator
-        support::TDBoxClient;
+        support::TDBoxClient
 )

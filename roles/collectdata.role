@@ -9,6 +9,8 @@ ADD_ROLE(
 
         # Vision
         input::FlycapCamera
+        robotx::Communicator
+        support::TDBoxClient
 
         # Debugging
         support::NUbugger

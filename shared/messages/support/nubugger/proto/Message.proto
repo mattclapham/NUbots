@@ -21,6 +21,8 @@ package messages.support.nubugger.proto;
 
 // Hardware
 import "messages/input/proto/Sensors.proto";
+import "messages/input/proto/RobotXState.proto";
+import "messages/input/proto/GPS.proto";
 import "messages/input/proto/GameState.proto";
 import "messages/support/nuclear/proto/ReactionStatistics.proto";
 import "messages/support/nubugger/proto/DataPoint.proto";
@@ -57,6 +59,8 @@ message Message {
         REACTION_HANDLES = 13;
         GAME_STATE = 14;
         POINT_SCAN = 15;
+        ROBOTX_STATE = 16;
+        GPS = 17;
     }
 
     required Type type = 1;
@@ -77,6 +81,8 @@ message Message {
     optional Command command = 16;
     optional ReactionHandles reaction_handles = 17;
     optional messages.vision.proto.PointScan point_scan = 18;
+    optional messages.input.proto.RobotXState robotx_state = 19;
+    optional messages.input.proto.GPS gps = 20;
 
     message Command {
         optional string command = 1;

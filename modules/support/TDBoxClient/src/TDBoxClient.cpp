@@ -108,7 +108,7 @@ namespace support {
             checksum ^= msg[i];
         }
         s << "*";
-        s << std::setfill('0') << std::setw(2) << std::hex << checksum;
+        s << std::setfill('0') << std::setw(2) << std::uppercase << std::hex << checksum;
         s << "\r\n";
 
         // Rebuild the string with the checksum

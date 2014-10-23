@@ -21,6 +21,8 @@
 
 #include "messages/support/nubugger/proto/Message.pb.h"
 #include "messages/input/Sensors.h"
+#include "messages/input/RobotXState.h"
+#include "messages/input/GPS.h"
 
 #include "utility/time/time.h"
 
@@ -30,6 +32,8 @@ namespace support {
     using utility::time::getUtcTimestamp;
 
     using messages::input::Sensors;
+    using messages::input::RobotXState;
+    using messages::input::GPS;
 
     void NUbugger::provideSensors() {
 
@@ -110,6 +114,47 @@ namespace support {
 
             send(message);
 
+        }));
+
+        handles["sensors"].push_back(on<Trigger<RobotXState>, Options<Single, Priority<NUClear::LOW>>>([this](const RobotXState& state) {
+
+            Message message;
+
+            message.set_type(Message::ROBOTX_STATE);
+            message.set_filter_id(1);
+            message.set_utc_timestamp(getUtcTimestamp());
+
+            auto* sensorData = message.mutable_robotx_state();
+
+            sensorData->set_timestamp(state.timestamp.time_since_epoch().count());
+            for(int i = 0; i < 15; ++i) {
+                sensorData->add_state(state.state[i]);
+            }
+
+            for(int i = 0; i < 15; ++i) {
+                for(int j = 0; j < 15; ++j) {
+                    sensorData->add_covariance(state.covariance(i, j));
+                }
+            }
+
+            send(message);
+
+        }));
+
+        handles["sensors"].push_back(on<Trigger<GPS>, Options<Single, Priority<NUClear::LOW>>>([this] (const GPS& gps) {
+            Message message;
+
+            message.set_type(Message::GPS);
+            message.set_filter_id(1);
+            message.set_utc_timestamp(getUtcTimestamp());
+
+            auto* sensorData = message.mutable_gps();
+
+            sensorData->set_latitude(gps.lattitude);
+            sensorData->set_longitude(gps.longitude);
+            sensorData->set_altitude(gps.altitude);
+
+            send(message);
         }));
     }
 }

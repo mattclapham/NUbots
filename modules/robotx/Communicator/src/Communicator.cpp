@@ -23,7 +23,7 @@
 #include <NURobotX/NetworkIO/SerializationTraits.hpp>
 #include <NURobotX/Util/Operators.hpp>
 #include <NURobotX/Data/VehicleState.h>
-#include "messages/input/Sensors.h"
+#include "messages/input/RobotXState.h"
 #include "messages/input/GPS.h"
 #include <eigen3/Eigen/Core>
 
@@ -31,7 +31,7 @@ namespace modules {
 namespace robotx {
 
     using messages::support::Configuration;
-    using messages::input::Sensors;
+    using messages::input::RobotXState;
     using messages::input::GPS;
     using namespace NURobotX;
 
@@ -199,7 +199,7 @@ namespace robotx {
                      NUClear::log(static_cast<std::string>("STATE_ESTIMATE ERROR: ") + ex.what());
                 }
 
-                auto sensors = std::make_unique<Sensors>();
+                auto sensors = std::make_unique<RobotXState>();
 
                 Vector3s thetanb = state.state.thetanb();
 
@@ -210,9 +210,23 @@ namespace robotx {
                 Eigen::Matrix3d orientation((Tlr*NURobotX::Operators::Rotation(thetanb)).cast<double>());
                 //sensors->orientation = arma::mat33(orientation.data(),3,3);
 
-                sensors->vehicleStateMean = arma::fvec(state.state.mean().data(),15, 1);
-                sensors->vehicleStateCovariance = arma::fvec(state.state.covariance().data(),15, 15);
-                sensors->vehicleStateTImestamp = state.state.time_stamp;
+                sensors->timestamp = NUClear::clock::now();
+
+                arma::fvec as(15);
+                arma::fmat ac(15, 15);
+
+                for(int i = 0; i < 15; ++i) {
+                    as[i] = state.state.mean()[i];
+                }
+
+                for(int i = 0; i < 15; ++i) {
+                    for(int j = 0; j < 15; ++j) {
+                        ac(i, j) = state.state.covariance()(i, j);
+                    }
+                }
+
+                sensors->state = as;
+                sensors->covariance = ac;
 
                 emit(std::move(sensors));
 
