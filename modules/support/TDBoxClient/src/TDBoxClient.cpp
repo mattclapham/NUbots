@@ -155,33 +155,33 @@ namespace support {
                 ew,            // Longitude Direction
                 "NCSTL",       // Team ID
                 "1",           // Vehicle Mode (1 = rc, 2 = autonomous)
-                "BEER" // Current task
+                "1" // Current task
             });
         });
 
         on<Trigger<Every<1, std::chrono::seconds>>>([this](const time_t&) {
 
-            sendNMEA({
-                "RXSEA",       // Header
-                nmeaUTCTime(), // Time
-                "NCSTL",       // Team ID
-                "",            // Buoy Colour
-                "",            // Latitude
-                "",            // Latitude Direction
-                "",            // Longitude
-                "",            // Longitude Direction
-                "",            // Pinger depth
-            });
+            // sendNMEA({
+            //     "RXSEA",       // Header
+            //     nmeaUTCTime(), // Time
+            //     "NCSTL",       // Team ID
+            //     "",            // Buoy Colour
+            //     "",            // Latitude
+            //     "",            // Latitude Direction
+            //     "",            // Longitude
+            //     "",            // Longitude Direction
+            //     "",            // Pinger depth
+            // });
         });
 
         on<Trigger<Every<1, std::chrono::seconds>>>([this](const time_t&) {
 
-            sendNMEA({
-                "RXLIT",       // Header
-                nmeaUTCTime(), // Time
-                "NCSTL",       // Team ID
-                ""             // Light Pattern
-            });
+            // sendNMEA({
+            //     "RXLIT",       // Header
+            //     nmeaUTCTime(), // Time
+            //     "NCSTL",       // Team ID
+            //     ""             // Light Pattern
+            // });
         });
     }
 
