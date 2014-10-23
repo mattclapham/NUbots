@@ -90,7 +90,7 @@ namespace modules {
                         arma::vec2 kinematicsCentre = imageToScreen(stats.mean(), classifiedImage.dimensions);
 
                         // Shift the camera by BALL_RADIUS in order to move it to the correct position
-                        auto cameraMatrix = 1.2; //sensors.orientationCamToGround;
+                        auto cameraMatrix = sensors.orientationCamToGround;
                         cameraMatrix(2, 3) -= BALL_RADIUS;
 
                         // Get our two points
