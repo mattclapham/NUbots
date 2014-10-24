@@ -49,13 +49,17 @@ namespace modules {
                 path_test_tolerance = file.config["testPathGoalTolerance"].as<int>();
                 std::cout << "path test tolerance: " << path_test_tolerance << std::endl;
 
-                arma::vec path_data = file.config["testPath"].as<arma::vec>();
-
                 std::cout << "Path Test: " << std::endl;
-                for(uint i =0; i < static_cast<uint>(path_data.size()) / 2; i++) {
-                    path_test.conservativeResize(2,i+1);
-                    path_test(0,i) = path_data[i*2];
-                    path_test(1,i) = path_data[i*2 +1];
+                for (const auto& task : file.config["tasks"]) {
+                    
+                    Eigen::Matrix2Xi path_test;
+                    path_test.conservativeResize(2,task.second.size());
+                    for(uint i =0; i < task.second.size(); i++) {
+                        path_test(0,i) = task.second[i].as<arma::vec>()[0];
+                        path_test(1,i) = task.second[i].as<arma::vec>()[1];
+                    }
+                    
+                    task_paths.push_back(path_test);
                 }
 
                 trajectory_planner = TrajectoryPlanner(max_velocity, line_of_sight);
@@ -76,7 +80,7 @@ namespace modules {
                     vehicle_state.time_stamp = state.timestamp;
 
                     if(!goalReached(vehicle_state)) {
-                        auto ref = trajectory_planner.getHeadingVelocity(vehicle_state, path_test);
+                        auto ref = trajectory_planner.getHeadingVelocity(vehicle_state, task_paths[current_task]);
 
                         auto control_ref = std::make_unique<ControlReference>();
                         control_ref->heading = ref(0);
@@ -90,8 +94,8 @@ namespace modules {
 
         bool Behaviour::goalReached(const VehicleState& state)
         {
-            float N_goal = static_cast<float>(path_test(0,path_test.cols()-1));
-            float E_goal = static_cast<float>(path_test(1,path_test.cols()-1));
+            float N_goal = static_cast<float>(task_paths[current_task](0,task_paths[current_task].cols()-1));
+            float E_goal = static_cast<float>(task_paths[current_task](1,task_paths[current_task].cols()-1));
 
             auto rBNn = state.rBNn();
 

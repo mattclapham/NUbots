@@ -37,8 +37,9 @@ namespace robotx {
         bool is_initialised;
         bool run_autonomous;
         NURobotX::TrajectoryPlanner trajectory_planner;
-        Eigen::Matrix2Xi path_test;
+        std::vector<Eigen::Matrix2Xi> task_paths;
         int path_test_tolerance;
+        int current_task = 0;
 
         bool goalReached(const NURobotX::VehicleState& state);
     public:
