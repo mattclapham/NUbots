@@ -8,9 +8,11 @@ ADD_ROLE(
         support::configuration::GlobalConfig
 
         # Vision
+        input::FlycapCamera
+        support::TDBoxClient
         robotx::Communicator
-	robotx::SLAM
-	robotx::Behaviour
+        robotx::SLAM
+        robotx::Behaviour
 
         # Debugging
         support::NUbugger

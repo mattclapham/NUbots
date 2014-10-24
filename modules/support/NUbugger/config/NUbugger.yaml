@@ -1,9 +1,9 @@
 output:
   file:
-    enabled: false
+    enabled: true
     path: /home/robotx/DataStream
   network:
-    enabled: true
+    enabled: false
     pub_port: 12000
     sub_port: 12001
     high_water_mark: 50
@@ -12,11 +12,11 @@ reaction_handles:
   data_points: false
   game_controller: false
   behaviour: false
-  sensors: false
-  image: false
+  sensors: true
+  image: true
   classified_image: false
   goals: false
   balls: false
   localisation: false
   visual_horizon: false
-  point_scan: true
+  point_scan: false

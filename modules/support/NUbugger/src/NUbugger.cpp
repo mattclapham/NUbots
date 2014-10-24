@@ -31,6 +31,9 @@
 #include "utility/math/angle.h"
 #include "utility/math/coordinates.h"
 
+#include "messages/robotx/CurrentTask.h"
+#include "messages/robotx/AutonomousMode.h"
+
 namespace modules {
 namespace support {
 
@@ -43,6 +46,9 @@ namespace support {
     using messages::vision::LookUpTable;
     using messages::vision::SaveLookUpTable;
     using messages::vision::Colour;
+
+    using messages::robotx::CurrentTask;
+    using messages::robotx::AutonomousMode;
 
     using utility::time::getUtcTimestamp;
 
@@ -170,6 +176,70 @@ namespace support {
             message.set_filter_id(0);
             message.set_utc_timestamp(getUtcTimestamp());
             send(message);
+        });
+
+        on<Trigger<CurrentTask>, With<AutonomousMode>, With<Configuration<NUbugger>>>([this](const CurrentTask& newTask, const AutonomousMode& au, const Configuration<NUbugger>& config) {
+            // If we are changing tasks
+            if(task != newTask.ID || autonomous != au.on) {
+
+                task = newTask.ID;
+                autonomous = au.on;
+
+                // Lock the file
+                std::lock_guard<std::mutex> lock(fileMutex);
+
+                // Get our timestamp
+                std::string timestamp = std::to_string(std::chrono::duration_cast<std::chrono::seconds>(NUClear::clock::now().time_since_epoch()).count());
+
+                // Reset the file if one exists
+                if(outputFile) {
+                    boost::iostreams::close(outputFile);
+                }
+
+                std::string outputFilePath = config["output"]["file"]["path"].as<std::string>();
+                outputFilePath += "/";
+                outputFilePath += timestamp;
+                outputFilePath += "_Task";
+                outputFilePath += std::to_string(newTask.ID);
+                outputFilePath += "_";
+                outputFilePath += au.on ? "Autonomous" : "RemoteControl";
+                outputFilePath += ".nbs";
+
+                // outputFile.push(boost::iostreams::gzip_compressor(9));
+                outputFile.push(boost::iostreams::file_descriptor_sink(outputFilePath, std::ios_base::out | std::ios_base::binary));
+            }
+        });
+
+        on<Trigger<AutonomousMode>, With<CurrentTask>, With<Configuration<NUbugger>>>([this](const AutonomousMode& au, const CurrentTask& newTask, const Configuration<NUbugger>& config) {
+            // If we are changing tasks
+            if(task != newTask.ID || autonomous != au.on) {
+
+                task = newTask.ID;
+                autonomous = au.on;
+
+                // Lock the file
+                std::lock_guard<std::mutex> lock(fileMutex);
+
+                // Get our timestamp
+                std::string timestamp = std::to_string(std::chrono::duration_cast<std::chrono::seconds>(NUClear::clock::now().time_since_epoch()).count());
+
+                // Reset the file if one exists
+                if(outputFile) {
+                    boost::iostreams::close(outputFile);
+                }
+
+                std::string outputFilePath = config["output"]["file"]["path"].as<std::string>();
+                outputFilePath += "/";
+                outputFilePath += timestamp;
+                outputFilePath += "_Task";
+                outputFilePath += std::to_string(newTask.ID);
+                outputFilePath += "_";
+                outputFilePath += au.on ? "Autonomous" : "RemoteControl";
+                outputFilePath += ".nbs";
+
+                // outputFile.push(boost::iostreams::gzip_compressor(9));
+                outputFile.push(boost::iostreams::file_descriptor_sink(outputFilePath, std::ios_base::out | std::ios_base::binary));
+            }
         });
 
         provideDataPoints();

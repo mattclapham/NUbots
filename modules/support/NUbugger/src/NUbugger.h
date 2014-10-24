@@ -45,6 +45,9 @@ namespace modules {
             uint pubPort = 0;
             uint subPort = 0;
 
+            int task = -1;
+            bool autonomous = false;
+
             bool listening = true;
 
             // Reaction Handles
