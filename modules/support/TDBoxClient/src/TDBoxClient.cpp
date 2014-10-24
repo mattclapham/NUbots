@@ -40,11 +40,16 @@ extern "C" {
 #include "messages/support/Configuration.h"
 #include "messages/input/GPS.h"
 
+#include "messages/robotx/UnderwaterPinger.h"
+#include "messages/robotx/LightSequence.h"
+
 namespace modules {
 namespace support {
 
     using messages::support::Configuration;
     using messages::input::GPS;
+    using messages::robotx::UnderwaterPinger;
+    using messages::robotx::LightSequence;
 
     void TDBoxClient::reconnect() {
         // Open a file descriptor to the target address
@@ -155,33 +160,39 @@ namespace support {
                 ew,            // Longitude Direction
                 "NCSTL",       // Team ID
                 "1",           // Vehicle Mode (1 = rc, 2 = autonomous)
-                "1" // Current task
+                "1"            // Current task
             });
         });
 
-        on<Trigger<Every<1, std::chrono::seconds>>>([this](const time_t&) {
+        on<Trigger<UnderwaterPinger>>([this](const UnderwaterPinger& pinger) {
 
-            // sendNMEA({
-            //     "RXSEA",       // Header
-            //     nmeaUTCTime(), // Time
-            //     "NCSTL",       // Team ID
-            //     "",            // Buoy Colour
-            //     "",            // Latitude
-            //     "",            // Latitude Direction
-            //     "",            // Longitude
-            //     "",            // Longitude Direction
-            //     "",            // Pinger depth
-            // });
+            std::string la = std::to_string(std::fabs(pinger.latitude));
+            std::string ns = pinger.latitude > 0 ? "N" : "S";
+            std::string lo = std::to_string(std::fabs(pinger.longitude));
+            std::string ew = pinger.longitude > 0 ? "E" : "W";
+            std::string depth = std::to_string(std::fabs(pinger.depth));
+
+            sendNMEA({
+                "RXSEA",       // Header
+                nmeaUTCTime(), // Time
+                "NCSTL",       // Team ID
+                pinger.colour, // Buoy Colour
+                la,            // Latitude
+                ns,            // Latitude Direction
+                lo,            // Longitude
+                ew,            // Longitude Direction
+                depth,            // Pinger depth
+            });
         });
 
-        on<Trigger<Every<1, std::chrono::seconds>>>([this](const time_t&) {
+        on<Trigger<LightSequence>>([this](const LightSequence& seq) {
 
-            // sendNMEA({
-            //     "RXLIT",       // Header
-            //     nmeaUTCTime(), // Time
-            //     "NCSTL",       // Team ID
-            //     ""             // Light Pattern
-            // });
+            sendNMEA({
+                "RXLIT",       // Header
+                nmeaUTCTime(), // Time
+                "NCSTL",       // Team ID
+                seq.sequence   // Light Pattern
+            });
         });
     }
 
