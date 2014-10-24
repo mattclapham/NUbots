@@ -42,6 +42,8 @@ extern "C" {
 
 #include "messages/robotx/UnderwaterPinger.h"
 #include "messages/robotx/LightSequence.h"
+#include "messages/robotx/AutonomousMode.h"
+#include "messages/robotx/CurrentTask.h"
 
 namespace modules {
 namespace support {
@@ -50,6 +52,8 @@ namespace support {
     using messages::input::GPS;
     using messages::robotx::UnderwaterPinger;
     using messages::robotx::LightSequence;
+    using messages::robotx::AutonomousMode;
+    using messages::robotx::CurrentTask;
 
     void TDBoxClient::reconnect() {
         // Open a file descriptor to the target address
@@ -143,13 +147,16 @@ namespace support {
             reconnect();
         });
 
-        on<Trigger<Every<1, std::chrono::seconds>>, With<GPS>>([this](const time_t&, const GPS& gps) {
+        on<Trigger<Every<1, std::chrono::seconds>>, With<GPS>, With<AutonomousMode>, With<CurrentTask>>([this](const time_t&, const GPS& gps, const AutonomousMode& aut, const CurrentTask& task) {
 
             // Get our GPS strings
             std::string la = std::to_string(std::fabs(gps.lattitude));
             std::string ns = gps.lattitude > 0 ? "N" : "S";
             std::string lo = std::to_string(std::fabs(gps.longitude));
             std::string ew = gps.longitude > 0 ? "E" : "W";
+
+            std::string a = aut.on ? "2" : "1";
+            std::string t = std::to_string(task.ID);
 
             sendNMEA({
                 "RXHRT",       // Header
@@ -159,8 +166,8 @@ namespace support {
                 lo,            // Longitude
                 ew,            // Longitude Direction
                 "NCSTL",       // Team ID
-                "1",           // Vehicle Mode (1 = rc, 2 = autonomous)
-                "1"            // Current task
+                a,           // Vehicle Mode (1 = rc, 2 = autonomous)
+                t            // Current task
             });
         });
 
