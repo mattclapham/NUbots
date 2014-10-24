@@ -57,7 +57,7 @@ namespace robotx {
     public:
         /// @brief Called by the powerplant to build and setup the Communicator reactor.
         explicit Communicator(std::unique_ptr<NUClear::Environment> environment);
-         static constexpr const char* CONFIGURATION_PATH = "Communicator.yaml";
+        static constexpr const char* CONFIGURATION_PATH = "Communicator.yaml";
     };
 
 }

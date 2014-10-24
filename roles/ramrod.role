@@ -9,6 +9,8 @@ ADD_ROLE(
 
         # Vision
         robotx::Communicator
+	robotx::SLAM
+	robotx::Behaviour
 
         # Debugging
         support::NUbugger

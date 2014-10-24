@@ -25,10 +25,8 @@
 
 namespace messages {
     namespace input {
-
-
         struct RobotXState {
-            NUClear::clock::time_point timestamp;
+            uint64_t timestamp;
             arma::fvec state;
             arma::fmat covariance;
         };

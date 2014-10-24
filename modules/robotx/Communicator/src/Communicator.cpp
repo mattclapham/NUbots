@@ -25,6 +25,8 @@
 #include <NURobotX/Data/VehicleState.h>
 #include "messages/input/RobotXState.h"
 #include "messages/input/GPS.h"
+#include "messages/robotx/AutonomousMode.h"
+#include "messages/robotx/ControlReference.h"
 #include <eigen3/Eigen/Core>
 
 namespace modules {
@@ -33,6 +35,8 @@ namespace robotx {
     using messages::support::Configuration;
     using messages::input::RobotXState;
     using messages::input::GPS;
+    using messages::robotx::AutonomousMode;
+    using messages::robotx::ControlReference;
     using namespace NURobotX;
 
     Communicator::Communicator(std::unique_ptr<NUClear::Environment> environment)
@@ -130,6 +134,10 @@ namespace robotx {
                 try
                 {
                     stm_connector->send<MessageType::CONTROL_MODE>(mode);
+                    auto autoMode = std::make_unique<AutonomousMode>();
+                    autoMode->on = mode.value == ControlMode::AUTO;
+                    emit(std::move(autoMode));
+
                 }
                 catch(std::exception& ex)
                 {
@@ -210,7 +218,7 @@ namespace robotx {
                 Eigen::Matrix3d orientation((Tlr*NURobotX::Operators::Rotation(thetanb)).cast<double>());
                 //sensors->orientation = arma::mat33(orientation.data(),3,3);
 
-                sensors->timestamp = NUClear::clock::now();
+                //sensors->timestamp = NUClear::clock::now();
 
                 arma::fvec as(15);
                 arma::fmat ac(15, 15);
@@ -232,6 +240,18 @@ namespace robotx {
 
             });
 
+        });
+
+        on<Trigger<ControlReference>>([this](const ControlReference& ref) {
+            try
+            {
+                remote_connector->send<MessageType::HEADING_PID>(ref.heading);
+                remote_connector->send<MessageType::VELOCITY_REF>(ref.velocity);
+            }
+            catch(std::exception& ex)
+            {
+                NUClear::log(static_cast<std::string>("Control Reference ERROR: ") + ex.what());
+            }
         });
 
         // Ensure connection
