@@ -51,15 +51,19 @@ namespace modules {
 
                 std::cout << "Path Test: " << std::endl;
                 for (const auto& task : file.config["tasks"]) {
+                    task_paths.push_back({});
+                    std::cout << task.first << std::endl;
+                    for (const auto& path : task.second) {
                     
-                    Eigen::Matrix2Xi path_test;
-                    path_test.conservativeResize(2,task.second.size());
-                    for(uint i =0; i < task.second.size(); i++) {
-                        path_test(0,i) = task.second[i].as<arma::vec>()[0];
-                        path_test(1,i) = task.second[i].as<arma::vec>()[1];
+                        Eigen::Matrix2Xi path_test;
+                        path_test.conservativeResize(2,path.size());
+                        for(uint i =0; i < path.size(); i++) {
+                            path_test(0,i) = path[i].as<arma::vec>()[0];
+                            path_test(1,i) = path[i].as<arma::vec>()[1];
+                        }
+                        std::cout << path_test << std::endl;
+                        task_paths.back().push_back(path_test);
                     }
-                    
-                    task_paths.push_back(path_test);
                 }
 
                 trajectory_planner = TrajectoryPlanner(max_velocity, line_of_sight);
@@ -80,13 +84,27 @@ namespace modules {
                     vehicle_state.time_stamp = state.timestamp;
 
                     if(!goalReached(vehicle_state)) {
-                        auto ref = trajectory_planner.getHeadingVelocity(vehicle_state, task_paths[current_task]);
+                        auto ref = trajectory_planner.getHeadingVelocity(vehicle_state, task_paths[current_task][current_path]);
 
                         auto control_ref = std::make_unique<ControlReference>();
                         control_ref->heading = ref(0);
                         control_ref->velocity = ref(1);
 
                         emit(std::move(control_ref));
+                     } else {
+                        
+                        ++current_path;
+                        
+                        if (current_path >= int(task_paths[current_task].size())) {
+                            current_path = 0;
+                            ++current_task;
+                            current_task %= task_paths.size();
+                        }
+                        //XXX: emit task change
+                        
+                        
+                        //XXX: save the current time for a timeout
+                     
                      }
                 }
             });
@@ -94,8 +112,8 @@ namespace modules {
 
         bool Behaviour::goalReached(const VehicleState& state)
         {
-            float N_goal = static_cast<float>(task_paths[current_task](0,task_paths[current_task].cols()-1));
-            float E_goal = static_cast<float>(task_paths[current_task](1,task_paths[current_task].cols()-1));
+            float N_goal = static_cast<float>(task_paths[current_path][current_task](0,task_paths[current_task][current_path].cols()-1));
+            float E_goal = static_cast<float>(task_paths[current_path][current_task](1,task_paths[current_task][current_path].cols()-1));
 
             auto rBNn = state.rBNn();
 
