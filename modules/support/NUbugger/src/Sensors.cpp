@@ -126,7 +126,7 @@ namespace support {
 
             auto* sensorData = message.mutable_robotx_state();
 
-            //sensorData->set_timestamp(state.timestamp.time_since_epoch().count());
+            sensorData->set_timestamp(0);
             for(int i = 0; i < 15; ++i) {
                 sensorData->add_state(state.state[i]);
             }
