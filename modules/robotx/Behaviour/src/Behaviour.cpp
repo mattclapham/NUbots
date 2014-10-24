@@ -25,6 +25,7 @@
 #include "messages/robotx/AutonomousMode.h"
 #include "messages/robotx/CurrentTask.h"
 #include "messages/robotx/UnderwaterPinger.h"
+#include "messages/robotx/LightSequence.h"
 #include "messages/robotx/ControlReference.h"
 #include "messages/input/RobotXState.h"
 
@@ -99,6 +100,17 @@ namespace modules {
                             auto pinger = std::make_unique<UnderwaterPinger>();
                             
                             emit(std::move(pinger));
+                            
+                            reported = true;
+                            
+                        } else if (current_task == 4) {
+                            
+                            auto light = std::make_unique<LightSequence>();
+                            
+                            light->sequence = "GRB";
+                            
+                            emit(std::move(light));
+                            
                             reported = true;
                         }
                     }
