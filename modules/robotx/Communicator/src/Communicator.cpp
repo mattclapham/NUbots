@@ -245,8 +245,11 @@ namespace robotx {
         on<Trigger<ControlReference>>([this](const ControlReference& ref) {
             try
             {
-                remote_connector->send<MessageType::HEADING_PID>(ref.heading);
-                remote_connector->send<MessageType::VELOCITY_REF>(ref.velocity);
+                float heading = ref.heading;
+                float velocity = ref.velocity;
+
+                stm_connector->send<MessageType::HEADING_REF>(heading);
+                stm_connector->send<MessageType::VELOCITY_REF>(velocity);
             }
             catch(std::exception& ex)
             {
