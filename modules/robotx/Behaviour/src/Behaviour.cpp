@@ -23,6 +23,8 @@
 #include <iostream>
 #include "utility/support/armayamlconversions.h"
 #include "messages/robotx/AutonomousMode.h"
+#include "messages/robotx/CurrentTask.h"
+#include "messages/robotx/UnderwaterPinger.h"
 #include "messages/robotx/ControlReference.h"
 #include "messages/input/RobotXState.h"
 
@@ -32,6 +34,8 @@ namespace modules {
         using messages::support::Configuration;
         using messages::robotx::AutonomousMode;
         using messages::robotx::ControlReference;
+        using messages::robotx::CurrentTask;
+        using messages::robotx::UnderwaterPinger;
         using messages::input::RobotXState;
         using namespace NURobotX;
 
@@ -65,9 +69,15 @@ namespace modules {
                         task_paths.back().push_back(path_test);
                     }
                 }
+                path_start_time = NUClear::clock::now();
 
                 trajectory_planner = TrajectoryPlanner(max_velocity, line_of_sight);
                 is_initialised = true;
+                
+                auto ct = std::make_unique<CurrentTask>();
+                ct->ID = current_task;
+                
+                emit(std::move(ct));
                 std::cout << "Trajectory planner initialised" << std::endl;
             });
 
@@ -82,8 +92,19 @@ namespace modules {
                     vehicle_state.mean() = Vector15s::Map(state.state.memptr());
                     vehicle_state.covariance() = Matrix15s::Map(state.covariance.memptr());
                     vehicle_state.time_stamp = state.timestamp;
-
-                    if(!goalReached(vehicle_state)) {
+                    
+                    if (NUClear::clock::now() - path_start_time < std::chrono::seconds(path_report_time) and !reported) {
+                        
+                        if (current_task == 2) {
+                            auto pinger = std::make_unique<UnderwaterPinger>();
+                            
+                            emit(std::move(pinger));
+                            reported = true;
+                        }
+                    }
+                    
+                    
+                    if(!goalReached(vehicle_state) and NUClear::clock::now() - path_start_time < std::chrono::seconds(path_timeout) ) {
                         auto ref = trajectory_planner.getHeadingVelocity(vehicle_state, task_paths[current_task][current_path]);
 
                         auto control_ref = std::make_unique<ControlReference>();
@@ -99,12 +120,15 @@ namespace modules {
                             current_path = 0;
                             ++current_task;
                             current_task %= task_paths.size();
+                            auto ct = std::make_unique<CurrentTask>();
+                            ct->ID = current_task;
+                            reported = false;
+                            emit(std::move(ct));
                         }
-                        //XXX: emit task change
                         
                         
-                        //XXX: save the current time for a timeout
-                     
+                        //save the current time for a timeout
+                        path_start_time = NUClear::clock::now();
                      }
                 }
             });

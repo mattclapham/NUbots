@@ -35,13 +35,16 @@ namespace robotx {
 
     private:
         bool is_initialised;
+        bool reported = false;
         bool run_autonomous;
         NURobotX::TrajectoryPlanner trajectory_planner;
         std::vector<std::vector<Eigen::Matrix2Xi>> task_paths;
         int path_test_tolerance;
         int current_task = 0;
         int current_path = 0;
-        int path_timeout = 1000;
+        int path_timeout = 120;
+        int path_report_time = 5;
+        time_t path_start_time;
 
         bool goalReached(const NURobotX::VehicleState& state);
     public:
