@@ -42,7 +42,7 @@ namespace support {
                 std::string path = config["file"].as<std::string>();
 
                 // Setup the file
-                input.push(boost::iostreams::gzip_decompressor());
+                // input.push(boost::iostreams::gzip_decompressor());
                 input.push(boost::iostreams::file_descriptor_source(path, std::ios_base::in | std::ios_base::binary));
 
                 // Read the first 32 bit int to work out the size
@@ -172,8 +172,26 @@ namespace support {
 
                             } break;
                         }
-
-
+                    }
+                    else if(message.type() == Message::GPS) {
+                        continue;
+                        // Print GPS as csv
+                        // print timestamp
+                        std::cout.precision(std::numeric_limits<double>::digits10);
+                        std::cout << message.utc_timestamp()
+                           << "," << message.gps().latitude()
+                           << "," << message.gps().longitude()
+                           << "," << message.gps().altitude()
+                           << std::endl;
+                    }
+                    else if(message.type() == Message::ROBOTX_STATE) {
+                        continue;
+                        std::cout.precision(std::numeric_limits<double>::digits10);
+                        std::cout << message.utc_timestamp();
+                        for(int i = 0; i < 15; ++i) {
+                            std::cout << "," << message.robotx_state().state(i);
+                        }
+                        std::cout << std::endl;
                     }
 
                 }
