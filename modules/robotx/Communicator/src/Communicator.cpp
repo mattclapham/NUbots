@@ -236,6 +236,7 @@ namespace robotx {
                 sensors->state = as;
                 sensors->covariance = ac;
 
+                std::cout << as[3] << " " << as[4] << " " << as[5] << " " << std::endl;
                 emit(std::move(sensors));
 
             });
