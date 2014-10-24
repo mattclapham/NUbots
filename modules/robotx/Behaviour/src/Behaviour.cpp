@@ -37,6 +37,7 @@ namespace modules {
         using messages::robotx::ControlReference;
         using messages::robotx::CurrentTask;
         using messages::robotx::UnderwaterPinger;
+        using messages::robotx::LightSequence;
         using messages::input::RobotXState;
         using namespace NURobotX;
 
@@ -59,7 +60,7 @@ namespace modules {
                     task_paths.push_back({});
                     std::cout << task.first << std::endl;
                     for (const auto& path : task.second) {
-                    
+
                         Eigen::Matrix2Xi path_test;
                         path_test.conservativeResize(2,path.size());
                         for(uint i =0; i < path.size(); i++) {
@@ -74,10 +75,10 @@ namespace modules {
 
                 trajectory_planner = TrajectoryPlanner(max_velocity, line_of_sight);
                 is_initialised = true;
-                
+
                 auto ct = std::make_unique<CurrentTask>();
                 ct->ID = current_task;
-                
+
                 emit(std::move(ct));
                 std::cout << "Trajectory planner initialised" << std::endl;
             });
@@ -93,29 +94,29 @@ namespace modules {
                     vehicle_state.mean() = Vector15s::Map(state.state.memptr());
                     vehicle_state.covariance() = Matrix15s::Map(state.covariance.memptr());
                     vehicle_state.time_stamp = state.timestamp;
-                    
+
                     if (NUClear::clock::now() - path_start_time < std::chrono::seconds(path_report_time) and !reported) {
-                        
+
                         if (current_task == 2) {
                             auto pinger = std::make_unique<UnderwaterPinger>();
-                            
+
                             emit(std::move(pinger));
-                            
+
                             reported = true;
-                            
+
                         } else if (current_task == 4) {
-                            
+
                             auto light = std::make_unique<LightSequence>();
-                            
+
                             light->sequence = "GRB";
-                            
+
                             emit(std::move(light));
-                            
+
                             reported = true;
                         }
                     }
-                    
-                    
+
+
                     if(!goalReached(vehicle_state) and NUClear::clock::now() - path_start_time < std::chrono::seconds(path_timeout) ) {
                         auto ref = trajectory_planner.getHeadingVelocity(vehicle_state, task_paths[current_task][current_path]);
 
@@ -125,9 +126,9 @@ namespace modules {
 
                         emit(std::move(control_ref));
                      } else {
-                        
+
                         ++current_path;
-                        
+
                         if (current_path >= int(task_paths[current_task].size())) {
                             current_path = 0;
                             ++current_task;
@@ -137,8 +138,8 @@ namespace modules {
                             reported = false;
                             emit(std::move(ct));
                         }
-                        
-                        
+
+
                         //save the current time for a timeout
                         path_start_time = NUClear::clock::now();
                      }
