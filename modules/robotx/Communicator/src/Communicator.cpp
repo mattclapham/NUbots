@@ -64,6 +64,28 @@ namespace robotx {
                 }
             });
 
+            remote_connector->registerMessageHandler<MessageType::HEADING_REF>([this] (float& ref) {
+                try
+                {
+                    stm_connector->send<MessageType::HEADING_REF>(ref);
+                }
+                catch(std::exception& ex)
+                {
+                    NUClear::log(static_cast<std::string>("HEADING_REF ERROR: ") + ex.what());
+                }
+            });
+
+            remote_connector->registerMessageHandler<MessageType::VELOCITY_REF>([this] (float& ref) {
+                try
+                {
+                    stm_connector->send<MessageType::VELOCITY_REF>(ref);
+                }
+                catch(std::exception& ex)
+                {
+                    NUClear::log(static_cast<std::string>("VELOCITY_REF ERROR: ") + ex.what());
+                }
+            });
+
             remote_connector->registerMessageHandler<MessageType::STATE_ESTIMATOR_PARAMETERS>([this] (StateEstimatorParameters& params) {
                 try
                 {
@@ -235,9 +257,6 @@ namespace robotx {
 
                 sensors->state = as;
                 sensors->covariance = ac;
-
-                std::cout << as[3] << " " << as[4] << " " << as[5] << " "
-                              << state.state.thetanb()[0] << " " << state.state.thetanb()[1] << " " << state.state.thetanb()[2]<<std::endl;
                 emit(std::move(sensors));
 
             });
