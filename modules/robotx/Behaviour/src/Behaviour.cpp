@@ -143,6 +143,9 @@ namespace modules {
                         //save the current time for a timeout
                         path_start_time = NUClear::clock::now();
                      }
+                } else {
+                    current_task = 0;
+                    path_start_time = NUClear::clock::now();
                 }
             });
         }
