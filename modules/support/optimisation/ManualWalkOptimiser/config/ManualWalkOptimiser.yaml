@@ -1,0 +1,14 @@
+number_of_samples: 4
+getup_cancel_trial_threshold: 3
+configuration_wait_milliseconds: 2000
+parameters_and_sigmas:
+  stance:
+    body_tilt: 0.001
+  walk_cycle:
+    zmp_time: 0.005
+    step_time: 0.005
+    single_support_phase:
+      start: 0.001
+      end: 0.001
+    step:
+      height: 0.005
