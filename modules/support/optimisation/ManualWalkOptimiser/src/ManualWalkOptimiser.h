@@ -21,6 +21,7 @@
 #define MODULES_SUPPORT_OPTIMISATION_MANUALWALKOPTIMISER_H
 
 #include <nuclear>
+#include <armadillo>
 
 namespace modules {
 namespace support {
@@ -36,9 +37,9 @@ namespace optimisation {
         static constexpr const char* CONFIGURATION_PATH = "ManualWalkOptimiser.yaml";
 
 	private:
-		unsigned int numSamples, getUpCancelThreshold, configWaitMilliseconds;
-		int currentSample;
+		unsigned int numSamples, numParameters, getUpCancelThreshold, configWaitMilliseconds;
 		double fitnessSum;
+		int currentSample;
 
 		arma::mat samples;
 		arma::vec fitnessScores, weights;		

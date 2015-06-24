@@ -23,6 +23,6 @@ ADD_ROLE(
     motion::WalkEngine
 
     support::optimisation::WalkFitness
-    support::optimisation::ManualWalkOptimisation
+    support::optimisation::ManualWalkOptimiser
     behaviour::planning::FixedWalk
 ) 

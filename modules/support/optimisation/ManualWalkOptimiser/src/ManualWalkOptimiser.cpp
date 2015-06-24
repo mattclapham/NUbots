@@ -35,7 +35,7 @@ namespace optimisation {
     ManualWalkOptimiser::ManualWalkOptimiser(std::unique_ptr<NUClear::Environment> environment)
     : Reactor(std::move(environment)), fitnessSum(0.0), currentSample(-1) {
 
-        on<Trigger<Every<20,std::seconds>>
+        on<Trigger<Every<20, std::chrono::seconds>>
         , With<Configuration<ManualWalkOptimiser>>
         , With<Configuration<WalkEngineConfig>>([this] 
             (const time_t&
@@ -44,24 +44,29 @@ namespace optimisation {
 
             if (currentSample == -1) {
                 numSamples             = optimiserConfig["number_of_samples"].as<uint>();
+                numParameters          = optimiserConfig["number_of_parameters"].as<uint>();
                 getUpCancelThreshold   = optimiserConfig["getup_cancel_trial_threshold"].as<uint>();
                 configWaitMilliseconds = optimiserConfig["configuration_wait_milliseconds"].as<uint>();
-                weights[0]             = optimiserConfig["parameters_and_sigmas"]["stance"]["body_tilt"].as<double();
-                weights[1]             = optimiserConfig["parameters_and_sigmas"]["walk_cycle"]["zmp_time"].as<double();
-                weights[2]             = optimiserConfig["parameters_and_sigmas"]["walk_cycle"]["step_time"].as<double();
-                weights[3]             = optimiserConfig["parameters_and_sigmas"]["walk_cycle"]["single_support_phase"]["start"].as<double();
-                weights[4]             = optimiserConfig["parameters_and_sigmas"]["walk_cycle"]["single_support_phase"]["end"].as<double();
-                weights[5]             = optimiserConfig["parameters_and_sigmas"]["walk_cycle"]["step"]["height"].as<double();
 
-                samples[0][0] = walkEngineConfig["stance"]["body_tilt"];
-                samples[0][1] = walkEngineConfig["walk_cycle"]["zmp_time"];
-                samples[0][2] = walkEngineConfig["walk_cycle"]["step_time"];
-                samples[0][3] = walkEngineConfig["walk_cycle"]["single_support_phase"]["start"];
-                samples[0][4] = walkEngineConfig["walk_cycle"]["single_support_phase"]["end"];
-                samples[0][5] = walkEngineConfig["walk_cycle"]["step"]["height"];
+                weights.set_size(numParameters);
+                weights[0] = optimiserConfig["parameters_and_sigmas"]["stance"]["body_tilt"].as<double>();
+                weights[1] = optimiserConfig["parameters_and_sigmas"]["walk_cycle"]["zmp_time"].as<double>();
+                weights[2] = optimiserConfig["parameters_and_sigmas"]["walk_cycle"]["step_time"].as<double>();
+                weights[3] = optimiserConfig["parameters_and_sigmas"]["walk_cycle"]["single_support_phase"]["start"].as<double>();
+                weights[4] = optimiserConfig["parameters_and_sigmas"]["walk_cycle"]["single_support_phase"]["end"].as<double>();
+                weights[5] = optimiserConfig["parameters_and_sigmas"]["walk_cycle"]["step"]["height"].as<double>();
+
+                samples.set_size(numParameters, numSamples);
+                samples.zeros();
+                samples(0, 0) = walkEngineConfig["stance"]["body_tilt"].as<double>();
+                samples(0, 1) = walkEngineConfig["walk_cycle"]["zmp_time"].as<double>();
+                samples(0, 2) = walkEngineConfig["walk_cycle"]["step_time"].as<double>();
+                samples(0, 3) = walkEngineConfig["walk_cycle"]["single_support_phase"]["start"].as<double>();
+                samples(0, 4) = walkEngineConfig["walk_cycle"]["single_support_phase"]["end"].as<double>();
+                samples(0, 5) = walkEngineConfig["walk_cycle"]["step"]["height"].as<double>();
 
                 currentSample = numSamples;
-                fitnessScores = arma::zeros<arma::vec>(numSamples);
+                fitnessScores.zeros(numSamples);
             }
             
             if (currentSample == numSamples) {
@@ -87,46 +92,23 @@ namespace optimisation {
             fitnessSum = 0.0;
 
             // Generate config file with next sample.
-            walkEngineConfig["stance"]["body_tilt"]                         = samples[currentSample][0];
-            walkEngineConfig["walk_cycle"]["zmp_time"]                      = samples[currentSample][1];
-            walkEngineConfig["walk_cycle"]["step_time"]                     = samples[currentSample][2];
-            walkEngineConfig["walk_cycle"]["single_support_phase"]["start"] = samples[currentSample][3];
-            walkEngineConfig["walk_cycle"]["single_support_phase"]["end"]   = samples[currentSample][4];
-            walkEngineConfig["walk_cycle"]["step"]["height"]                = samples[currentSample][5];
+            walkEngineConfig["stance"]["body_tilt"]                         = samples(currentSample, 0);
+            walkEngineConfig["walk_cycle"]["zmp_time"]                      = samples(currentSample, 1);
+            walkEngineConfig["walk_cycle"]["step_time"]                     = samples(currentSample, 2);
+            walkEngineConfig["walk_cycle"]["single_support_phase"]["start"] = samples(currentSample, 3);
+            walkEngineConfig["walk_cycle"]["single_support_phase"]["end"]   = samples(currentSample, 4);
+            walkEngineConfig["walk_cycle"]["step"]["height"]                = samples(currentSample, 5);
 
             // Save config file.
-            SaveConfiguration out;
+            Configuration::SaveConfiguration out;
             out.path   = "WalkEngine.yaml";
             out.config = walkEngineConfig.config;
-            emit(std::move(std::make_unique<SaveConfiguration>(out)));
+            emit(std::move(std::make_unique<Configuration::SaveConfiguration>(out)));
         });
 
         on<Trigger<WalkFitnessDelta>>([this](const WalkFitnessDelta& delta) {
            fitnessSum += delta.fitnessDelta;
         });
-
-        // on<Trigger<Configuration<ManualWalkOptimiser>>>([this] (const Configuration<ManualWalkOptimiser>& config) {
-        //     numSamples             = config["number_of_samples"].as<uint>();
-        //     getUpCancelthreshold   = config["getup_cancel_trial_threshold"].as<uint>();
-        //     configWaitMilliseconds = config["configuration_wait_milliseconds"].as<uint>();
-        //     samples[0][0]          = config["parameters_and_sigmas"]["stance"]["body_tilt"].as<double();
-        //     samples[0][1]          = config["parameters_and_sigmas"]["walk_cycle"]["zmp_time"].as<double();
-        //     samples[0][2]          = config["parameters_and_sigmas"]["walk_cycle"]["step_time"].as<double();
-        //     samples[0][3]          = config["parameters_and_sigmas"]["walk_cycle"]["single_support_phase"]["start"].as<double();
-        //     samples[0][4]          = config["parameters_and_sigmas"]["walk_cycle"]["single_support_phase"]["end"].as<double();
-        //     samples[0][5]          = config["parameters_and_sigmas"]["walk_cycle"]["step"]["height"].as<double();
-
-        //     // Initial fitness score for initial parameters.
-        //     fitnessScore[0] = 0.0;
-
-        //     // Force a re-evaluation of the best estimate and get new smaples.
-        //     currentSample = numSamples;
-        // });
-
-        // on<Trigger<Configuration<WalkEngine>>>([this] (const Configuration<WalkEngine>& config) {
-        //     // save a copy of this config.
-        //     walkEngineConfig = config.config;
-        // });
     }
 }
 }
