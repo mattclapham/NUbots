@@ -1,3 +1,4 @@
+preserve_outputs: false
 number_of_samples: 4
 number_of_parameters: 6
 getup_cancel_trial_threshold: 3

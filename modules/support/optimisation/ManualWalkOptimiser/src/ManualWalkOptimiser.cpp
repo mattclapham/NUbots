@@ -17,15 +17,23 @@
  * Copyright 2015 NUbots <nubots@nubots.net>
  */
 
-#include "ManualWalkOptimiser.h"
+#include <cstdio>
 
 #include "messages/support/Configuration.h"
+#include "messages/support/optimisation/WalkFitnessDelta.h"
+
+#include "utility/math/optimisation/PGAoptimiser.h"
+
+#include "ManualWalkOptimiser.h"
+
 
 namespace modules {
 namespace support {
 namespace optimisation {
 
     using messages::support::Configuration;
+    using messages::support::SaveConfiguration;
+    using messages::support::optimisation::WalkFitnessDelta;
 
     struct WalkEngineConfig {
         static constexpr const char* CONFIGURATION_PATH = "WalkEngine.yaml";
@@ -33,21 +41,24 @@ namespace optimisation {
     
 
     ManualWalkOptimiser::ManualWalkOptimiser(std::unique_ptr<NUClear::Environment> environment)
-    : Reactor(std::move(environment)), fitnessSum(0.0), currentSample(-1) {
-
+    : Reactor(std::move(environment)), fitnessSum(0.0), currentSample(-1), runCount(0) { 
         on<Trigger<Every<20, std::chrono::seconds>>
         , With<Configuration<ManualWalkOptimiser>>
-        , With<Configuration<WalkEngineConfig>>([this] 
+        , With<Configuration<WalkEngineConfig>>>([this] 
             (const time_t&
                 , const Configuration<ManualWalkOptimiser>& optimiserConfig
                 , const Configuration<WalkEngineConfig>& walkEngineConfig) {
 
+            YAML::Node config;
+
             if (currentSample == -1) {
-                numSamples             = optimiserConfig["number_of_samples"].as<uint>();
-                numParameters          = optimiserConfig["number_of_parameters"].as<uint>();
+                preserveOutputs        = optimiserConfig["preserve_outputs"].as<bool>();
+                numSamples             = optimiserConfig["number_of_samples"].as<int>();
+                numParameters          = optimiserConfig["number_of_parameters"].as<int>();
                 getUpCancelThreshold   = optimiserConfig["getup_cancel_trial_threshold"].as<uint>();
                 configWaitMilliseconds = optimiserConfig["configuration_wait_milliseconds"].as<uint>();
 
+                // Extract the sigmas from the config file.
                 weights.set_size(numParameters);
                 weights[0] = optimiserConfig["parameters_and_sigmas"]["stance"]["body_tilt"].as<double>();
                 weights[1] = optimiserConfig["parameters_and_sigmas"]["walk_cycle"]["zmp_time"].as<double>();
@@ -56,6 +67,7 @@ namespace optimisation {
                 weights[4] = optimiserConfig["parameters_and_sigmas"]["walk_cycle"]["single_support_phase"]["end"].as<double>();
                 weights[5] = optimiserConfig["parameters_and_sigmas"]["walk_cycle"]["step"]["height"].as<double>();
 
+                // Get the initial parameters from the original WalkEngine config.
                 samples.set_size(numParameters, numSamples);
                 samples.zeros();
                 samples(0, 0) = walkEngineConfig["stance"]["body_tilt"].as<double>();
@@ -67,14 +79,17 @@ namespace optimisation {
 
                 currentSample = numSamples;
                 fitnessScores.zeros(numSamples);
+
+                // Make a copy of the WalkEngine config so we can modify it later.
+                config = YAML::Clone(walkEngineConfig.config);
             }
             
             if (currentSample == numSamples) {
                 // Get the current best estimate.
-                auto bestEstimate = updateEstimate(samples, fitnessScores);
+                auto bestEstimate = utility::math::optimisation::PGA::updateEstimate(samples, fitnessScores);
 
                 // Get the next set of samples.
-                samples = getSamples(bestEstimate, weights, numSamples);
+                samples = utility::math::optimisation::PGA::getSamples(bestEstimate, weights, numSamples);
 
                 // Start at the first sample.
                 currentSample = 0;
@@ -92,18 +107,27 @@ namespace optimisation {
             fitnessSum = 0.0;
 
             // Generate config file with next sample.
-            walkEngineConfig["stance"]["body_tilt"]                         = samples(currentSample, 0);
-            walkEngineConfig["walk_cycle"]["zmp_time"]                      = samples(currentSample, 1);
-            walkEngineConfig["walk_cycle"]["step_time"]                     = samples(currentSample, 2);
-            walkEngineConfig["walk_cycle"]["single_support_phase"]["start"] = samples(currentSample, 3);
-            walkEngineConfig["walk_cycle"]["single_support_phase"]["end"]   = samples(currentSample, 4);
-            walkEngineConfig["walk_cycle"]["step"]["height"]                = samples(currentSample, 5);
+            config["stance"]["body_tilt"]                         = samples(currentSample, 0);
+            config["walk_cycle"]["zmp_time"]                      = samples(currentSample, 1);
+            config["walk_cycle"]["step_time"]                     = samples(currentSample, 2);
+            config["walk_cycle"]["single_support_phase"]["start"] = samples(currentSample, 3);
+            config["walk_cycle"]["single_support_phase"]["end"]   = samples(currentSample, 4);
+            config["walk_cycle"]["step"]["height"]                = samples(currentSample, 5);
 
             // Save config file.
-            Configuration::SaveConfiguration out;
+            SaveConfiguration out;
             out.path   = "WalkEngine.yaml";
             out.config = walkEngineConfig.config;
-            emit(std::move(std::make_unique<Configuration::SaveConfiguration>(out)));
+            emit(std::move(std::make_unique<SaveConfiguration>(out)));
+
+            // Preserve all outputs.
+            if (preserveOutputs)
+            {
+                SaveConfiguration preservation;
+                preservation.path   = "WalkEngine_run" + std::to_string(++runCount) + ".yaml";
+                preservation.config = walkEngineConfig.config;
+                emit(std::move(std::make_unique<SaveConfiguration>(preservation)));
+            }
         });
 
         on<Trigger<WalkFitnessDelta>>([this](const WalkFitnessDelta& delta) {

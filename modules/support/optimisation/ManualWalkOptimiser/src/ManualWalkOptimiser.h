@@ -36,13 +36,14 @@ namespace optimisation {
         /// @brief the path to the configuration file for ManualWalkOptimiser
         static constexpr const char* CONFIGURATION_PATH = "ManualWalkOptimiser.yaml";
 
-	private:
-		unsigned int numSamples, numParameters, getUpCancelThreshold, configWaitMilliseconds;
-		double fitnessSum;
-		int currentSample;
+    private:
+            unsigned int numParameters, getUpCancelThreshold, configWaitMilliseconds;
+            double       fitnessSum;
+            int          numSamples, currentSample, runCount;
+            bool         preserveOutputs;
 
-		arma::mat samples;
-		arma::vec fitnessScores, weights;		
+            arma::mat    samples;
+            arma::vec    fitnessScores, weights;		
     };
 
 }
