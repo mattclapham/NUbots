@@ -44,6 +44,7 @@ namespace optimisation {
 
             arma::mat    samples;
             arma::vec    fitnessScores, weights;		
+            YAML::Node   walkEngineConfig;
     };
 
 }

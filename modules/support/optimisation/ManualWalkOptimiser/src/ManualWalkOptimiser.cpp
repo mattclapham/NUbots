@@ -41,32 +41,30 @@ namespace optimisation {
     
 
     ManualWalkOptimiser::ManualWalkOptimiser(std::unique_ptr<NUClear::Environment> environment)
-    : Reactor(std::move(environment)), fitnessSum(0.0), currentSample(-1), runCount(0) { 
-        on<Trigger<Every<20, std::chrono::seconds>>
-        , With<Configuration<ManualWalkOptimiser>>
-        , With<Configuration<WalkEngineConfig>>>([this] 
-            (const time_t&
-                , const Configuration<ManualWalkOptimiser>& optimiserConfig
-                , const Configuration<WalkEngineConfig>& walkEngineConfig) {
+    : Reactor(std::move(environment)), 
+      numParameters(0), fitnessSum(0.0), numSamples(0), currentSample(-1), runCount(0), preserveOutputs(false) { 
 
-            YAML::Node config;
+        on<Trigger<Configuration<ManualWalkOptimiser>>>([this](const Configuration<ManualWalkOptimiser>& config) {
+            preserveOutputs        = config["preserve_outputs"].as<bool>();
+            numSamples             = config["number_of_samples"].as<int>();
+            numParameters          = config["number_of_parameters"].as<int>();
+            getUpCancelThreshold   = config["getup_cancel_trial_threshold"].as<uint>();
+            configWaitMilliseconds = config["configuration_wait_milliseconds"].as<uint>();
+
+            // Extract the sigmas from the config file.
+            weights.set_size(numParameters);
+            weights[0] = config["parameters_and_sigmas"]["stance"]["body_tilt"].as<double>();
+            weights[1] = config["parameters_and_sigmas"]["walk_cycle"]["zmp_time"].as<double>();
+            weights[2] = config["parameters_and_sigmas"]["walk_cycle"]["step_time"].as<double>();
+            weights[3] = config["parameters_and_sigmas"]["walk_cycle"]["single_support_phase"]["start"].as<double>();
+            weights[4] = config["parameters_and_sigmas"]["walk_cycle"]["single_support_phase"]["end"].as<double>();
+            weights[5] = config["parameters_and_sigmas"]["walk_cycle"]["step"]["height"].as<double>();
+        });
+
+        on<Trigger<Every<20, std::chrono::seconds>>, With<Configuration<WalkEngineConfig>>>
+            ([this](const time_t& , const Configuration<WalkEngineConfig>& config) {
 
             if (currentSample == -1) {
-                preserveOutputs        = optimiserConfig["preserve_outputs"].as<bool>();
-                numSamples             = optimiserConfig["number_of_samples"].as<int>();
-                numParameters          = optimiserConfig["number_of_parameters"].as<int>();
-                getUpCancelThreshold   = optimiserConfig["getup_cancel_trial_threshold"].as<uint>();
-                configWaitMilliseconds = optimiserConfig["configuration_wait_milliseconds"].as<uint>();
-
-                // Extract the sigmas from the config file.
-                weights.set_size(numParameters);
-                weights[0] = optimiserConfig["parameters_and_sigmas"]["stance"]["body_tilt"].as<double>();
-                weights[1] = optimiserConfig["parameters_and_sigmas"]["walk_cycle"]["zmp_time"].as<double>();
-                weights[2] = optimiserConfig["parameters_and_sigmas"]["walk_cycle"]["step_time"].as<double>();
-                weights[3] = optimiserConfig["parameters_and_sigmas"]["walk_cycle"]["single_support_phase"]["start"].as<double>();
-                weights[4] = optimiserConfig["parameters_and_sigmas"]["walk_cycle"]["single_support_phase"]["end"].as<double>();
-                weights[5] = optimiserConfig["parameters_and_sigmas"]["walk_cycle"]["step"]["height"].as<double>();
-
                 // Get the initial parameters from the original WalkEngine config.
                 samples.set_size(numParameters, numSamples);
                 samples.zeros();
@@ -81,7 +79,7 @@ namespace optimisation {
                 fitnessScores.zeros(numSamples);
 
                 // Make a copy of the WalkEngine config so we can modify it later.
-                config = YAML::Clone(walkEngineConfig.config);
+                walkEngineConfig = YAML::Clone(config.config);
             }
             
             if (currentSample == numSamples) {
@@ -107,17 +105,17 @@ namespace optimisation {
             fitnessSum = 0.0;
 
             // Generate config file with next sample.
-            config["stance"]["body_tilt"]                         = samples(currentSample, 0);
-            config["walk_cycle"]["zmp_time"]                      = samples(currentSample, 1);
-            config["walk_cycle"]["step_time"]                     = samples(currentSample, 2);
-            config["walk_cycle"]["single_support_phase"]["start"] = samples(currentSample, 3);
-            config["walk_cycle"]["single_support_phase"]["end"]   = samples(currentSample, 4);
-            config["walk_cycle"]["step"]["height"]                = samples(currentSample, 5);
+            walkEngineConfig["stance"]["body_tilt"]                         = samples(currentSample, 0);
+            walkEngineConfig["walk_cycle"]["zmp_time"]                      = samples(currentSample, 1);
+            walkEngineConfig["walk_cycle"]["step_time"]                     = samples(currentSample, 2);
+            walkEngineConfig["walk_cycle"]["single_support_phase"]["start"] = samples(currentSample, 3);
+            walkEngineConfig["walk_cycle"]["single_support_phase"]["end"]   = samples(currentSample, 4);
+            walkEngineConfig["walk_cycle"]["step"]["height"]                = samples(currentSample, 5);
 
             // Save config file.
             SaveConfiguration out;
             out.path   = "WalkEngine.yaml";
-            out.config = walkEngineConfig.config;
+            out.config = walkEngineConfig;
             emit(std::move(std::make_unique<SaveConfiguration>(out)));
 
             // Preserve all outputs.
@@ -125,7 +123,7 @@ namespace optimisation {
             {
                 SaveConfiguration preservation;
                 preservation.path   = "WalkEngine_run" + std::to_string(++runCount) + ".yaml";
-                preservation.config = walkEngineConfig.config;
+                preservation.config = walkEngineConfig;
                 emit(std::move(std::make_unique<SaveConfiguration>(preservation)));
             }
         });
