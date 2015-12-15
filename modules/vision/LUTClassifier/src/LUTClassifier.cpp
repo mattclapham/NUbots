@@ -93,6 +93,7 @@ namespace modules {
                                 // Get our LUT pixel for this index
                                 Image::Pixel p = lut->getPixelFromIndex(index);
 
+
                                 ++nPoints;
                                 greenCentroid += arma::fvec3({ float(p.y), float(p.cb), float(p.cr) });
                             }
@@ -101,6 +102,8 @@ namespace modules {
                 }
                 greenCentroid /= float(nPoints);
                 this->greenCentroid = greenCentroid;
+
+                
 
                 emit(std::move(lut));
             });
