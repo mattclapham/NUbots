@@ -23,13 +23,16 @@
 #include <vector>
 #include <armadillo>
 #include <cmath>
+#include <chrono>
 #include <nuclear>
 
 #include "utility/math/matrix/Transform3D.h"
 #include "utility/math/coordinates.h"
 #include "utility/motion/RobotModels.h"
+#include "utility/motion/ForwardKinematics.h"
 #include "messages/input/ServoID.h"
 #include "messages/input/Sensors.h"
+#include "utility/math/angle.h"
 #include "messages/behaviour/Action.h"
 
 namespace utility {
@@ -265,6 +268,86 @@ namespace kinematics {
         arma::vec3 groundPos_ground = {gpos[0],gpos[1],0};
         return calculateHeadJointsToLookAt<RobotKinematicModel>(groundPos_ground, sensors.orientationCamToGround, sensors.orientationBodyToGround);
     }
+
+    template <typename RobotKinematicModel>
+    std::vector<std::pair<messages::input::ServoID, float>> setHeadPoseFromFeet(const utility::math::matrix::Transform3D& cameraToFeet, const float& footSeparation, const float& bodyAngle){
+        //Get camera pose relative to body
+        arma::vec3 euler = cameraToFeet.rotation().eulerAngles();
+        float headPitch = euler[1] - bodyAngle;
+        float headYaw = euler[2];
+        auto headPoses = utility::motion::kinematics::calculateHeadJointPosition<RobotKinematicModel>(headPitch,
+                                                                                                     headYaw,
+                                                                                                     messages::input::ServoID::HEAD_PITCH);
+        auto cameraToBody = headPoses[messages::input::ServoID::HEAD_PITCH];
+
+        //Compute foot poses
+        utility::math::matrix::Transform3D F_c = cameraToBody * cameraToFeet.i();
+        utility::math::matrix::Transform3D F_l = F_c.translateY(footSeparation / 2.0);
+        utility::math::matrix::Transform3D F_r = F_c.translateY(-footSeparation / 2.0);
+
+        //Get associated joint angles
+        auto joints = calculateLegJoints<RobotKinematicModel>(F_l, messages::input::LimbID::LEFT_LEG);
+        auto joints2 = calculateLegJoints<RobotKinematicModel>(F_r, messages::input::LimbID::RIGHT_LEG);
+        joints.insert(joints.end(), joints2.begin(), joints2.end());
+        joints.push_back(std::make_pair(messages::input::ServoID::HEAD_PITCH,headPitch));
+        joints.push_back(std::make_pair(messages::input::ServoID::HEAD_YAW,headYaw));
+        // servos = calculateLegJoints<RobotKinematicModel>()
+        return joints;
+    }
+
+    template <typename RobotKinematicModel>
+    std::vector<std::pair<messages::input::ServoID, float>> setArm(const arma::vec3& pos, bool left, int number_of_iterations = 300, arma::vec3 angleHint = arma::zeros(3)){
+        messages::input::ServoID SHOULDER_PITCH, SHOULDER_ROLL, ELBOW;
+        int negativeIfRight = 1;
+
+        if(static_cast<bool>(left)){
+            SHOULDER_PITCH = messages::input::ServoID::L_SHOULDER_PITCH;
+            SHOULDER_ROLL = messages::input::ServoID::L_SHOULDER_ROLL;
+            ELBOW = messages::input::ServoID::L_ELBOW;
+        } else {
+            SHOULDER_PITCH = messages::input::ServoID::R_SHOULDER_PITCH;
+            SHOULDER_ROLL = messages::input::ServoID::R_SHOULDER_ROLL;
+            ELBOW = messages::input::ServoID::R_ELBOW;
+            negativeIfRight = -1;
+        }
+
+        auto start_compute = NUClear::clock::now();
+
+        //Initial guess for angles
+        arma::vec3 angles = angleHint;
+        arma::vec3 X = {0,0,0};
+        int i = 0;
+        for(; i < number_of_iterations; i++){
+            X = calculateArmPosition<RobotKinematicModel>(angles, left);
+            arma::vec3 dX = pos - X;
+            
+            arma::mat33 J = calculateArmJacobian<RobotKinematicModel>(angles, left);
+            // std::cout << "pos = " << pos.t() << std::endl;
+            // std::cout << "X = " << X.t() << std::endl;
+            // std::cout << "dX = " << dX.t() << std::endl;
+            // std::cout << "angles = " << angles.t() << std::endl;
+            // std::cout << "error = " << arma::norm(dX) << std::endl;
+            if(arma::norm(dX) < 0.001){
+                break;
+            }
+            arma::vec3 dAngles = J.t() * dX;// * std::max((100 - i),1);
+            angles = dAngles + angles;
+        }
+        auto end_compute = NUClear::clock::now();
+        std::cout << "Computation Time (ms) = " << std::chrono::duration_cast<std::chrono::microseconds>(end_compute - start_compute).count() * 1e-3 << std::endl;
+        // std::cout << "Final angles = " << angles.t() << std::endl;
+        // std::cout << "Final position = " << X.t() << std::endl;
+        // std::cout << "Goal position = " << pos.t() << std::endl;
+        std::cout << "Final error = " << arma::norm(pos-X) << std::endl;
+        // std::cout << "Iterations = " << i << std::endl;
+
+        
+        std::vector<std::pair<messages::input::ServoID, float> > joints;
+        joints.push_back(std::make_pair(SHOULDER_PITCH,utility::math::angle::normalizeAngle(angles[0])));
+        joints.push_back(std::make_pair(SHOULDER_ROLL,utility::math::angle::normalizeAngle(angles[1])));
+        joints.push_back(std::make_pair(ELBOW,utility::math::angle::normalizeAngle(angles[2])));
+        return joints;
+    } 
 
 } // kinematics
 }  // motion
