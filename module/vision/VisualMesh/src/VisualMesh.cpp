@@ -56,20 +56,53 @@ namespace vision {
         	// Regnerate LUT
         });
 
-        on<Trigger<Image>, With<Sensors>>().then([] (const Image& image, const Sensors& sensors) {
-
+        on<Trigger<Image>, With<Sensors>>().then([this] (const Image& image, const Sensors& sensors) {
+        	// get camera orientation matrix and camera centre as the 4th column, without the 4th element
+        	Transform3D camToGround = sensors.orientationCamToGround; // 4x4 Transfomration matrix from Cam to Ground
+        	arma::vec3 cameraCentre = camToGround.submat(0,3,2,3); // position of camera centre
+        	// get field of view
+        	float FOV_X = 1.0472;
+			float FOV_Y = 0.785398;
         	// Go nuts!
-        	//image.width;
-        	//image.height;
+        	double imageWidth = image.width;
+        	double imageHeight = image.height;
+        	double phiDash;
 
         	//Find Angular Limits
         	//Phi = ?????
+
         	//Theta
-        	// get FOV_X and FOV_Y
-        	//Find Corner Points //WRITTEN
-        	//Transform them into world space //USE EXISTING FROM VISION.h
-        	//Find the four Points of Intersection //FUNCTION WRITTEN
+        	//Find Corner Points 
+        	std::vector<arma::vec3> cornerPointsCam = findCornerPoints(1, FOV_X, FOV_Y);
+        	//Transform them into world space
+        	std::vector<arma::vec3> cornerPointsWorld;
+        	for(auto& point : cornerPointsCam) {
+        		cornerPointsWorld.push_back(camToGround*arma::join_rows(point, arma::vec({1})));
+        	}
+
+        	//Find the four points of intersection of the field of view lines to the ground plane that form a quadrilateral
+        	// TODO maybe make arma::mat
+        	std::vector<arma::vec3> fieldOfViewQuadrilateral;
+        	for(auto& point : cornerPointsWorld) {
+        		fieldOfViewQuadrilateral.push_back(lineIntersectWithGroundPlane(cameraCentre, point));
+        	}
+
+        	// Find points of intersection of the circle defined by phi around the robot quadrilateral formed by the projected field of view.
+        	double radius = cameraCentre(2)*std::tan(phiDash);
+
+			// TODO make into an array
+			std::vector<arma::vec2> solutionsLine1 = lineIntersectWithCircle(arma::vec2({0,0}), radius, fieldOfViewQuadrilateral[0].rows(0,1), fieldOfViewQuadrilateral[1].rows(0,1));
+        	std::vector<arma::vec2> solutionsLine2 = lineIntersectWithCircle(arma::vec2({0,0}), radius, fieldOfViewQuadrilateral[1].rows(0,1), fieldOfViewQuadrilateral[2].rows(0,1));
+			std::vector<arma::vec2> solutionsLine3 = lineIntersectWithCircle(arma::vec2({0,0}), radius, fieldOfViewQuadrilateral[2].rows(0,1), fieldOfViewQuadrilateral[3].rows(0,1));
+			std::vector<arma::vec2> solutionsLine4 = lineIntersectWithCircle(arma::vec2({0,0}), radius, fieldOfViewQuadrilateral[3].rows(0,1), fieldOfViewQuadrilateral[0].rows(0,1));
+        	// Throw out solutions not within the line segments of the quadrilateral
+			std::vector<arma::vec2> solutionsLineSegment1 = throwOutSolutionsNotInSegment(solutionsLine1, fieldOfViewQuadrilateral[0].rows(0,1), fieldOfViewQuadrilateral[1].rows(0,1));
+        	std::vector<arma::vec2> solutionsLineSegment2 = throwOutSolutionsNotInSegment(solutionsLine2, fieldOfViewQuadrilateral[1].rows(0,1), fieldOfViewQuadrilateral[2].rows(0,1));
+			std::vector<arma::vec2> solutionsLineSegment3 = throwOutSolutionsNotInSegment(solutionsLine3, fieldOfViewQuadrilateral[2].rows(0,1), fieldOfViewQuadrilateral[3].rows(0,1));
+			std::vector<arma::vec2> solutionsLineSegment4 = throwOutSolutionsNotInSegment(solutionsLine4, fieldOfViewQuadrilateral[3].rows(0,1), fieldOfViewQuadrilateral[0].rows(0,1));
+
         	//Determine which of the POI's fall on or within the circle //FUNCTION NOT WRITTEN
+        	
         	//Abide by cases to find theta limits //FUNCTION NOT WRITTEN
 
         	//For each phi, jump by theta within the limits, //NOT WRITTEN 
@@ -81,6 +114,18 @@ namespace vision {
 
         });
     }
+
+	std::vector<arma::vec2> VisualMesh::throwOutSolutionsNotInSegment(std::vector<arma::vec2> solutions, arma::vec2 a, arma::vec2 b) {
+	std::vector<arma::vec2>	segmentSolutions;
+		for(auto& point : solutions) {
+			bool checkIsTrue = checkPointInLineSegment(point, a, b);
+			// if point is in segment, keep it
+			if(checkIsTrue) {
+				segmentSolutions.push_back(point);
+			}
+		}
+		return segmentSolutions;
+	}
 
 	std::vector<arma::vec3> VisualMesh::findCornerPoints(double xmax, double FOV_X, double FOV_Y) {
 		double ymax = viewingAngleMax(xmax, FOV_X);
