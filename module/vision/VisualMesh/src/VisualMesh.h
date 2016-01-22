@@ -90,7 +90,7 @@ namespace vision {
 
 		std::vector<arma::vec2> throwOutSolutionsNotInSegment(std::vector<arma::vec2> solutions, arma::vec2 a, arma::vec2 b);
 		std::vector<arma::vec3> findCornerPoints(double xmax, double FOV_X, double FOV_Y);
-		arma::vec3 convertPhiAndThetaToCamSpace(double phiDash, double theta, arma::mat44 camToGround);
+		arma::vec3 convertPhiAndThetaToCamSpace(double phiDash, double theta, Transform3D camToGround);
 
     public:
         /// @brief Called by the powerplant to build and setup the VisualMesh reactor.
