@@ -95,9 +95,9 @@ namespace vision {
              * Calculate image corners *
              ***************************/
             // Get the corners of the view port in cam space
-            double xmax = std::tan(FOV_X/2);
-            double ymax = std::tan(FOV_Y/2);
-            arma::mat::fixed<3,4> camCornerPoints = {
+            double ymax = std::tan(FOV_X / 2);
+            double zmax = std::tan(FOV_Y / 2);
+            arma::mat::fixed<3,4> cornerPointsCam = {
                 1,  ymax,  zmax,
                 1, -ymax,  zmax,
                 1,  ymax, -zmax,
@@ -105,7 +105,7 @@ namespace vision {
             };
 
             // Rotate the camera points into world space
-            arma::mat::fixed<3,4> worldCornerPoints = sensors.orientationCamToGround.rotation() * camCornerPoints;
+            arma::mat::fixed<3,4> cornerPointsWorld = sensors.orientationCamToGround.rotation() * cornerPointsCam;
 
 
             /*************************
@@ -139,16 +139,17 @@ namespace vision {
             }
 
             // Calculate our apart from the radius
-            arma::vec4 partialDiscriminant = arma::square(c1) - arma::square(c2);
+            arma::vec4 partialDiscriminant = arma::square(circleEq1) - arma::square(circleEq2);
 
             // Calculate our solution bar the discriminant
-            arma::mat intersectionPoints = groundPoints + c1;
+            arma::mat intersectionPoints = groundPoints + circleEq1;
 
 
             /*************************************************************
              * Get our lookup table and loop through our phi/theta pairs *
              *************************************************************/
-            auto phiIterator = getLUT(cameraHeight, minPhi, maxPhi);
+            auto phiIterator = lut.getLUT(cameraHeight, minPhi, maxPhi);
+            std::vector<std::pair<double, double>> phiThetaPoints;
 
             for(auto it = phiIterator.first; it != phiIterator.second; ++it) {
 
@@ -171,12 +172,20 @@ namespace vision {
                 // Find our intersection points
                 // Square root the relevant discriminants
                 arma::vec vals = arma::sqrt(discriminants.cols(indicies));
-                intersectionPoints + vals;
-                intersectionPoints - vals;
+                arma::mat plusIntersections = intersectionPoints + vals;
+                arma::mat minusIntersections = intersectionPoints - vals;
 
                 /****************************************************************************************
                  * Eliminate solutions that are not on the screen and get remaining min/max theta pairs *
                  ****************************************************************************************/
+
+                // TODO check if the intersection point is on the line for plus and add to list
+
+                // TODO check if the intersection point is on the line for minus and add to list
+
+                // Convert the ones that were on the lines to theta values
+                // Sort the list of theta values to make pairs
+
 
                 // TODO eliminate intersection points that are not on the screen and get min/max theta pairs
                 std::vector<double> thetaPairs;
@@ -207,8 +216,8 @@ namespace vision {
             // TODO project the phi/theta pais onto the screen
             for(auto& point : phiThetaPoints) {
 
-                coords = aofijeafijse{cos(theta)*sin(phi), sin(theta)*sin(phi), -cos(phi)}
-                camToGround.rotation().i() * coords;
+                arma::vec3 coords = { cos(point.second)*sin(point.first), sin(point.second)*sin(point.first), -cos(point.first) };
+                sensors.orientationCamToGround.rotation().i() * coords;
                 // We are now in cam space?
 
             }
