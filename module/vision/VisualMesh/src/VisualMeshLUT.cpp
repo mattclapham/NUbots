@@ -145,10 +145,6 @@ namespace vision {
             newLUTs.push_back(values);
         }
 
-        for(auto& v : newLUTs) {
-            std::cout << "BOO" << std::endl;
-        }
-
         luts = newLUTs;
     }
 

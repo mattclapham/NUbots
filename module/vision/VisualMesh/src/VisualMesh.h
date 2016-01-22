@@ -24,6 +24,7 @@
 #include <armadillo>
 
 #include "VisualMeshLUT.h"
+#include "utility/math/matrix/Transform3D.h"
 
 namespace module {
 namespace vision {
@@ -38,15 +39,6 @@ namespace vision {
     	double viewingAngleMax(double xmax, double FOV) {
 			return xmax*std::tan(FOV/2);
     	}
-
-		// line = position + t*direction, intersects with the plane z = 0 when t = -p_z/d_z.
-		arma::vec3 lineIntersectWithGroundPlane(arma::vec3 point_a, arma::vec3 point_b) {
-			arma::vec3 direction = point_b - point_a;
-			arma::vec3 position = point_a;
-			arma::vec3 solution = position - (position(2)/direction(2))*direction;
-			solution(2) = 0;
-			return solution;
-		}
 
 		// check if point is in line segment ab. WARNING does not consider point == segment point as in segment
 		bool checkPointInLineSegment(arma::vec2 point, arma::vec2 a, arma::vec2 b) {
@@ -66,34 +58,9 @@ namespace vision {
 			}
 		}
 
-		// https://en.wikipedia.org/wiki/Line%E2%80%93sphere_intersection
-		std::vector<arma::vec2> lineIntersectWithCircle(arma::vec2 centre, double radius, arma::vec2 point_a, arma::vec2 point_b) {
-			arma::vec2 direction = arma::normalise(point_b - point_a);
-			arma::vec2 position = point_a;
-			// x = position + t*direction is line sub into circle: ||x - c||^2 = r^2
-			// solve for t
-			double calc0 = -arma::dot(position - centre, direction);
-			double calc1 = arma::norm(position - centre);
-			double disc = std::sqrt(calc0*calc0 - calc1*calc1 + radius*radius);
-
-			// sub t into line eq to get the points of intersection
-			std::vector<arma::vec2> solutions;
-			if(disc > 0) {
-				double t1 = calc0 + disc;
-				double t2 = calc0 - disc;
-				arma::vec2 sol1 = position + t1*direction;
-				arma::vec2 sol2 = position + t2*direction;
-				solutions.push_back(sol1);
-				solutions.push_back(sol2);
-			} else if(disc == 0) {
-				solutions.push_back(position + calc0*direction);
-			}
-			return solutions;
-		}
-
 		std::vector<arma::vec2> throwOutSolutionsNotInSegment(std::vector<arma::vec2> solutions, arma::vec2 a, arma::vec2 b);
 		std::vector<arma::vec3> findCornerPoints(double xmax, double FOV_X, double FOV_Y);
-		arma::vec3 convertPhiAndThetaToCamSpace(double phiDash, double theta, Transform3D camToGround);
+		arma::vec3 convertPhiAndThetaToCamSpace(double phiDash, double theta, utility::math::matrix::Transform3D camToGround);
 
     public:
         /// @brief Called by the powerplant to build and setup the VisualMesh reactor.

@@ -31,7 +31,7 @@
 
 namespace module {
 namespace vision {
-    
+
     using message::input::Image;
     using message::input::Sensors;
     using message::vision::MeshObjectRequest;
@@ -98,7 +98,7 @@ namespace vision {
             //Phi = ?????
 
 
-            //For each phi, jump by theta within the limits, //NOT WRITTEN 
+            //For each phi, jump by theta within the limits, //NOT WRITTEN
             // to find the sample point and convert it to camera space //WRITTEN
 
 
@@ -135,7 +135,7 @@ namespace vision {
 
     arma::vec3 VisualMesh::convertPhiAndThetaToCamSpace(double phiDash, double theta, Transform3D camToGround) {
         // phi and theta are converted to spherical coordinates in a space with the same
-        // orientation as the world, but with origin at the camera position. 
+        // orientation as the world, but with origin at the camera position.
         // NOTE: the associated phi in spherical coords is given by -(pi/2 - phiDash), which simplifies the spherical coord conversion to:
         arma::vec3 sphericalCoords = {std::cos(theta)*std::sin(phiDash), std::sin(theta)*std::sin(phiDash), -std::cos(phiDash)};
         // To put in camera space multiply by the rotation matrix, use 0 for rotation
@@ -147,7 +147,7 @@ namespace vision {
     }
 
 
-    std::vector<double> VisualMesh::findPhiLimits(Transform3D camToGround, double FOV_X, double FOV_Y) {
+    std::vector<double> findPhiLimits(Transform3D camToGround, double FOV_X, double FOV_Y) {
 
         std::vector<arma::vec3> cornerPointsCam = findCornerPoints(1, FOV_X, FOV_Y);
 
@@ -170,13 +170,39 @@ namespace vision {
     }
 
     std::vector<double> VisualMesh::findThetaLimits(double phiDash, Transform3D camToGround, double FOV_X, double FOV_Y) {
-        //Find Corner Points 
+        //Find Corner Points
         std::vector<arma::vec3> cornerPointsCam = findCornerPoints(1, FOV_X, FOV_Y);
-        //Transform them into world space
-        std::vector<arma::vec3> cornerPointsWorld;
-        for(auto& point : cornerPointsCam) {
-            cornerPointsWorld.push_back(camToGround.transformPoint(point));
+
+        // Rotate our camera vectors to world rotation
+        arma::mat::fixed<3,4> cornerPointsWorld = camToGround.rotation() * cornerPointsCam; // 3x4
+
+        // Intersect with the ground plane
+        arma::mat::fixed<3,4> groundPoints3d = cornerPointsWorld * (-cameraHeight / cornerPointsWorld.row(2).t());
+
+        // Get the lines on the ground
+        std::array<ParametricLine<2>, 4> groundLines = {
+            ParametricLine<2>(groundPoints.submat(0,0,1,0), groundPoints.submat(0,1,1,1) - groundPoints.submat(0,0,1,0)),
+            ParametricLine<2>(groundPoints.submat(0,1,1,1), groundPoints.submat(0,2,1,2) - groundPoints.submat(0,1,1,1)),
+            ParametricLine<2>(groundPoints.submat(0,2,1,2), groundPoints.submat(0,3,1,3) - groundPoints.submat(0,2,1,2)),
+            ParametricLine<2>(groundPoints.submat(0,3,1,3), groundPoints.submat(0,0,1,0) - groundPoints.submat(0,3,1,3))
         }
+
+        // Find points of intersection of the circle defined by phi around the robot quadrilateral formed by the projected field of view.
+        Circle circle(cameraHeight * std::tan(phiDash), arma::vec({0, 0}));
+
+        for(auto& l : groundLines) {
+            arma::mat i = intersect(l, circle);
+        }
+
+
+        r = 1 / (sin(theta) + cos(theta))
+
+
+        // Find the points that are on the line
+
+
+
+
 
         double cameraHeight = camToGround(3, 2); // position of camera centre
         //Find the four points of intersection of the field of view lines to the ground plane that form a quadrilateral
@@ -186,8 +212,13 @@ namespace vision {
             fieldOfViewQuadrilateral.push_back(lineIntersectWithGroundPlane(arma::vec({0,0, cameraHeight}), point));
         }
 
+
+        std::array<ParametricLine<3>, 4> groundLines;
+
         // Find points of intersection of the circle defined by phi around the robot quadrilateral formed by the projected field of view.
-        double radius = cameraCentre(2)*std::tan(phiDash);
+        Circle circle(cameraHeight * std::tan(phiDash), arma::vec({0, 0}));
+
+
 
         // TODO make into an array
         std::vector<arma::vec2> solutionsLine1 = lineIntersectWithCircle(arma::vec2({0,0}), radius, fieldOfViewQuadrilateral[0].rows(0,1), fieldOfViewQuadrilateral[1].rows(0,1));
