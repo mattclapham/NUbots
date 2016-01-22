@@ -10,18 +10,10 @@ NUCLEAR_ROLE(
     support::NUbugger
 
     #Sensors
-    input::LinuxCamera
-    platform::darwin::HardwareIO
-    platform::darwin::SensorFilter
+    #input::LinuxCamera
+    #platform::darwin::HardwareIO
+    #platform::darwin::SensorFilter
 
     #Vision
     vision::VisualMesh
-    #vision::LUTClassifier
-    #vision::FeatureDetector
-
-    #Localisation
-    #localisation::MMKFRobotLocalisation
-    #localisation::KFBallLocalisation
-
-
 )

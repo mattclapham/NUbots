@@ -20,40 +20,66 @@
 #include "VisualMesh.h"
 #include "message/input/Image.h"
 #include "message/input/Sensors.h"
+#include "message/vision/MeshObjectRequest.h"
 #include "message/support/Configuration.h"
 
 #include "utility/math/matrix/Transform3D.h"
 #include "utility/support/yaml_armadillo.h"
 #include "utility/nubugger/NUhelpers.h"
 
+#include "utility/motion/RobotModels.h"
+
 namespace module {
 namespace vision {
     
     using message::input::Image;
     using message::input::Sensors;
+    using message::vision::MeshObjectRequest;
     using message::support::Configuration;
+
+    using utility::motion::kinematics::DarwinModel;
 
     using utility::math::matrix::Transform3D;
     using utility::nubugger::graph;
 
-    struct MeshObjectRequest {
-        enum Type {
-            SPHERE,
-            CIRCLE,
-            CYLINDER
-        };
-    };
-
     VisualMesh::VisualMesh(std::unique_ptr<NUClear::Environment> environment)
-    : Reactor(std::move(environment)) {
+    : Reactor(std::move(environment))
+    , lut(0.2, 0.5) { // TODO make this based of the kinematics
 
         on<Configuration>("VisualMesh.yaml").then([this] (const Configuration& config) {
             // Use configuration here from file VisualMesh.yaml
         });
 
-        on<Trigger<MeshObjectRequest>>().then([] (const MeshObjectRequest&) {
-            // Update list of shapes
-            // Regnerate LUT
+        auto sphere = std::make_unique<MeshObjectRequest>();
+        sphere->type = MeshObjectRequest::SPHERE;
+        sphere->radius = 0.07;
+        sphere->height = 0;
+        sphere->intersections = 3;
+        sphere->maxDistance = 10;
+        sphere->hardLimit = false;
+
+        auto cylinder = std::make_unique<MeshObjectRequest>();
+        cylinder->type = MeshObjectRequest::CYLINDER;
+        cylinder->radius = 0.05;
+        cylinder->height = 2;
+        cylinder->intersections = 2;
+        cylinder->maxDistance = 10;
+        cylinder->hardLimit = false;
+
+        auto circle = std::make_unique<MeshObjectRequest>();
+        circle->type = MeshObjectRequest::CIRCLE;
+        circle->radius = 0.05;
+        circle->height = 0;
+        circle->intersections = 2;
+        circle->maxDistance = 2;
+        circle->hardLimit = false;
+
+        emit<Scope::INITIALIZE>(sphere);
+        emit<Scope::INITIALIZE>(cylinder);
+        emit<Scope::INITIALIZE>(circle);
+
+        on<Trigger<MeshObjectRequest>>().then([this] (const MeshObjectRequest& request) {
+            lut.addShape(request);
         });
 
         on<Trigger<Image>, With<Sensors>>().then([this] (const Image& image, const Sensors& sensors) {

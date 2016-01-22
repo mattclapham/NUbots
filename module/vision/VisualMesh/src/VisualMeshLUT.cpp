@@ -21,6 +21,7 @@
 
 #include <cstddef>
 #include <algorithm>
+#include <iostream>
 
 #include "Circle.h"
 #include "Cylinder.h"
@@ -71,6 +72,8 @@ namespace vision {
 
     void VisualMeshLUT::regenerate() {
 
+        std::cout << __LINE__ << std::endl;
+
         // Our new luts
         std::vector<std::vector<std::pair<double, double>>> newLUTs;
 
@@ -110,6 +113,8 @@ namespace vision {
             phi = M_PI;
             while(phi > M_PI_2) {
 
+                std::cout << __LINE__ << std::endl;
+
                 // Start at max
                 double minPhiJump = std::numeric_limits<double>::max();
                 double minThetaJump = std::numeric_limits<double>::max();
@@ -138,6 +143,10 @@ namespace vision {
 
             // This is our height for this index
             newLUTs.push_back(values);
+        }
+
+        for(auto& v : newLUTs) {
+            std::cout << "BOO" << std::endl;
         }
 
         luts = newLUTs;

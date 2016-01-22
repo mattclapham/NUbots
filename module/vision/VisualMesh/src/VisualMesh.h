@@ -23,12 +23,15 @@
 #include <nuclear>
 #include <armadillo>
 
+#include "VisualMeshLUT.h"
+
 namespace module {
 namespace vision {
 
     class VisualMesh : public NUClear::Reactor {
-    
+
     private:
+        VisualMeshLUT lut;
 
 		// calculates the length of the opposite side of the triangle which gives the maximum value of the other coord (x or z)
 		// in the FOV plane for a given x, in camera space.
@@ -41,7 +44,7 @@ namespace vision {
 			arma::vec3 direction = point_b - point_a;
 			arma::vec3 position = point_a;
 			arma::vec3 solution = position - (position(2)/direction(2))*direction;
-			solution(2) = 0; 
+			solution(2) = 0;
 			return solution;
 		}
 
