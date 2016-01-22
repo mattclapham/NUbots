@@ -83,44 +83,103 @@ namespace vision {
         });
 
         on<Trigger<Image>, With<Sensors>>().then([this] (const Image& image, const Sensors& sensors) {
-            // get camera orientation matrix and camera centre as the 4th column, without the 4th element
-            Transform3D camToGround = sensors.orientationCamToGround; // 4x4 Transfomration matrix from Cam to Ground
 
             // get field of view
             float FOV_X = 1.0472;
             float FOV_Y = 0.785398;
-            // Go nuts!
-            double imageWidth = image.width;
-            double imageHeight = image.height;
-            double phiDash;
 
-            // TODO when optimising there is a lot of double up calculations
+            // Camera height is z component of the transformation matrix
+            double cameraHeight = sensors.orientationCamToGround(2, 3);
 
-            // TO avoid these do the following
+            /***************************
+             * Calculate image corners *
+             ***************************/
+            // Get the corners of the view port in cam space
+            double xmax = std::tan(FOV_X/2);
+            double ymax = std::tan(FOV_Y/2);
+            arma::mat::fixed<3,4> camCornerPoints = {
+                1,  ymax,  zmax,
+                1, -ymax,  zmax,
+                1,  ymax, -zmax,
+                1, -ymax, -zmax
+            };
 
-            // CALCULATE THE CORNER POINTS
-
-            // CALCULATE THE MIN/MAX PHI VALUES
-
-            // CALCULATE THE EQUATIONS OF THE LINES ON THE GROUND
-
-            // CALCULATE ALL OF THE CIRCLE SOLUTION EQUATION BAR THE RADIUS IN THE DESCRIMINANT
-
-            // LOOP THROUGH THE LUT VALUES FROM MIN PHI TO MAX PHI
-            //      CALCULATE THE RAIUS OF THE CIRCLE
-            //      CALCULATE THE DESCRIMINANT
-            //      FIND THE INTERSECTION POINTS
-            //      ELIMINATE THE BAD INTERSECITON POINTS
-            //
-            //      LOOP THROUGH THE THETA VALUES JUMPING BY DTHETA AND PUT THEM IN A VECTOR
-            //      TRANSFORM ALL OF THESE POINTS INTO SCREEN SPACE
-            //      ADD THESE POINTS TO THE LIST OF POINTS
-
-            // END LOOP THROUGH THE PHI VALUES
+            // Rotate the camera points into world space
+            arma::mat::fixed<3,4> worldCornerPoints = sensors.orientationCamToGround.rotation() * camCornerPoints;
 
 
-            // EMIT THE LIST OF POINTS
+            /*************************
+             * Calculate min/max phi *
+             *************************/
+            // Get the cosv value
+            arma::vec4 phiCosV = arma::acos(cornerPointsWorld.row(2));
 
+            // Return the minimum and maximum values
+            double minPhi = phiCosV.min();
+            double maxPhi = phiCosV.max();
+
+            /***********************************
+             * Calculate ground line equations *
+             ***********************************/
+            // Intersect our corner points with the ground plane and drop the z component
+            arma::mat::fixed<2,4> groundPoints = arma::mat(cornerPointsWorld * (-cameraHeight / cornerPointsWorld.row(2).t())).rows(0,1);
+            // Get direction vectors from each corner point to the next corner point
+            arma::mat::fixed<2,4> groundDirections = groundPoints - groundPoints.cols(arma::uvec({1,2,3,0}));
+
+            /**************************************************
+             * Solve as much of the circle equation as we can *
+             **************************************************/
+            // Get all our circle intersection values
+            arma::vec4 circleEq1 = groundPoints * groundDirections;
+            arma::vec4 circleEq2;
+            for(size_t i = 0; i < circleEq2.n_cols; ++i) {
+                circleEq2[i] = arma::norm(groundPoints.col(i));
+            }
+
+            // Calculate our apart from the radius
+            arma::vec4 partialDiscriminant = arma::square(c1) - arma::square(c2);
+
+            // Calculate our solution bar the discriminant
+            arma::mat intersectionPoints = groundPoints + c1;
+
+            /*************************************************************
+             * Get our lookup table and loop through our phi/theta pairs *
+             *************************************************************/
+            auto phiIterator = getLUT(cameraHeight, minPhi, maxPhi);
+
+            for(auto it = phiIterator.first; it != phiIterator.second; ++it) {
+
+                const double& phi = it->first;
+                const double& dTheta = it->second;
+
+                // Calculate the radius of the circle
+                double circleRadius = cameraHeight * std::tan(phi);
+
+                // Calculate the actual discriminant values
+                arma::vec4 discriminants = partialDiscriminant + (circleRadius * circleRadius);
+
+                // Find the discriminants that will yeild two solutions
+                arma::uvec indicies = arma::find(discriminants > 0);
+
+                // Find our intersection points
+                // Square root the relevant discriminants
+                arma::vec vals = arma::sqrt(discriminants.cols(indicies));
+                intersectionPoints + vals;
+                intersectionPoints - vals;
+
+                // TODO eliminate intersection points that are not on the screen
+
+                for (size_t i = 0; i < thetaPairs.size() / 2; i += 2) {
+                    const double& minTheta = thetaPairs[i];
+                    const double& maxTheta = thetaPairs[i + 1];
+
+                    for (double theta = minTheta; theta < maxTheta; theta += dTheta) {
+
+                        // TODO here we have phi and theta and can calculate a screen point and add it to a list
+
+                    }
+                }
+            }
         });
     }
 
