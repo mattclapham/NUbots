@@ -59,8 +59,10 @@ namespace vision {
 		}
 
 		std::vector<arma::vec2> throwOutSolutionsNotInSegment(std::vector<arma::vec2> solutions, arma::vec2 a, arma::vec2 b);
-		std::vector<arma::vec3> findCornerPoints(double xmax, double FOV_X, double FOV_Y);
+		arma::mat::fixed<3,4> findCornerPoints(double xmax, double FOV_X, double FOV_Y);
 		arma::vec3 convertPhiAndThetaToCamSpace(double phiDash, double theta, utility::math::matrix::Transform3D camToGround);
+        std::pair<double, double> findPhiLimits(utility::math::matrix::Transform3D camToGround, double FOV_X, double FOV_Y);
+        std::vector<double> findThetaLimits(double phiDash, utility::math::matrix::Transform3D camToGround, double FOV_X, double FOV_Y);
 
     public:
         /// @brief Called by the powerplant to build and setup the VisualMesh reactor.

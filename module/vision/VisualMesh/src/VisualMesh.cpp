@@ -94,16 +94,32 @@ namespace vision {
             double imageHeight = image.height;
             double phiDash;
 
-            //Find Angular Limits
-            //Phi = ?????
+            // TODO when optimising there is a lot of double up calculations
+
+            // TO avoid these do the following
+
+            // CALCULATE THE CORNER POINTS
+
+            // CALCULATE THE MIN/MAX PHI VALUES
+
+            // CALCULATE THE EQUATIONS OF THE LINES ON THE GROUND
+
+            // CALCULATE ALL OF THE CIRCLE SOLUTION EQUATION BAR THE RADIUS IN THE DESCRIMINANT
+
+            // LOOP THROUGH THE LUT VALUES FROM MIN PHI TO MAX PHI
+            //      CALCULATE THE RAIUS OF THE CIRCLE
+            //      CALCULATE THE DESCRIMINANT
+            //      FIND THE INTERSECTION POINTS
+            //      ELIMINATE THE BAD INTERSECITON POINTS
+            //
+            //      LOOP THROUGH THE THETA VALUES JUMPING BY DTHETA AND PUT THEM IN A VECTOR
+            //      TRANSFORM ALL OF THESE POINTS INTO SCREEN SPACE
+            //      ADD THESE POINTS TO THE LIST OF POINTS
+
+            // END LOOP THROUGH THE PHI VALUES
 
 
-            //For each phi, jump by theta within the limits, //NOT WRITTEN
-            // to find the sample point and convert it to camera space //WRITTEN
-
-
-            // chuck points out that are off the screen.
-
+            // EMIT THE LIST OF POINTS
 
         });
     }
@@ -148,31 +164,27 @@ namespace vision {
     }
 
 
-    std::vector<double> findPhiLimits(Transform3D camToGround, double FOV_X, double FOV_Y) {
+    std::pair<double, double> VisualMesh::findPhiLimits(Transform3D camToGround, double FOV_X, double FOV_Y) {
 
-        std::vector<arma::vec3> cornerPointsCam = findCornerPoints(1, FOV_X, FOV_Y);
+        // Get our camera corner points
+        arma::mat::fixed<3, 4> cornerPointsCam = findCornerPoints(1, FOV_X, FOV_Y);
 
-        std::vector<arma::vec3> cornerPointsWorld;
+        // Rotate our camera vectors to world rotation
+        arma::mat::fixed<3,4> cornerPointsWorld = camToGround.rotation() * cornerPointsCam; // 3x4
 
-        for(auto& point : cornerPointsCam) {
-            cornerPointsWorld.push_back(arma::normalise(camToGround.transformVector(point)));
-        }
+        // Acos our z component in world space
+        arma::vec4 cosv = arma::acos(cornerPointsWorld.row(2));
 
-        double phiMin = std::numeric_limits<double>::max();
-        double phiMax = std::numeric_limits<double>::min();
-
-        for(auto p : cornerPointsWorld) {
-            double phi = acos(p(2));
-            phiMin = std::min(phiMin, phi);
-            phiMin = std::min(phiMin, phi);
-        }
-
-        return std::vector(phiMin, phiMax);
+        // Return the minimum and maximum values
+        return std::make_pair(cosv.min(), cosv.max());
     }
 
     std::vector<double> VisualMesh::findThetaLimits(double phiDash, Transform3D camToGround, double FOV_X, double FOV_Y) {
         //Find Corner Points
         arma::mat::fixed<3,4> cornerPointsCam = findCornerPoints(1, FOV_X, FOV_Y);
+
+        // Get the z component of the transformation for the camera's height
+        const double& cameraHeight = camToGround(2,3);
 
         // Get the radius of the ground circle
         double circleRadius = cameraHeight * std::tan(phiDash);
@@ -181,15 +193,15 @@ namespace vision {
         arma::mat::fixed<3,4> cornerPointsWorld = camToGround.rotation() * cornerPointsCam; // 3x4
 
         // Intersect with the ground plane and ignore the z component
-        arma::mat::fixed<2,4> groundPoints = (cornerPointsWorld * (-cameraHeight / cornerPointsWorld.row(2).t())).rows(0,1);
+        arma::mat::fixed<2,4> groundPoints = arma::mat(cornerPointsWorld * (-cameraHeight / cornerPointsWorld.row(2).t())).rows(0,1);
         // Get direction vectors from each corner point to the next corner point
-        arma::mat::fixed<2,4> groundDirections = groundPoints - groundPoints.cols({1,2,3,0});
+        arma::mat::fixed<2,4> groundDirections = groundPoints - groundPoints.cols(arma::uvec({1,2,3,0}));
 
         // Get all our circle intersection values
         arma::mat::fixed<2,4> c1 = groundPoints * groundDirections;
         arma::vec4            c2;
         for(size_t i = 0; i < c2.n_cols; ++i) {
-            c2[i] = arma::norm(groundPoints[i]);
+            c2[i] = arma::norm(groundPoints.col(i));
         }
 
         // Calculate our discriminant
