@@ -187,7 +187,12 @@ namespace vision {
 
         // Get all our circle intersection values
         arma::mat::fixed<2,4> c1 = groundPoints * groundDirections;
-        arma::vec4            c2 = the element wise norm of groundPoints;
+        arma::vec4            c2;
+        for(size_t i = 0; i < c2.n_cols; ++i) {
+            c2[i] = arma::norm(groundPoints[i]);
+        }
+
+        // Calculate our discriminant
         disc = arma::square(c1) - arma::square(c2) + (circleRadius * circleRadius);
 
         // Get the indicies of the vectors that intersected twice
