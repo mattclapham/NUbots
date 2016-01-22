@@ -120,17 +120,18 @@ namespace vision {
         return segmentSolutions;
     }
 
-    std::vector<arma::vec3> VisualMesh::findCornerPoints(double xmax, double FOV_X, double FOV_Y) {
+    arma::mat::fixed<3,4> VisualMesh::findCornerPoints(double xmax, double FOV_X, double FOV_Y) {
+
         double ymax = viewingAngleMax(xmax, FOV_X);
         double zmax = viewingAngleMax(xmax, FOV_Y);
 
-        // calculates the corner points of the camera's field of view in camera space at a given x.
-        std::vector<arma::vec3> corners;
-        corners.push_back(arma::vec3({xmax, ymax, zmax}));
-        corners.push_back(arma::vec3({xmax, -ymax, zmax}));
-        corners.push_back(arma::vec3({xmax, ymax, -zmax}));
-        corners.push_back(arma::vec3({xmax, -ymax, -zmax}));
-        return corners;
+        // Return giving the column major value ordering
+        return arma::mat::fixed<3,4>({
+            xmax, ymax, zmax,
+            xmax, -ymax, zmax,
+            xmax, ymax, -zmax,
+            xmax, -ymax, -zmax
+        });
     }
 
     arma::vec3 VisualMesh::convertPhiAndThetaToCamSpace(double phiDash, double theta, Transform3D camToGround) {
@@ -171,89 +172,41 @@ namespace vision {
 
     std::vector<double> VisualMesh::findThetaLimits(double phiDash, Transform3D camToGround, double FOV_X, double FOV_Y) {
         //Find Corner Points
-        std::vector<arma::vec3> cornerPointsCam = findCornerPoints(1, FOV_X, FOV_Y);
+        arma::mat::fixed<3,4> cornerPointsCam = findCornerPoints(1, FOV_X, FOV_Y);
+
+        // Get the radius of the ground circle
+        double circleRadius = cameraHeight * std::tan(phiDash);
 
         // Rotate our camera vectors to world rotation
         arma::mat::fixed<3,4> cornerPointsWorld = camToGround.rotation() * cornerPointsCam; // 3x4
 
-        // Intersect with the ground plane
-        arma::mat::fixed<3,4> groundPoints3d = cornerPointsWorld * (-cameraHeight / cornerPointsWorld.row(2).t());
+        // Intersect with the ground plane and ignore the z component
+        arma::mat::fixed<2,4> groundPoints = (cornerPointsWorld * (-cameraHeight / cornerPointsWorld.row(2).t())).rows(0,1);
+        // Get direction vectors from each corner point to the next corner point
+        arma::mat::fixed<2,4> groundDirections = groundPoints - groundPoints.cols({1,2,3,0});
 
-        // Get the lines on the ground
-        std::array<ParametricLine<2>, 4> groundLines = {
-            ParametricLine<2>(groundPoints.submat(0,0,1,0), groundPoints.submat(0,1,1,1) - groundPoints.submat(0,0,1,0)),
-            ParametricLine<2>(groundPoints.submat(0,1,1,1), groundPoints.submat(0,2,1,2) - groundPoints.submat(0,1,1,1)),
-            ParametricLine<2>(groundPoints.submat(0,2,1,2), groundPoints.submat(0,3,1,3) - groundPoints.submat(0,2,1,2)),
-            ParametricLine<2>(groundPoints.submat(0,3,1,3), groundPoints.submat(0,0,1,0) - groundPoints.submat(0,3,1,3))
-        }
+        // Get all our circle intersection values
+        arma::mat::fixed<2,4> c1 = groundPoints * groundDirections;
+        arma::vec4            c2 = the element wise norm of groundPoints;
+        disc = arma::square(c1) - arma::square(c2) + (circleRadius * circleRadius);
 
-        // Find points of intersection of the circle defined by phi around the robot quadrilateral formed by the projected field of view.
-        Circle circle(cameraHeight * std::tan(phiDash), arma::vec({0, 0}));
+        // Get the indicies of the vectors that intersected twice
+        // we don't care about once as it won't impact our ranges
+        arma::uvec intersected = arma::find(disc > 0);
 
-        for(auto& l : groundLines) {
-            arma::mat i = intersect(l, circle);
-        }
+        // Get our actual intersection points
+        arma::mat intersectionPoints(2, intersected.n_cols * 2);
+        intersectionPoints.cols(intersected * 2)       = groundPoints.cols(intersected) + c1.cols(intersected) + arma::sqrt(disc.cols(intersected));
+        intersectionPoints.cols((intersected + 1) * 2) = groundPoints.cols(intersected) + c1.cols(intersected) - arma::sqrt(disc.cols(intersected));
 
+        // Remove the points that are not in the segments
+        // TODO TODO TODO TODO TODO
 
-        r = 1 / (sin(theta) + cos(theta))
+        // Convert the solutions to their theta value
+        // TODO TODO TODO TODO TODO
 
+        // Sort the theta values and return
 
-        // Find the points that are on the line
-
-
-
-
-
-        double cameraHeight = camToGround(3, 2); // position of camera centre
-        //Find the four points of intersection of the field of view lines to the ground plane that form a quadrilateral
-        // TODO maybe make arma::mat
-        std::vector<arma::vec3> fieldOfViewQuadrilateral;
-        for(auto& point : cornerPointsWorld) {
-            fieldOfViewQuadrilateral.push_back(lineIntersectWithGroundPlane(arma::vec({0,0, cameraHeight}), point));
-        }
-
-
-        std::array<ParametricLine<3>, 4> groundLines;
-
-        // Find points of intersection of the circle defined by phi around the robot quadrilateral formed by the projected field of view.
-        Circle circle(cameraHeight * std::tan(phiDash), arma::vec({0, 0}));
-
-
-
-        // TODO make into an array
-        std::vector<arma::vec2> solutionsLine1 = lineIntersectWithCircle(arma::vec2({0,0}), radius, fieldOfViewQuadrilateral[0].rows(0,1), fieldOfViewQuadrilateral[1].rows(0,1));
-        std::vector<arma::vec2> solutionsLine2 = lineIntersectWithCircle(arma::vec2({0,0}), radius, fieldOfViewQuadrilateral[1].rows(0,1), fieldOfViewQuadrilateral[2].rows(0,1));
-        std::vector<arma::vec2> solutionsLine3 = lineIntersectWithCircle(arma::vec2({0,0}), radius, fieldOfViewQuadrilateral[2].rows(0,1), fieldOfViewQuadrilateral[3].rows(0,1));
-        std::vector<arma::vec2> solutionsLine4 = lineIntersectWithCircle(arma::vec2({0,0}), radius, fieldOfViewQuadrilateral[3].rows(0,1), fieldOfViewQuadrilateral[0].rows(0,1));
-        // Throw out solutions not within the line segments of the quadrilateral
-
-        std::vector<arma::vec2> solutions;
-        auto newSolutions = throwOutSolutionsNotInSegment(solutionsLine1, fieldOfViewQuadrilateral[0].rows(0,1), fieldOfViewQuadrilateral[1].rows(0,1));
-        solutions.insert(newSolutions.begin(), newSolutions.end());
-        newSolutions = throwOutSolutionsNotInSegment(solutionsLine2, fieldOfViewQuadrilateral[1].rows(0,1), fieldOfViewQuadrilateral[2].rows(0,1));
-        solutions.insert(newSolutions.begin(), newSolutions.end());
-        newSolutions = throwOutSolutionsNotInSegment(solutionsLine3, fieldOfViewQuadrilateral[2].rows(0,1), fieldOfViewQuadrilateral[3].rows(0,1));
-        solutions.insert(newSolutions.begin(), newSolutions.end());
-        newSolutions = throwOutSolutionsNotInSegment(solutionsLine4, fieldOfViewQuadrilateral[3].rows(0,1), fieldOfViewQuadrilateral[0].rows(0,1));
-        solutions.insert(newSolutions.begin(), newSolutions.end());
-
-        switch(solutions.size()) {
-            case 2:
-            case 4:
-                std::vector<double> out();
-                for(auto s : solutions) {
-                    // TODO get theta for solution
-                    double theta = std::acos(s[0] / radius);
-                    out.push_back(theta);
-                }
-
-                std::sort(out.begin(), out.end());
-
-                return out;
-
-            default:
-                return std::vector<double>();
-        }
     }
 
 }
