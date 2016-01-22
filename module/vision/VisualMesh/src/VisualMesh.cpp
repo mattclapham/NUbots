@@ -146,7 +146,30 @@ namespace vision {
         // Then use arma::vec2 projectCamSpaceToScreen(const arma::vec3& point, const double& camFocalLengthPixels) in Vision.h to convert to screen space.
     }
 
-    std::vector<double> VisualMesh::findThetaLimits(double phiDash, double theta, Transform3D camToGround, double FOV_X, double FOV_Y) {
+
+    std::vector<double> VisualMesh::findPhiLimits(Transform3D camToGround, double FOV_X, double FOV_Y) {
+
+        std::vector<arma::vec3> cornerPointsCam = findCornerPoints(1, FOV_X, FOV_Y);
+
+        std::vector<arma::vec3> cornerPointsWorld;
+
+        for(auto& point : cornerPointsCam) {
+            cornerPointsWorld.push_back(arma::normalise(camToGround.transformVector(point)));
+        }
+
+        double phiMin = std::numeric_limits<double>::max();
+        double phiMax = std::numeric_limits<double>::min();
+
+        for(auto p : cornerPointsWorld) {
+            double phi = acos(p(2));
+            phiMin = std::min(phiMin, phi);
+            phiMin = std::min(phiMin, phi);
+        }
+
+        return std::vector(phiMin, phiMax);
+    }
+
+    std::vector<double> VisualMesh::findThetaLimits(double phiDash, Transform3D camToGround, double FOV_X, double FOV_Y) {
         //Find Corner Points 
         std::vector<arma::vec3> cornerPointsCam = findCornerPoints(1, FOV_X, FOV_Y);
         //Transform them into world space
@@ -155,12 +178,12 @@ namespace vision {
             cornerPointsWorld.push_back(camToGround.transformPoint(point));
         }
 
-        arma::vec3 cameraCentre = camToGround.submat(0,3,2,3); // position of camera centre
+        double cameraHeight = camToGround(3, 2); // position of camera centre
         //Find the four points of intersection of the field of view lines to the ground plane that form a quadrilateral
         // TODO maybe make arma::mat
         std::vector<arma::vec3> fieldOfViewQuadrilateral;
         for(auto& point : cornerPointsWorld) {
-            fieldOfViewQuadrilateral.push_back(lineIntersectWithGroundPlane(cameraCentre, point));
+            fieldOfViewQuadrilateral.push_back(lineIntersectWithGroundPlane(arma::vec({0,0, cameraHeight}), point));
         }
 
         // Find points of intersection of the circle defined by phi around the robot quadrilateral formed by the projected field of view.
