@@ -11,8 +11,8 @@ NUCLEAR_ROLE(
 
     #Sensors
     #input::LinuxCamera
-    #platform::darwin::HardwareIO
-    #platform::darwin::SensorFilter
+    platform::darwin::HardwareSimulator
+    platform::darwin::SensorFilter
 
     #Vision
     vision::VisualMesh

@@ -72,14 +72,13 @@ namespace vision {
 
     void VisualMeshLUT::regenerate() {
 
-        std::cout << __LINE__ << std::endl;
-
         // Our new luts
         std::vector<std::vector<std::pair<double, double>>> newLUTs;
 
         // Loop through each of our height slices
         for(size_t i = 0; i < slices; ++i) {
-            double height = minHeight + double(i)*((maxHeight - minHeight) / (double(slices) - 1));
+
+            double height = minHeight + double(i) * ((maxHeight - minHeight) / (double(slices) - 1));
 
             std::vector<std::pair<double, double>> values;
 
@@ -94,7 +93,7 @@ namespace vision {
                 // Loop through our shapes and get their input
                 for (auto& request : requests) {
 
-                    double phiJump = deltaPhi(request, phi, 0);
+                    double phiJump = deltaPhi(request, phi, height);
                     double thetaJump = deltaTheta(request, phi, height);
 
                     // Find if this is the new minimum
@@ -112,8 +111,6 @@ namespace vision {
             // Now we loop from the sky down to the horizon
             phi = M_PI;
             while(phi > M_PI_2) {
-
-                std::cout << __LINE__ << std::endl;
 
                 // Start at max
                 double minPhiJump = std::numeric_limits<double>::max();
@@ -159,9 +156,15 @@ namespace vision {
 
     std::pair<std::vector<std::pair<double, double>>::iterator, std::vector<std::pair<double, double>>::iterator> VisualMeshLUT::getLUT(double height, double minPhi, double maxPhi) {
 
-        // Find the upper and lower bounds for phi at this height
+        auto& lut = luts[int(((height - minHeight) / (maxHeight - minHeight)) * (slices - 1))];
+        std::cout << "height" << height << std::endl;
+        std::cout <<"index = " << (((height - minHeight) / (maxHeight - minHeight)) * (slices - 1)) << std::endl;
+        // Get the phi values we are interested in
+        auto start = std::lower_bound(lut.begin(), lut.end(), std::make_pair(minPhi, minPhi));
+        auto end = std::upper_bound(start, lut.end(), std::make_pair(maxPhi, maxPhi));
 
         // Return our pair of iterators
+        return std::make_pair(start, end);
     }
 
 }

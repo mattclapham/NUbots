@@ -44,7 +44,7 @@ namespace vision {
 
     VisualMesh::VisualMesh(std::unique_ptr<NUClear::Environment> environment)
     : Reactor(std::move(environment))
-    , lut(0.2, 0.5) { // TODO make this based of the kinematics
+    , lut(0.1, 0.5) { // TODO make this based of the kinematics
 
         on<Configuration>("VisualMesh.yaml").then([this] (const Configuration& config) {
             // Use configuration here from file VisualMesh.yaml
@@ -82,18 +82,20 @@ namespace vision {
             lut.addShape(request);
         });
 
-        on<Trigger<Image>, With<Sensors>>().then([this] (const Image& image, const Sensors& sensors) {
+        on<Trigger<Sensors>>().then([this] (const Sensors& sensors) {
 
             // get field of view
             float FOV_X = 1.0472;
             float FOV_Y = 0.785398;
-
+            // TODO NEED THIS
+            int camFocalLengthPixels = 10;
             // Camera height is z component of the transformation matrix
             double cameraHeight = sensors.orientationCamToGround(2, 3);
 
             /***************************
              * Calculate image corners *
              ***************************/
+            
             // Get the corners of the view port in cam space
             double ymax = std::tan(FOV_X / 2);
             double zmax = std::tan(FOV_Y / 2);
@@ -103,51 +105,73 @@ namespace vision {
                 1,  ymax, -zmax,
                 1, -ymax, -zmax
             };
-
             // Rotate the camera points into world space
             arma::mat::fixed<3,4> cornerPointsWorld = sensors.orientationCamToGround.rotation() * cornerPointsCam;
-
 
             /*************************
              * Calculate min/max phi *
              *************************/
+            
             // Get the cosv value
-            arma::vec4 phiCosV = arma::acos(cornerPointsWorld.row(2));
-
+            arma::vec4 phiCosV = arma::acos(cornerPointsWorld.row(2).t());
             // Return the minimum and maximum values
             double minPhi = phiCosV.min();
             double maxPhi = phiCosV.max();
 
-
             /***********************************
              * Calculate ground line equations *
              ***********************************/
+            
             // Intersect our corner points with the ground plane and drop the z component
-            arma::mat::fixed<2,4> groundPoints = arma::mat(cornerPointsWorld * (-cameraHeight / cornerPointsWorld.row(2).t())).rows(0,1);
+            // transform to find intersection points of corner lines and ground plane
+            arma::vec4 zComponents = cornerPointsWorld.row(2).t();
+            // invert each element and multiply by the camera height
+            arma::mat44 groundTransform = arma::diagmat(-cameraHeight/zComponents);
+            // only multiply the first two rows of corner points because we only want the x, y components in the end
+            arma::mat::fixed<2,4> groundPoints = arma::mat(cornerPointsWorld.rows(0,1)*groundTransform);
             // Get direction vectors from each corner point to the next corner point
             arma::mat::fixed<2,4> groundDirections = groundPoints - groundPoints.cols(arma::uvec({1,2,3,0}));
 
 
-            /**************************************************
-             * Solve as much of the circle equation as we can *
-             **************************************************/
-            // Get all our circle intersection values
-            arma::vec4 circleEq1 = groundPoints * groundDirections;
+            /***************************************************************************
+             * Solve as much of the circle intersection with screen equation as we can *
+             ***************************************************************************/
+            /*
+            // https://en.wikipedia.org/wiki/Line%E2%80%93sphere_intersection
+                std::vector<arma::vec2> rayIntersectWithSphere(arma::vec2 centre, double radius, arma::vec2 point_a, arma::vec2 point_b) {
+                arma::vec2 direction = arma::normalise(point_b - point_a);
+                arma::vec2 position = point_a;
+                // x = position + t*direction is ray sub into sphere: ||x - c||^2 = r^2
+                // solve for t
+                double calc0 = -arma::dot(position - centre, direction);
+                double calc1 = arma::norm(position - centre);
+                double disc = calc0*calc0 - calc1*calc1 + radius*radius;
+                t = calc0 +- sqrt(disc);
+                POI = position + t*direction;
+            */
+            arma::vec4 circleEq1 = arma::diagvec(groundPoints.t() * groundDirections);
             arma::vec4 circleEq2;
             for(size_t i = 0; i < circleEq2.n_cols; ++i) {
                 circleEq2[i] = arma::norm(groundPoints.col(i));
             }
 
-            // Calculate our apart from the radius
+            // Calculate the constant part of the discriminate
             arma::vec4 partialDiscriminant = arma::square(circleEq1) - arma::square(circleEq2);
 
             // Calculate our solution bar the discriminant
-            arma::mat intersectionPoints = groundPoints + circleEq1;
-
+            // intersection point = groundPoint + t*groundDirection;
+            //                    = groundPoint + (-circleEq1 +- sqrt(fulldisc))*groundDirection;
+            //                    = groundPoint - circleEq1*groundDirection +- sqrt(fulldisc)*groundDirection;
+            //                    = partialIntersectionPoints +- sqrt(fulldisc)*groundDirection; 
+            arma::mat::fixed<2,4> partialIntersectionPoints = groundPoints;
+            for(size_t i = 0; i < partialIntersectionPoints.n_cols; ++i) {
+                partialIntersectionPoints.col(i) = partialIntersectionPoints.col(i) - circleEq1(i) * groundDirections.col(i);
+            }
 
             /*************************************************************
              * Get our lookup table and loop through our phi/theta pairs *
              *************************************************************/
+
             auto phiIterator = lut.getLUT(cameraHeight, minPhi, maxPhi);
             std::vector<std::pair<double, double>> phiThetaPoints;
 
@@ -156,54 +180,72 @@ namespace vision {
                 const double& phi = it->first;
                 const double& dTheta = it->second;
 
-                /**************************************************
-                 * Calculate the remainder of the circle equation *
-                 **************************************************/
+                /******************************************************************************************************************
+                 * Calculate the remainder of the circle intersection equation and eliminate solutions that are not on the screen *
+                 ******************************************************************************************************************/
 
                 // Calculate the radius of the circle
                 double circleRadius = cameraHeight * std::tan(phi);
+                arma::vec4 discriminants = partialDiscriminant + circleRadius * circleRadius;
 
-                // Calculate the actual discriminant values
-                arma::vec4 discriminants = partialDiscriminant + (circleRadius * circleRadius);
+                // Find the discriminants that will yield two solutions
+                arma::uvec indices = arma::find(discriminants > 0);
 
-                // Find the discriminants that will yeild two solutions
-                arma::uvec indicies = arma::find(discriminants > 0);
-
-                // Find our intersection points
                 // Square root the relevant discriminants
-                arma::vec vals = arma::sqrt(discriminants.cols(indicies));
-                arma::mat plusIntersections = intersectionPoints + vals;
-                arma::mat minusIntersections = intersectionPoints - vals;
+                arma::vec vals = arma::sqrt(discriminants.rows(indices));
+      
+                // Eliminate values which give solutions outside of the line segments, that is t = -circleEq1(i) +- sqrt(fulldisc) needs to be between 0 and 1
+                arma::uvec plusIndices = arma::find(0 <= -circleEq1.rows(indices) + vals &&  -circleEq1.rows(indices) + vals <= 1);
+                arma::uvec minusIndices = arma::find(0 <= -circleEq1.rows(indices) - vals &&  -circleEq1.rows(indices) - vals <= 1);
+                arma::vec plusVals = vals.rows(plusIndices);
+                arma::vec minusVals = vals.rows(minusIndices);
+                arma::mat importantPlusIntersectionPoints = partialIntersectionPoints.cols(plusIndices);
+                arma::mat importantPlusGroundDirections = groundDirections.cols(plusIndices);
+                arma::mat importantMinusIntersectionPoints = partialIntersectionPoints.cols(minusIndices);
+                arma::mat importantMinusGroundDirections = groundDirections.cols(minusIndices);
 
-                /****************************************************************************************
-                 * Eliminate solutions that are not on the screen and get remaining min/max theta pairs *
-                 ****************************************************************************************/
+                // Find Intersection points = partialIntersectionPoints +- sqrt(fulldisc)*groundDirection;
+                arma::mat intersectionPoints;
+                intersectionPoints.set_size(2, plusIndices.n_rows + minusIndices.n_rows);
+                for(size_t i = 0; i < plusIndices.n_rows; ++i) {
+                    intersectionPoints.col(i) = importantPlusIntersectionPoints.col(i) + plusVals(i)*importantPlusGroundDirections.col(i);
+                }
+                for(size_t i = plusIndices.n_rows; i < plusIndices.n_rows + minusIndices.n_rows; ++i) {
+                    intersectionPoints.col(i) = importantMinusIntersectionPoints.col(i) - minusVals(i)*importantMinusGroundDirections.col(i);
+                }
 
-                // TODO check if the intersection point is on the line for plus and add to list
+                /***********************************************************************************************************************************
+                 * Calculate theta values for intersection points  and sort them to make pairs that represent segments of the circle on the screen *
+                 ***********************************************************************************************************************************/
 
-                // TODO check if the intersection point is on the line for minus and add to list
-
-                // Convert the ones that were on the lines to theta values
-                // Sort the list of theta values to make pairs
-
-
-                // TODO eliminate intersection points that are not on the screen and get min/max theta pairs
                 std::vector<double> thetaPairs;
+                switch(intersectionPoints.n_cols) {
+                    case 2:
+                    case 4:
+                        for(size_t i = 0; i < intersectionPoints.n_cols; ++i) {
+
+                            double theta = std::acos(intersectionPoints(0, i) / circleRadius);
+
+                            thetaPairs.push_back(theta);
+                        }
+                        std::sort(thetaPairs.begin(), thetaPairs.end());
+                }
 
                 /***********************************
                  * Loop through our theta segments *
                  ***********************************/
+                
                 for (size_t i = 0; i < thetaPairs.size() / 2; i += 2) {
                     const double& minTheta = thetaPairs[i];
                     const double& maxTheta = thetaPairs[i + 1];
 
                     for (double theta = minTheta; theta < maxTheta; theta += dTheta) {
 
-                        /********************************
-                         * Add this phi/theta to a list *
-                         ********************************/
-
-                        // TODO here we have phi and theta and can calculate a screen point and add it to a list
+                        /************************************************************************
+                         * Add this phi/theta sample point to a list to project onto the screen *
+                         ************************************************************************/
+                        
+                        phiThetaPoints.push_back(std::make_pair(phi, theta));
 
                     }
                 }
@@ -213,13 +255,19 @@ namespace vision {
              * Project our phi/theta pairs onto the screen *
              ***********************************************/
 
-            // TODO project the phi/theta pais onto the screen
+            std::vector<arma::vec2> screenPoints;
+
             for(auto& point : phiThetaPoints) {
+                // phi and theta are converted to spherical coordinates in a space with the same orientation as the world, but with origin at the camera position. 
+                // The associated phi in spherical coords is given by -(pi/2 - phi), which simplifies the spherical coordinate conversion to
+                arma::vec3 sphericalCoords = { std::cos(point.second)*std::sin(point.first), std::sin(point.second)*std::sin(point.first), -std::cos(point.first) };
+                // To put in camera space multiply by the ground to camera rotation matrix
+                arma::vec3 camSpacePoint = sensors.orientationCamToGround.rotation().i() * sphericalCoords;
+                // Project camera space to screen space by
+                arma::vec2 screenSpacePoint = arma::vec2({camFocalLengthPixels * camSpacePoint[1] / camSpacePoint[0], camFocalLengthPixels * camSpacePoint[2] / camSpacePoint[0]});
+                screenPoints.push_back(screenSpacePoint);
 
-                arma::vec3 coords = { cos(point.second)*sin(point.first), sin(point.second)*sin(point.first), -cos(point.first) };
-                sensors.orientationCamToGround.rotation().i() * coords;
-                // We are now in cam space?
-
+                std::cout << screenPoints.back() << std::endl;
             }
         });
     }
