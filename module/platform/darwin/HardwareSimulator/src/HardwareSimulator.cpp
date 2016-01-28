@@ -134,9 +134,11 @@ namespace darwin {
             servo.torque = 0;
 
             // Targets
+            servo.goalPosition = 0;
             servo.movingSpeed = M_PI_4;
 
             // Present Data
+            servo.presentPosition = 0;
             servo.presentSpeed = 0;
             servo.load = 0;
 
