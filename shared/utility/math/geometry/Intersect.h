@@ -23,13 +23,13 @@ arma::mat intersect(const ParametricLine<2>& line, const Circle& circle) {
     // solve for t
     double calc0 = -arma::dot(line.position - circle.centre, line.direction);
     double calc1 = arma::norm(line.position - circle.centre);
-    double disc = std::sqrt(calc0 * calc0 - calc1 * calc1 + circle.radius * circle.radius);
+    double disc = (calc0 * calc0 - calc1 * calc1 + circle.radius * circle.radius);
 
     // sub t into line eq to get the points of intersection
     if (disc > 0) {
         result = arma::mat(2,2);
-        result.col(0) = line.position + (calc0 + disc) * line.direction;
-        result.col(1) = line.position + (calc0 - disc) * line.direction;
+        result.col(0) = line.position + (calc0 + std::sqrt(disc)) * line.direction;
+        result.col(1) = line.position + (calc0 - std::sqrt(disc)) * line.direction;
         return result;
     }
     else if (disc == 0) {

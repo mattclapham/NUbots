@@ -22,6 +22,7 @@
 #include "message/input/Sensors.h"
 #include "message/vision/MeshObjectRequest.h"
 #include "message/support/Configuration.h"
+#include "message/motion/ServoTarget.h"
 
 #include "utility/math/matrix/Transform3D.h"
 #include "utility/support/yaml_armadillo.h"
@@ -38,6 +39,7 @@ namespace vision {
     using message::support::Configuration;
 
     using utility::motion::kinematics::DarwinModel;
+    using message::motion::ServoTarget;
 
     using utility::math::matrix::Transform3D;
     using utility::nubugger::graph;
@@ -82,12 +84,17 @@ namespace vision {
             lut.addShape(request);
         });
 
-        on<Trigger<Sensors>>().then([this] (const Sensors& sensors) {
+        on<Trigger<Sensors>, Single>().then([this] (const Sensors& sensors) {
+
+
 
             // get field of view
+            // 40 degrees
             float FOV_X = 1.0472;
+            // 30 degrees
             float FOV_Y = 0.785398;
-            // TODO NEED THIS
+
+            // use resolution and FOV
             int camFocalLengthPixels = 10;
             // Camera height is z component of the transformation matrix
             double cameraHeight = sensors.orientationCamToGround(2, 3);
@@ -102,21 +109,34 @@ namespace vision {
             arma::mat::fixed<3,4> cornerPointsCam = {
                 1,  ymax,  zmax,
                 1, -ymax,  zmax,
-                1,  ymax, -zmax,
-                1, -ymax, -zmax
+                1, -ymax, -zmax,
+                1,  ymax, -zmax
             };
+
+            cornerPointsCam /= arma::norm(cornerPointsCam.col(0));
+
             // Rotate the camera points into world space
+
             arma::mat::fixed<3,4> cornerPointsWorld = sensors.orientationCamToGround.rotation() * cornerPointsCam;
+
+            std::cout << "cornerPointsCam = " << cornerPointsCam << std::endl;
+            std::cout << "sensors.orientationCamToGround.rotation() = " << sensors.orientationCamToGround.rotation() << std::endl;
+            std::cout << "cornerPointsWorld = " << cornerPointsWorld << std::endl;
 
             /*************************
              * Calculate min/max phi *
              *************************/
-            
+
+            // TODO THIS DOESN'T WORK WHEN CROSSING VERTICAL AS Z COMPONENTS ARE THE SAME
+
             // Get the cosv value
-            arma::vec4 phiCosV = arma::acos(cornerPointsWorld.row(2).t());
+            arma::rowvec4 phiCosV = arma::acos(-cornerPointsWorld.row(2));
             // Return the minimum and maximum values
             double minPhi = phiCosV.min();
             double maxPhi = phiCosV.max();
+            //std::cout << "phiCosV = " << phiCosV << std::endl; 
+            //std::cout << "minPhi = " << minPhi << std::endl; 
+            //std::cout << "maxPhi = " << maxPhi << std::endl; 
 
             /***********************************
              * Calculate ground line equations *
@@ -128,9 +148,25 @@ namespace vision {
             // invert each element and multiply by the camera height
             arma::mat44 groundTransform = arma::diagmat(-cameraHeight/zComponents);
             // only multiply the first two rows of corner points because we only want the x, y components in the end
-            arma::mat::fixed<2,4> groundPoints = arma::mat(cornerPointsWorld.rows(0,1)*groundTransform);
+            arma::mat::fixed<2,4> groundPoints = arma::mat(cornerPointsWorld.rows(0,1) * groundTransform);
             // Get direction vectors from each corner point to the next corner point
             arma::mat::fixed<2,4> groundDirections = groundPoints - groundPoints.cols(arma::uvec({1,2,3,0}));
+
+            std::cout << "Ground Points" << std::endl;
+            std::cout << groundPoints << std::endl;
+
+            // arma::rowvec4 phiCosVDEBUG;
+
+            // for(size_t i = 0; i < 4; ++i) {
+            //     phiCosVDEBUG(i) = std::atan(std::sqrt(groundPoints(0, i) * groundPoints(0, i) + groundPoints(1, i) * groundPoints(1, i)) / cameraHeight);
+            // }
+            // //std::cout << "phiCosV = " << phiCosV << std::endl;
+            // //std::cout << "phiCosVDEBUG = " << phiCosVDEBUG << std::endl;
+            // double minPhi = phiCosVDEBUG.min();
+            // double maxPhi = phiCosVDEBUG.max();
+            //std::cout << "minPhi = " << minPhi << std::endl; 
+            //std::cout << "maxPhi = " << maxPhi << std::endl; 
+
 
 
             /***************************************************************************
@@ -149,6 +185,7 @@ namespace vision {
                 t = calc0 +- sqrt(disc);
                 POI = position + t*direction;
             */
+
             arma::vec4 circleEq1 = arma::diagvec(groundPoints.t() * groundDirections);
             arma::vec4 circleEq2;
             for(size_t i = 0; i < circleEq2.n_cols; ++i) {
@@ -175,11 +212,14 @@ namespace vision {
             auto phiIterator = lut.getLUT(cameraHeight, minPhi, maxPhi);
             std::vector<std::pair<double, double>> phiThetaPoints;
 
+            std::cout << std::distance(phiIterator.first, phiIterator.second) << std::endl;
+
             for(auto it = phiIterator.first; it != phiIterator.second; ++it) {
 
                 const double& phi = it->first;
                 const double& dTheta = it->second;
 
+                //std::cout << "phi = " << phi << std::endl; 
                 /******************************************************************************************************************
                  * Calculate the remainder of the circle intersection equation and eliminate solutions that are not on the screen *
                  ******************************************************************************************************************/
@@ -214,22 +254,28 @@ namespace vision {
                     intersectionPoints.col(i) = importantMinusIntersectionPoints.col(i) - minusVals(i)*importantMinusGroundDirections.col(i);
                 }
 
+                std::cout << "Phi = " << phi << std::endl;
+                std::cout << "Radius = " << circleRadius << std::endl;
+
+                std::cout << "IntersectionPoints: " << intersectionPoints << " Circle: " << circleRadius << std::endl;
+
                 /***********************************************************************************************************************************
                  * Calculate theta values for intersection points  and sort them to make pairs that represent segments of the circle on the screen *
                  ***********************************************************************************************************************************/
 
                 std::vector<double> thetaPairs;
-                switch(intersectionPoints.n_cols) {
-                    case 2:
-                    case 4:
-                        for(size_t i = 0; i < intersectionPoints.n_cols; ++i) {
+                if (intersectionPoints.n_cols % 2 == 0) {
+                    for(size_t i = 0; i < intersectionPoints.n_cols; ++i) {
 
-                            double theta = std::acos(intersectionPoints(0, i) / circleRadius);
-
-                            thetaPairs.push_back(theta);
-                        }
-                        std::sort(thetaPairs.begin(), thetaPairs.end());
+                        //std::cout << "Intersection: " << intersectionPoints(0, i) << " Circle: " << circleRadius << std::endl;
+                        
+                        double theta = std::acos(intersectionPoints(0, i) / circleRadius);
+                        //std::cout << "phi:" << phi << " theta = " << theta << std::endl;
+                        thetaPairs.push_back(theta);
+                    }
+                    std::sort(thetaPairs.begin(), thetaPairs.end());
                 }
+
 
                 /***********************************
                  * Loop through our theta segments *
@@ -267,7 +313,7 @@ namespace vision {
                 arma::vec2 screenSpacePoint = arma::vec2({camFocalLengthPixels * camSpacePoint[1] / camSpacePoint[0], camFocalLengthPixels * camSpacePoint[2] / camSpacePoint[0]});
                 screenPoints.push_back(screenSpacePoint);
 
-                std::cout << screenPoints.back() << std::endl;
+                //std::cout << screenPoints.back() << std::endl;
             }
         });
     }

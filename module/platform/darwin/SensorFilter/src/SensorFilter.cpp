@@ -383,8 +383,8 @@ namespace module {
                     } else if(torsoFromRightFoot(2) < torsoFromLeftFoot(2)){
                         sensors->leftFootDown = true;
                     } else {
-                        sensors->leftFootDown = false;
-                        sensors->rightFootDown = false;
+                        sensors->leftFootDown = true;
+                        sensors->rightFootDown = true;
                     }
 
 

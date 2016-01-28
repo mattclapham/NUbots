@@ -35,7 +35,8 @@ namespace vision {
     VisualMeshLUT::VisualMeshLUT(double minHeight, double maxHeight, int slices)
     : slices(slices)
     , minHeight(minHeight)
-    , maxHeight(maxHeight) {}
+    , maxHeight(maxHeight)
+    , luts(slices) {}
 
     double deltaPhi(const message::vision::MeshObjectRequest& request, double phi, double height) {
 
@@ -156,9 +157,10 @@ namespace vision {
 
     std::pair<std::vector<std::pair<double, double>>::iterator, std::vector<std::pair<double, double>>::iterator> VisualMeshLUT::getLUT(double height, double minPhi, double maxPhi) {
 
-        auto& lut = luts[int(((height - minHeight) / (maxHeight - minHeight)) * (slices - 1))];
-        std::cout << "height" << height << std::endl;
-        std::cout <<"index = " << (((height - minHeight) / (maxHeight - minHeight)) * (slices - 1)) << std::endl;
+
+        int index = int(((height - minHeight) / (maxHeight - minHeight)) * (slices - 1));
+        auto& lut = luts[index < 0 ? 0 : index >= slices ? slices - 1 : index];
+
         // Get the phi values we are interested in
         auto start = std::lower_bound(lut.begin(), lut.end(), std::make_pair(minPhi, minPhi));
         auto end = std::upper_bound(start, lut.end(), std::make_pair(maxPhi, maxPhi));
