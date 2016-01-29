@@ -312,9 +312,7 @@ namespace module {
                     orientationFilter.timeUpdate(deltaT);
 
                     orientationFilter.measurementUpdate(sensors->accelerometer, MEASUREMENT_NOISE_ACCELEROMETER, IMUModel::MeasurementType::ACCELEROMETER());
-                    emit(graph("accelerometer", sensors->accelerometer[0], sensors->accelerometer[1], sensors->accelerometer[2]));
                     orientationFilter.measurementUpdate(sensors->gyroscope,     MEASUREMENT_NOISE_GYROSCOPE, IMUModel::MeasurementType::GYROSCOPE());
-                    emit(graph("gyroscope", sensors->gyroscope[0], sensors->gyroscope[1], sensors->gyroscope[2]));
 
                     // If we assume the feet are flat on the ground, we can use forward kinematics to feed a measurement update to the orientation filter.
                     // if (std::abs(input.fsr.left.centreX) < FOOT_UP_SAFE_ZONE && std::abs(input.fsr.left.centreY) < FOOT_UP_SAFE_ZONE) {
@@ -328,7 +326,6 @@ namespace module {
 
                     // Gives us the quaternion representation
                     arma::vec o = orientationFilter.get();
-                    emit(graph("orientation quat", o[0], o[1], o[2], o[3]));
                     //Map from robot to world coordinates
                     sensors->orientation = Rotation3D(UnitQuaternion(o.rows(orientationFilter.model.QW, orientationFilter.model.QZ)));
 
@@ -342,8 +339,6 @@ namespace module {
                      *                   Odometry                   *
                      ************************************************/
 
-                    emit(graph("FSR Left Raw", input.fsr.left.fsr1, input.fsr.left.fsr2, input.fsr.left.fsr3, input.fsr.left.fsr4));
-                    emit(graph("FSR Right Raw", input.fsr.right.fsr1, input.fsr.right.fsr2, input.fsr.right.fsr3, input.fsr.right.fsr4));
                     //Check support foot:
                     sensors->leftFootDown = false;
                     sensors->rightFootDown = false;
@@ -515,8 +510,7 @@ namespace module {
                     //     ));
                     // emit(graph("Torso Velocity (vx,vy,vz)", sensors->odometry(0,3), sensors->odometry(1,3), sensors->odometry(2,3)
                     //     ));
-                    emit(graph("Integrated Odometry", integratedOdometry[0], integratedOdometry[1]
-                       ));
+                    //emit(graph("Integrated Odometry", integratedOdometry[0], integratedOdometry[1]));
                     // emit(graph("COM", sensors->centreOfMass[0], sensors->centreOfMass[1], sensors->centreOfMass[2], sensors->centreOfMass[3]
                     //     ));
 

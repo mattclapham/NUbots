@@ -165,13 +165,12 @@ namespace vision {
              *************************************************************/
 
             auto phiIterator = lut.getLUT(cameraHeight, minPhi, maxPhi);
-            std::vector<std::pair<double, double>> phiThetaPoints;
+            std::vector<arma::vec3> camPoints;
 
             for(auto it = phiIterator.first; it != phiIterator.second; ++it) {
 
                 const double& phi = it->first;
                 const double& dTheta = it->second;
-
 
                 /*********************************************************
                  * Calculate our min and max theta values for each plane *
@@ -205,6 +204,16 @@ namespace vision {
                             p1 = camToGround.i() * p1;
                             p2 = camToGround.i() * p2;
 
+                            std::cout << "Point 1" << std::endl;
+                            std::cout << p1.t() << std::endl;
+                            std::cout << "Point 2" << std::endl;
+                            std::cout << p2.t() << std::endl;
+
+                            std::cout << "Corner 1" << std::endl;
+                            std::cout << cornerPointsCam.col(i).t() << std::endl;
+                            std::cout << "Corner 2" << std::endl;
+                            std::cout << cornerPointsCam.col((i + 1) % 4).t() << std::endl;
+
                             double& c1y = cornerPointsCam.col(i)[1];
                             double& c1z = cornerPointsCam.col(i)[2];
                             double& c2y = cornerPointsCam.col((i + 1) % 4)[1];
@@ -226,26 +235,33 @@ namespace vision {
                         }
                     }
                 }
+
+                std::sort(thetaLimits.begin(), thetaLimits.end());
+
                 std::cout << "thetaLimits.size() = " << thetaLimits.size() << std::endl;
 
                 /***********************************
                  * Loop through our theta segments *
                  ***********************************/
             
-                //for (size_t i = 0; i < thetaPairs.size() / 2; i += 2) {
-                    //const double& minTheta = thetaPairs[i];
-                    //const double& maxTheta = thetaPairs[i + 1];
+                for (size_t i = 0; i < thetaLimits.size() / 2; i += 2) {
+                    const double& minTheta = thetaLimits[i];
+                    const double& maxTheta = thetaLimits[i + 1];
 
-                    //for (double theta = minTheta; theta < maxTheta; theta += dTheta) {
+                    for (double theta = minTheta; theta < maxTheta; theta += dTheta) {
 
                         /************************************************************************
                          * Add this phi/theta sample point to a list to project onto the screen *
                          ************************************************************************/
                         
-                        //phiThetaPoints.push_back(std::make_pair(phi, theta));
+                        double cosTheta = std::cos(theta);
+                        double sinTheta = std::sin(theta);
 
-                    //}
-                //}
+                        camPoints.push_back(camToGround.i() * arma::vec3({ cosTheta * sinPhi, sinTheta * sinPhi, -cosPhi }));
+
+                        emit(graph("Phi Points", camPoints.back()));
+                    }
+                }
             }
 
             /***********************************************
