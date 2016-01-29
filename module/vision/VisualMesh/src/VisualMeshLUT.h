@@ -35,7 +35,6 @@ namespace vision {
         void addShape(const message::vision::MeshObjectRequest& request);
 
         void regenerate();
-
         std::pair<std::vector<std::pair<double, double>>::iterator, std::vector<std::pair<double, double>>::iterator> getLUT(double height, double minPhi, double maxPhi);
 
     private:
