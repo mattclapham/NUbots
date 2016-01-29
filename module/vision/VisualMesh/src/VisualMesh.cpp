@@ -150,10 +150,13 @@ namespace vision {
             // only multiply the first two rows of corner points because we only want the x, y components in the end
             arma::mat::fixed<2,4> groundPoints = arma::mat(cornerPointsWorld.rows(0,1) * groundTransform);
             // Get direction vectors from each corner point to the next corner point
-            arma::mat::fixed<2,4> groundDirections = groundPoints - groundPoints.cols(arma::uvec({1,2,3,0}));
+            arma::mat::fixed<2,4> groundDirections = groundPoints.cols(arma::uvec({1,2,3,0})) - groundPoints;
 
             std::cout << "Ground Points" << std::endl;
             std::cout << groundPoints << std::endl;
+
+            std::cout << "Ground groundDirections" << std::endl;
+            std::cout << groundDirections << std::endl;
 
             // arma::rowvec4 phiCosVDEBUG;
 
@@ -254,15 +257,15 @@ namespace vision {
                     intersectionPoints.col(i) = importantMinusIntersectionPoints.col(i) - minusVals(i)*importantMinusGroundDirections.col(i);
                 }
 
-                std::cout << "Phi = " << phi << std::endl;
-                std::cout << "Radius = " << circleRadius << std::endl;
+                //std::cout << "Phi = " << phi << std::endl;
+                //std::cout << "Radius = " << circleRadius << std::endl;
 
-                std::cout << "IntersectionPoints: " << intersectionPoints << " Circle: " << circleRadius << std::endl;
+                //std::cout << "IntersectionPoints: " << intersectionPoints << " Circle: " << circleRadius << std::endl;
 
                 /***********************************************************************************************************************************
                  * Calculate theta values for intersection points  and sort them to make pairs that represent segments of the circle on the screen *
                  ***********************************************************************************************************************************/
-
+                return;
                 std::vector<double> thetaPairs;
                 if (intersectionPoints.n_cols % 2 == 0) {
                     for(size_t i = 0; i < intersectionPoints.n_cols; ++i) {
@@ -270,7 +273,7 @@ namespace vision {
                         //std::cout << "Intersection: " << intersectionPoints(0, i) << " Circle: " << circleRadius << std::endl;
                         
                         double theta = std::acos(intersectionPoints(0, i) / circleRadius);
-                        //std::cout << "phi:" << phi << " theta = " << theta << std::endl;
+                        //std::cout << " theta = " << theta << std::endl;
                         thetaPairs.push_back(theta);
                     }
                     std::sort(thetaPairs.begin(), thetaPairs.end());
