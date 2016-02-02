@@ -118,7 +118,7 @@ namespace vision {
             /***************************
              * Calculate image corners *
              ***************************/
-            
+
             // Get the corners of the view port in cam space
             double ymax = std::tan(FOV_X * 0.5);
             double zmax = std::tan(FOV_Y * 0.5);
@@ -130,21 +130,19 @@ namespace vision {
             };
 
             cornerPointsCam /= arma::norm(cornerPointsCam.col(0));
-            //std::cout << "cornerPointsCam" << cornerPointsCam << std::endl;
+
             // Rotate the camera points into world space
             arma::mat::fixed<3,4> cornerPointsWorld = camToGround * cornerPointsCam;
-            //std::cout << "cornerPointsWorld" << cornerPointsWorld << std::endl;
+
             /**************************************************
              * Calculate screen edge planes and corner angles *
              **************************************************/
-            arma::mat::fixed<3,4> screenEdgePlanes;
-            for(int i = 0; i < screenEdgePlanes.n_cols; ++i) {
-                // Cross product each corner pair and normalise to a unit vector
-                screenEdgePlanes.col(i) = arma::normalise(arma::cross(cornerPointsWorld.col(i), cornerPointsWorld.col((i + 1) % 4)));
-                //std::cout << "norm" << i << arma::norm(screenEdgePlanes.col(i)) << std::endl;
+            arma::cube::fixed<3,3,4> screenEdgeMatricies;
+            for(int i = 0; i < screenEdgeMatricies.n_slices; ++i) {
+                screenEdgeMatricies.slice(i).col(0) = cornerPointsWorld.col(i);
+                screenEdgeMatricies.slice(i).col(2) = arma::normalise(arma::cross(cornerPointsWorld.col(i), cornerPointsWorld.col((i + 1) % 4)));
+                screenEdgeMatricies.slice(i).col(1) = arma::cross(screenEdgeMatricies.slice(i).col(2), screenEdgeMatricies.slice(i).col(0));
             }
-            //std::cout << "screenEdgePlanes" << screenEdgePlanes << std::endl;
-            //arma::mat::fixed<2,4> cornerPointsAngles = SOMETHINGSGS;
 
             /*************************
              * Calculate min/max phi *
@@ -157,13 +155,19 @@ namespace vision {
             // Return the minimum and maximum values
             double minPhi = phiCosV.min();
             double maxPhi = phiCosV.max();
-            //std::cout << "phiCosV = " << phiCosV << std::endl; 
-            //std::cout << "minPhi = " << minPhi << std::endl; 
-            //std::cout << "maxPhi = " << maxPhi << std::endl; 
+            // std::cout << "phiCosV = " << phiCosV << std::endl;
+            // std::cout << "minPhi = " << minPhi << std::endl;
+            // std::cout << "maxPhi = " << maxPhi << std::endl;
 
             /*************************************************************
              * Get our lookup table and loop through our phi/theta pairs *
              *************************************************************/
+
+
+            emit(graph("Corner Points", arma::vec(cornerPointsCam.col(0))));
+            emit(graph("Corner Points", arma::vec(cornerPointsCam.col(1))));
+            emit(graph("Corner Points", arma::vec(cornerPointsCam.col(2))));
+            emit(graph("Corner Points", arma::vec(cornerPointsCam.col(3))));
 
             auto phiIterator = lut.getLUT(cameraHeight, minPhi, maxPhi);
             std::vector<arma::vec3> camPoints;
@@ -184,78 +188,66 @@ namespace vision {
 
                 for(int i = 0; i < 4; ++i) {
 
-                    //std::cout << "i = " << i << std::endl;
+                    // std::cout << "i = " << i << std::endl;
 
                     if (minPhi < phi && phi < maxPhi) {
 
-                        double& x = screenEdgePlanes(0, i);
-
-                        double& y = screenEdgePlanes(1, i);
-                        
-                        double& z = screenEdgePlanes(2, i);
+                        double& x = screenEdgeMatricies(0, 0, i);
+                        double& y = screenEdgeMatricies(1, 0, i);
+                        double& z = screenEdgeMatricies(2, 0, i);
 
                         arma::vec v = solveAcosThetaPlusBsinThetaEqualsC(sinPhi * x, sinPhi * y, cosPhi * z);
 
-                                                    //std::cout << "x" << x << std::endl;
-                        //std::cout << "y" << y << std::endl;
-                        //std::cout << "z" << z << std::endl;
-                        //std::cout << "v" << v.t() << std::endl;
+                        // std::cout << "x" << x << std::endl;
+                        // std::cout << "y" << y << std::endl;
+                        // std::cout << "z" << z << std::endl;
+                        // std::cout << "v" << v.t() << std::endl;
 
                         if(v.n_elem == 2) {
 
-                            arma::vec cosV = arma::cos(v);
-                            arma::vec sinV = arma::sin(v);
+                            arma::vec2 cosV = arma::cos(v);
+                            arma::vec2 sinV = arma::sin(v);
 
                             arma::vec3 p1 = { cosV[0] * sinPhi, sinV[0] * sinPhi, -cosPhi };
                             arma::vec3 p2 = { cosV[1] * sinPhi, sinV[1] * sinPhi, -cosPhi };
 
+                            std::cout << i << std::endl;
+                            std::cout << screenEdgeMatricies.slice(i);
+                            std::cout << p1.t();
+                            std::cout << p2.t();
 
-                            std::cout << "Point 1" << std::endl;
-                            std::cout << p1.t() << std::endl;
-                            std::cout << "Point 2" << std::endl;
-                            std::cout << p2.t() << std::endl;
+                            p1 = screenEdgeMatricies.slice(i).t() * p1;
+                            p2 = screenEdgeMatricies.slice(i).t() * p2;
 
-                            std::cout << "Corner 1" << std::endl;
-                            std::cout << cornerPointsWorld.col(i).t() << std::endl;
-                            std::cout << "Corner 2" << std::endl;
-                            std::cout << cornerPointsWorld.col((i + 1) % 4).t() << std::endl;
+                            double p1V = atan2(p1[1], p1[0]);
+                            double p2V = atan2(p2[1], p2[0]);
 
+                            std::cout << p1.t();
+                            std::cout << p2.t();
 
-                            p1 = camToGround.i() * p1;
-                            p2 = camToGround.i() * p2;
+                            std::cout << std::endl;
 
-                        
+                            // if(0 < p1V && p1V < aoifjeaoifjse) {
 
-                            double& c1y = cornerPointsCam.col(i)[1];
-                            double& c1z = cornerPointsCam.col(i)[2];
-                            double& c2y = cornerPointsCam.col((i + 1) % 4)[1];
-                            double& c2z = cornerPointsCam.col((i + 1) % 4)[2];
+                            // }
+                            // if(0 < p1V && p1V < aoifjeaoifjse) {
 
-                            bool p1Valid = (std::min(c1y, c2y) < p1[1] < std::max(c1y, c2y))
-                                        || (std::min(c1z, c2z) < p1[2] < std::max(c1z, c2z));
+                            // }
 
-                            bool p2Valid = (std::min(c1y, c2y) < p2[1] < std::max(c1y, c2y))
-                                        || (std::min(c1z, c2z) < p2[2] < std::max(c1z, c2z));
-
-                            if(p1Valid) {
-                                // If so add it to our theta points
-                                thetaLimits.push_back(v[0]);
-                            }
-                            if(p2Valid) {
-                                thetaLimits.push_back(v[1]);
-                            }
+                            emit(graph("Solution 1 " + std::to_string(i), p1));
+                            emit(graph("Solution 2 " + std::to_string(i), p2));
                         }
                     }
                 }
 
                 std::sort(thetaLimits.begin(), thetaLimits.end());
 
-                std::cout << "thetaLimits.size() = " << thetaLimits.size() << std::endl;
+                // std::cout << "thetaLimits.size() = " << thetaLimits.size() << std::endl;
 
                 /***********************************
                  * Loop through our theta segments *
                  ***********************************/
-            
+
                 for (size_t i = 0; i < thetaLimits.size() / 2; i += 2) {
                     const double& minTheta = thetaLimits[i];
                     const double& maxTheta = thetaLimits[i + 1];
@@ -265,17 +257,13 @@ namespace vision {
                         /************************************************************************
                          * Add this phi/theta sample point to a list to project onto the screen *
                          ************************************************************************/
-                        
+
                         double cosTheta = std::cos(theta);
                         double sinTheta = std::sin(theta);
 
                         camPoints.push_back(camToGround.i() * arma::vec3({ cosTheta * sinPhi, sinTheta * sinPhi, -cosPhi }));
 
-                        emit(graph("Phi Points", camPoints.back()));
-                        emit(graph("Corner Points", arma::vec(cornerPointsCam.col(0))));
-                        emit(graph("Corner Points", arma::vec(cornerPointsCam.col(1))));
-                        emit(graph("Corner Points", arma::vec(cornerPointsCam.col(2))));
-                        emit(graph("Corner Points", arma::vec(cornerPointsCam.col(3))));
+                        // emit(graph("Phi Points", camPoints.back()));
                     }
                 }
             }
@@ -288,13 +276,13 @@ namespace vision {
 
             //for(auto& point : phiThetaPoints) {
             //    screenPoints.push_back(phiThetaToScreenPoint(point.first, point.second));
-            //    //std::cout << screenPoints.back() << std::endl;
+               // std::cout << screenPoints.back() << std::endl;
             //}
         });
     }
 
     arma::vec2 VisualMesh::phiThetaToScreenPoint(double phi, double theta, Rotation3D camToGround, int camFocalLengthPixels) {
-        // phi and theta are converted to spherical coordinates in a space with the same orientation as the world, but with origin at the camera position. 
+        // phi and theta are converted to spherical coordinates in a space with the same orientation as the world, but with origin at the camera position.
         // The associated phi in spherical coords is given by -(pi/2 - phi), which simplifies the spherical coordinate conversion to
         arma::vec3 sphericalCoords = { std::cos(theta)*std::sin(phi), std::sin(theta)*std::sin(phi), -std::cos(phi) };
         // To put in camera space multiply by the ground to camera rotation matrix
@@ -304,7 +292,7 @@ namespace vision {
         return screenSpacePoint;
     }
     arma::vec3 VisualMesh::phiThetaToSphericalCameraSpace(double phi, double theta, Rotation3D camToGround) {
-        // phi and theta are converted to spherical coordinates in a space with the same orientation as the world, but with origin at the camera position. 
+        // phi and theta are converted to spherical coordinates in a space with the same orientation as the world, but with origin at the camera position.
         // The associated phi in spherical coords is given by -(pi/2 - phi), which simplifies the spherical coordinate conversion to
         arma::vec3 cartesianCoords = { std::cos(theta)*std::sin(phi), std::sin(theta)*std::sin(phi), -std::cos(phi) };
         // To put in camera space multiply by the ground to camera rotation matrix
