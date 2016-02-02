@@ -48,10 +48,10 @@ namespace vision {
     arma::vec solveAcosThetaPlusBsinThetaEqualsC(double a, double b, double c) {
         double r = std::sqrt(a*a + b*b);
         if(std::abs(c) <= r) {
-            double alpha = std::atan(b/a);
+            double alpha = std::atan2(b, a);
             double beta = std::acos(c/r);
             if(beta == 0) {
-                return arma::vec({ beta + alpha });
+                return arma::vec({ alpha + beta });
             } else {
                 return arma::vec({ alpha + beta, alpha - beta });
             }
