@@ -120,8 +120,8 @@ namespace vision {
              ***************************/
             
             // Get the corners of the view port in cam space
-            double ymax = std::tan(FOV_X / 2);
-            double zmax = std::tan(FOV_Y / 2);
+            double ymax = std::tan(FOV_X * 0.5);
+            double zmax = std::tan(FOV_Y * 0.5);
             arma::mat::fixed<3,4> cornerPointsCam = {
                 1,  ymax,  zmax,
                 1, -ymax,  zmax,
@@ -130,19 +130,20 @@ namespace vision {
             };
 
             cornerPointsCam /= arma::norm(cornerPointsCam.col(0));
-
+            //std::cout << "cornerPointsCam" << cornerPointsCam << std::endl;
             // Rotate the camera points into world space
             arma::mat::fixed<3,4> cornerPointsWorld = camToGround * cornerPointsCam;
-
+            //std::cout << "cornerPointsWorld" << cornerPointsWorld << std::endl;
             /**************************************************
              * Calculate screen edge planes and corner angles *
              **************************************************/
             arma::mat::fixed<3,4> screenEdgePlanes;
-            for(int i = 0; i < screenEdgePlanes.n_rows; ++i) {
+            for(int i = 0; i < screenEdgePlanes.n_cols; ++i) {
                 // Cross product each corner pair and normalise to a unit vector
                 screenEdgePlanes.col(i) = arma::normalise(arma::cross(cornerPointsWorld.col(i), cornerPointsWorld.col((i + 1) % 4)));
+                //std::cout << "norm" << i << arma::norm(screenEdgePlanes.col(i)) << std::endl;
             }
-
+            //std::cout << "screenEdgePlanes" << screenEdgePlanes << std::endl;
             //arma::mat::fixed<2,4> cornerPointsAngles = SOMETHINGSGS;
 
             /*************************
@@ -183,15 +184,22 @@ namespace vision {
 
                 for(int i = 0; i < 4; ++i) {
 
-                    std::cout << "i = " << i << std::endl;
+                    //std::cout << "i = " << i << std::endl;
 
                     if (minPhi < phi && phi < maxPhi) {
 
                         double& x = screenEdgePlanes(0, i);
+
                         double& y = screenEdgePlanes(1, i);
+                        
                         double& z = screenEdgePlanes(2, i);
 
-                        arma::vec v = solveAcosThetaPlusBsinThetaEqualsC(cosPhi * x, sinPhi * y, cosPhi * z);
+                        arma::vec v = solveAcosThetaPlusBsinThetaEqualsC(sinPhi * x, sinPhi * y, cosPhi * z);
+
+                                                    //std::cout << "x" << x << std::endl;
+                        //std::cout << "y" << y << std::endl;
+                        //std::cout << "z" << z << std::endl;
+                        //std::cout << "v" << v.t() << std::endl;
 
                         if(v.n_elem == 2) {
 
@@ -201,8 +209,6 @@ namespace vision {
                             arma::vec3 p1 = { cosV[0] * sinPhi, sinV[0] * sinPhi, -cosPhi };
                             arma::vec3 p2 = { cosV[1] * sinPhi, sinV[1] * sinPhi, -cosPhi };
 
-                            p1 = camToGround.i() * p1;
-                            p2 = camToGround.i() * p2;
 
                             std::cout << "Point 1" << std::endl;
                             std::cout << p1.t() << std::endl;
@@ -210,9 +216,15 @@ namespace vision {
                             std::cout << p2.t() << std::endl;
 
                             std::cout << "Corner 1" << std::endl;
-                            std::cout << cornerPointsCam.col(i).t() << std::endl;
+                            std::cout << cornerPointsWorld.col(i).t() << std::endl;
                             std::cout << "Corner 2" << std::endl;
-                            std::cout << cornerPointsCam.col((i + 1) % 4).t() << std::endl;
+                            std::cout << cornerPointsWorld.col((i + 1) % 4).t() << std::endl;
+
+
+                            p1 = camToGround.i() * p1;
+                            p2 = camToGround.i() * p2;
+
+                        
 
                             double& c1y = cornerPointsCam.col(i)[1];
                             double& c1z = cornerPointsCam.col(i)[2];
@@ -260,6 +272,10 @@ namespace vision {
                         camPoints.push_back(camToGround.i() * arma::vec3({ cosTheta * sinPhi, sinTheta * sinPhi, -cosPhi }));
 
                         emit(graph("Phi Points", camPoints.back()));
+                        emit(graph("Corner Points", arma::vec(cornerPointsCam.col(0))));
+                        emit(graph("Corner Points", arma::vec(cornerPointsCam.col(1))));
+                        emit(graph("Corner Points", arma::vec(cornerPointsCam.col(2))));
+                        emit(graph("Corner Points", arma::vec(cornerPointsCam.col(3))));
                     }
                 }
             }
