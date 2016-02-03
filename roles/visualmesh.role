@@ -12,6 +12,7 @@ NUCLEAR_ROLE(
 
     #Sensors
     #input::LinuxCamera
+    support::VirtualCamera
     platform::darwin::HardwareSimulator
     platform::darwin::SensorFilter
 
