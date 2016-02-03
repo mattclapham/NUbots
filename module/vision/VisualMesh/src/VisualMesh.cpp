@@ -138,10 +138,14 @@ namespace vision {
              * Calculate screen edge planes and corner angles *
              **************************************************/
             arma::cube::fixed<3,3,4> screenEdgeMatricies;
+            arma::vec4 screenEdgeArcs;
             for(int i = 0; i < screenEdgeMatricies.n_slices; ++i) {
                 screenEdgeMatricies.slice(i).col(0) = cornerPointsWorld.col(i);
                 screenEdgeMatricies.slice(i).col(2) = arma::normalise(arma::cross(cornerPointsWorld.col(i), cornerPointsWorld.col((i + 1) % 4)));
                 screenEdgeMatricies.slice(i).col(1) = arma::cross(screenEdgeMatricies.slice(i).col(2), screenEdgeMatricies.slice(i).col(0));
+
+                arma::vec3 p = screenEdgeMatricies.slice(i).t() * cornerPointsWorld.col((i + 1) % 4);
+                screenEdgeArcs[i] = std::atan2(p[1], p[0]);
             }
 
             /*************************
@@ -164,10 +168,10 @@ namespace vision {
              *************************************************************/
 
 
-            emit(graph("Corner Points", arma::vec(cornerPointsCam.col(0))));
-            emit(graph("Corner Points", arma::vec(cornerPointsCam.col(1))));
-            emit(graph("Corner Points", arma::vec(cornerPointsCam.col(2))));
-            emit(graph("Corner Points", arma::vec(cornerPointsCam.col(3))));
+            emit(graph("Corner Points", arma::vec(cornerPointsWorld.col(0))));
+            emit(graph("Corner Points", arma::vec(cornerPointsWorld.col(1))));
+            emit(graph("Corner Points", arma::vec(cornerPointsWorld.col(2))));
+            emit(graph("Corner Points", arma::vec(cornerPointsWorld.col(3))));
 
             auto phiIterator = lut.getLUT(cameraHeight, minPhi, maxPhi);
             std::vector<arma::vec3> camPoints;
@@ -192,9 +196,9 @@ namespace vision {
 
                     if (minPhi < phi && phi < maxPhi) {
 
-                        double& x = screenEdgeMatricies(0, 0, i);
-                        double& y = screenEdgeMatricies(1, 0, i);
-                        double& z = screenEdgeMatricies(2, 0, i);
+                        double& x = screenEdgeMatricies(0, 2, i);
+                        double& y = screenEdgeMatricies(1, 2, i);
+                        double& z = screenEdgeMatricies(2, 2, i);
 
                         arma::vec v = solveAcosThetaPlusBsinThetaEqualsC(sinPhi * x, sinPhi * y, cosPhi * z);
 
@@ -211,6 +215,9 @@ namespace vision {
                             arma::vec3 p1 = { cosV[0] * sinPhi, sinV[0] * sinPhi, -cosPhi };
                             arma::vec3 p2 = { cosV[1] * sinPhi, sinV[1] * sinPhi, -cosPhi };
 
+                            arma::vec3 p1d = p1;
+                            arma::vec3 p2d = p2;
+
                             std::cout << i << std::endl;
                             std::cout << screenEdgeMatricies.slice(i);
                             std::cout << p1.t();
@@ -222,10 +229,25 @@ namespace vision {
                             double p1V = atan2(p1[1], p1[0]);
                             double p2V = atan2(p2[1], p2[0]);
 
+                            // Check solution 1
+                            if (0 < p1V && p1V < screenEdgeArcs[i]) {
+                                thetaLimits.push_back(v[0]);
+                                emit(graph("Solution 1 " + std::to_string(i), p1d));
+                            }
+
+                            // Check solution 2
+                            if (0 < p2V && p2V < screenEdgeArcs[i]) {
+                                thetaLimits.push_back(v[1]);
+                                emit(graph("Solution 2 " + std::to_string(i), p2d));
+                            }
+
                             std::cout << p1.t();
                             std::cout << p2.t();
 
-                            std::cout << std::endl;
+                            std::cout << p1V << std::endl
+                                      << p2V << std::endl
+                                      << screenEdgeArcs[i] << std::endl
+                                      << std::endl;
 
                             // if(0 < p1V && p1V < aoifjeaoifjse) {
 
@@ -234,8 +256,6 @@ namespace vision {
 
                             // }
 
-                            emit(graph("Solution 1 " + std::to_string(i), p1));
-                            emit(graph("Solution 2 " + std::to_string(i), p2));
                         }
                     }
                 }
