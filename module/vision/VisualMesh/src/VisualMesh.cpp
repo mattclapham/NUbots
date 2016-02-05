@@ -102,30 +102,30 @@ namespace vision {
         auto sphere = std::make_unique<MeshObjectRequest>();
         sphere->type = MeshObjectRequest::SPHERE;
         sphere->radius = 0.05;
-        sphere->height = 2;
-        sphere->intersections = 3;
+        sphere->height = 0;
+        sphere->intersections = 2;
         sphere->maxDistance = 10;
         sphere->hardLimit = false;
 
-        // auto cylinder = std::make_unique<MeshObjectRequest>();
-        // cylinder->type = MeshObjectRequest::CYLINDER;
-        // cylinder->radius = 0.05;
-        // cylinder->height = 2;
-        // cylinder->intersections = 2;
-        // cylinder->maxDistance = 10;
-        // cylinder->hardLimit = false;
+        auto cylinder = std::make_unique<MeshObjectRequest>();
+        cylinder->type = MeshObjectRequest::CYLINDER;
+        cylinder->radius = 0.05;
+        cylinder->height = 1.15;
+        cylinder->intersections = 2;
+        cylinder->maxDistance = 10;
+        cylinder->hardLimit = false;
 
-        // auto circle = std::make_unique<MeshObjectRequest>();
-        // circle->type = MeshObjectRequest::CIRCLE;
-        // circle->radius = 0.025;
-        // circle->height = 0;
-        // circle->intersections = 1;
-        // circle->maxDistance = 1;
-        // circle->hardLimit = true;
+        auto circle = std::make_unique<MeshObjectRequest>();
+        circle->type = MeshObjectRequest::CIRCLE;
+        circle->radius = 0.025;
+        circle->height = 0;
+        circle->intersections = 1;
+        circle->maxDistance = 1;
+        circle->hardLimit = true;
 
         emit<Scope::INITIALIZE>(sphere);
-        // emit<Scope::INITIALIZE>(cylinder);
-        // emit<Scope::INITIALIZE>(circle);
+        emit<Scope::INITIALIZE>(cylinder);
+        emit<Scope::INITIALIZE>(circle);
 
         on<Trigger<MeshObjectRequest>>().then([this] (const MeshObjectRequest& request) {
             lut.addShape(request);
@@ -211,11 +211,6 @@ namespace vision {
 
                 const float& phi = it->first;
                 const float& dTheta = it->second;
-
-                std::cout << "fovPhi: " << fovPhi << std::endl;
-                std::cout << "fovOffset: " << fovOffset << std::endl;
-                std::cout << "minPhi: " << minPhi << std::endl;
-                std::cout << "maxPhi: " << maxPhi << std::endl;
 
                 /*********************************************************
                  * Calculate our min and max theta values for each plane *
