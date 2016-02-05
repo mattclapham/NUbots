@@ -65,7 +65,7 @@ namespace vision {
 
             // If we are looking on the correct side of the horizon
             if (phi < M_PI_2) {
-                return 2 * std::asin(request.radius / distanceFromCameraToObjectCentre(phi, cameraHeight, request.radius));
+                return (2 * std::asin(request.radius / distanceFromCameraToObjectCentre(phi, cameraHeight, request.radius))) / request.intersections;
             }
 
             // The sphere is currently out of our visible range
@@ -74,7 +74,7 @@ namespace vision {
 
     private:
         static inline double angularWidth(double phi, double cameraHeight, double radius) {
-            return 2 * (std::atan((cameraHeight / (std::cos(phi) * (cameraHeight - radius))) + std::tan(phi)) - phi);
+            return 2 * (std::atan((radius / (std::cos(phi) * (cameraHeight - radius))) + std::tan(phi)) - phi);
         }
 
         static inline double distanceFromCameraToObjectCentre(double phi, double cameraHeight, double radius) {

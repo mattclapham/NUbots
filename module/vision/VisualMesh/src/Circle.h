@@ -43,12 +43,12 @@ namespace vision {
 
                 // If we are within our distance range
                 if (phi < angleToMaxDistance(cameraHeight, request.maxDistance)) {
-                    return verticalAngularWidth(phi, cameraHeight, (request.radius / request.intersections));
+                    return verticalAngularWidth(phi, cameraHeight, ((request.radius * 2) / request.intersections));
                 }
 
                 // If we have passed our max distance range but are soft limiting
                 else if (!request.hardLimit) {
-                    return verticalAngularWidth(angleToMaxDistance(cameraHeight, request.maxDistance), cameraHeight, (request.radius / request.intersections));
+                    return verticalAngularWidth(angleToMaxDistance(cameraHeight, request.maxDistance), cameraHeight, ((request.radius * 2) / request.intersections));
                 }
             }
 
@@ -65,6 +65,7 @@ namespace vision {
 
             // If we are looking on the correct side of the horizon
             if (phi < M_PI_2) {
+                // TODO this is broken, doesn't consider number of intersections
                 return 2 * std::asin(request.radius / distanceFromCameraToObjectCentre(phi, cameraHeight, request.radius));
             }
 

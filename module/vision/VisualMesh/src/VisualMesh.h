@@ -33,8 +33,6 @@ namespace vision {
 
     private:
         VisualMeshLUT lut;
-        arma::vec2 phiThetaToScreenPoint(double phi, double theta, utility::math::matrix::Rotation3D camToGround, int camFocalLengthPixels);
-        arma::vec3 phiThetaToSphericalCameraSpace(double phi, double theta, utility::math::matrix::Rotation3D camToGround);
     public:
         /// @brief Called by the powerplant to build and setup the VisualMesh reactor.
         explicit VisualMesh(std::unique_ptr<NUClear::Environment> environment);

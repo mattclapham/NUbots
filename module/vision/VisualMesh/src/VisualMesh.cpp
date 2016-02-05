@@ -48,19 +48,46 @@ namespace vision {
     using utility::nubugger::graph;
     using utility::nubugger::drawVisionLines;
 
+    template <bool HIGH_PRECISION = true>
+    float fastSin(float x) {
+        // Convert the input value to a range of -1 to 1
+        x = x * (1.0f / M_PI);
+
+        // Wrap around
+        volatile float z = (x + 25165824.0f);
+        x = x - (z - 25165824.0f);
+
+        if(HIGH_PRECISION) {
+            float y = x - x * fabs(x);
+
+            const float Q = 3.1f;
+            const float P = 3.6f;
+
+            return y * (Q + P * fabs(y));
+        }
+        else {
+            return 4.0f * (x - x * fabs(x));
+        }
+    }
+
+    template <bool HIGH_PRECISION = true>
+    float fastCos(float x) {
+        return fastSin<HIGH_PRECISION>(x - M_PI_2);
+    }
+
     // http://www.math-only-math.com/a-cos-theta-plus-b-sin-theta-equals-c.html
-    arma::vec solveAcosThetaPlusBsinThetaEqualsC(double a, double b, double c) {
-        double r = std::sqrt(a*a + b*b);
+    arma::fvec solveAcosThetaPlusBsinThetaEqualsC(float a, float b, float c) {
+        float r = std::sqrt(a*a + b*b);
         if(std::abs(c) <= r) {
-            double alpha = std::atan2(b, a);
-            double beta = std::acos(c/r);
+            float alpha = std::atan2(b, a);
+            float beta = std::acos(c/r);
             if(beta == 0) {
-                return arma::vec({ alpha + beta });
+                return arma::fvec({ alpha + beta });
             } else {
-                return arma::vec({ alpha + beta, alpha - beta });
+                return arma::fvec({ alpha + beta, alpha - beta });
             }
         } else {
-            return arma::vec();
+            return arma::fvec();
         }
     }
 
@@ -74,31 +101,31 @@ namespace vision {
 
         auto sphere = std::make_unique<MeshObjectRequest>();
         sphere->type = MeshObjectRequest::SPHERE;
-        sphere->radius = 0.07;
-        sphere->height = 0;
+        sphere->radius = 0.05;
+        sphere->height = 2;
         sphere->intersections = 3;
         sphere->maxDistance = 10;
         sphere->hardLimit = false;
 
-        auto cylinder = std::make_unique<MeshObjectRequest>();
-        cylinder->type = MeshObjectRequest::CYLINDER;
-        cylinder->radius = 0.05;
-        cylinder->height = 2;
-        cylinder->intersections = 2;
-        cylinder->maxDistance = 10;
-        cylinder->hardLimit = false;
+        // auto cylinder = std::make_unique<MeshObjectRequest>();
+        // cylinder->type = MeshObjectRequest::CYLINDER;
+        // cylinder->radius = 0.05;
+        // cylinder->height = 2;
+        // cylinder->intersections = 2;
+        // cylinder->maxDistance = 10;
+        // cylinder->hardLimit = false;
 
-        auto circle = std::make_unique<MeshObjectRequest>();
-        circle->type = MeshObjectRequest::CIRCLE;
-        circle->radius = 0.05;
-        circle->height = 0;
-        circle->intersections = 2;
-        circle->maxDistance = 2;
-        circle->hardLimit = false;
+        // auto circle = std::make_unique<MeshObjectRequest>();
+        // circle->type = MeshObjectRequest::CIRCLE;
+        // circle->radius = 0.025;
+        // circle->height = 0;
+        // circle->intersections = 1;
+        // circle->maxDistance = 1;
+        // circle->hardLimit = true;
 
         emit<Scope::INITIALIZE>(sphere);
-        emit<Scope::INITIALIZE>(cylinder);
-        emit<Scope::INITIALIZE>(circle);
+        // emit<Scope::INITIALIZE>(cylinder);
+        // emit<Scope::INITIALIZE>(circle);
 
         on<Trigger<MeshObjectRequest>>().then([this] (const MeshObjectRequest& request) {
             lut.addShape(request);
@@ -112,35 +139,41 @@ namespace vision {
             float focalLengthPixels = params.focalLengthPixels;
 
             // Camera height is z component of the transformation matrix
-            double cameraHeight = sensors.orientationCamToGround(2, 3);
+            float cameraHeight = sensors.orientationCamToGround(2, 3);
 
-            // Remove yaw from our cameras rotation matrix
-            Rotation3D camToGround = Rotation3D::createRotationZ(-sensors.orientationCamToGround.rotation().yaw()) * sensors.orientationCamToGround.rotation();
+            // Remove yaw from our cameras rotation matrix and make it a float matrix
+            arma::fmat33 camToGround = arma::conv_to<arma::fmat>::from(Rotation3D::createRotationZ(-sensors.orientationCamToGround.rotation().yaw()) * sensors.orientationCamToGround.rotation());
+
+            // Our pixel offset value
+            arma::fvec2 screenCentreOffset = arma::fvec2({ float(params.imageSizePixels[0] - 1), float(params.imageSizePixels[1] - 1) })  * 0.5;
 
             /***************************
              * Calculate image corners *
              ***************************/
             // Get the corners of the view port in cam space
-            double yMax = std::tan(fovX * 0.5);
-            double zMax = std::tan(fovY * 0.5);
-            arma::mat::fixed<3,4> cornerPointsCam = {
-                1,  yMax,  zMax,
-                1, -yMax,  zMax,
-                1, -yMax, -zMax,
-                1,  yMax, -zMax
+            float yMax = std::tan(fovX * 0.5);
+            float zMax = std::tan(fovY * 0.5);
+
+            // Prenormalise our unit vectors
+            float vecLength = 1 / std::sqrt(yMax*yMax + zMax*zMax + 1);
+            float normYMax = yMax * vecLength;
+            float normZMax = zMax * vecLength;
+
+            arma::fmat::fixed<3,4> cornerPointsCam = {
+                vecLength,  normYMax,  normZMax,
+                vecLength, -normYMax,  normZMax,
+                vecLength, -normYMax, -normZMax,
+                vecLength,  normYMax, -normZMax
             };
 
-            // Normalise our cam space vectors
-            cornerPointsCam *= (1 / arma::norm(cornerPointsCam.col(0)));
-
             // Rotate the camera points into world space
-            arma::mat::fixed<3,4> cornerPointsWorld = camToGround * cornerPointsCam;
+            arma::fmat::fixed<3,4> cornerPointsWorld = camToGround * cornerPointsCam;
 
             /**************************************************
              * Calculate screen edge planes and corner angles *
              **************************************************/
-            arma::cube::fixed<3,3,4> screenEdgeMatricies;
-            arma::vec4 screenEdgeArcs;
+            arma::fcube::fixed<3,3,4> screenEdgeMatricies;
+            arma::fvec4 screenEdgeArcs;
             for(int i = 0; i < screenEdgeMatricies.n_slices; ++i) {
                 // Make our screen edge rotation matrix
                 screenEdgeMatricies.slice(i).col(0) = cornerPointsWorld.col(i);
@@ -148,7 +181,7 @@ namespace vision {
                 screenEdgeMatricies.slice(i).col(1) = arma::cross(screenEdgeMatricies.slice(i).col(2), screenEdgeMatricies.slice(i).col(0));
 
                 // Find the end of our screen edge arc
-                arma::vec3 p = screenEdgeMatricies.slice(i).t() * cornerPointsWorld.col((i + 1) % 4);
+                arma::fvec3 p = screenEdgeMatricies.slice(i).t() * cornerPointsWorld.col((i + 1) % 4);
                 screenEdgeArcs[i] = std::atan2(p[1], p[0]);
             }
 
@@ -156,36 +189,41 @@ namespace vision {
              * Calculate min/max phi *
              *************************/
             // Because our matrix has no yaw, we can directly extract cos and sin
-            const double& cosRoll = camToGround(1, 1);
-            const double& sinRoll = camToGround(2, 1);
+            const float& cosRoll = camToGround(1, 1);
+            const float& sinRoll = camToGround(2, 1);
 
             // Phi field of view comes from the vectors from the centre to the corner
             // There are two of these, so we chose the larger of the two
-            double fovPhi = std::atan(std::max(std::abs(yMax * sinRoll + zMax * cosRoll)
+            float fovPhi = std::atan(std::max(std::abs(yMax * sinRoll + zMax * cosRoll)
                                              , std::abs(yMax * sinRoll - zMax * cosRoll)));
-            double fovOffset = M_PI_2 - std::acos(camToGround(0, 0));
+            float fovOffset = M_PI_2 - std::asin(camToGround(0, 2));
 
-            double minPhi = fovOffset - fovPhi;
-            double maxPhi = fovOffset + fovPhi;
+            float minPhi = fovOffset - fovPhi;
+            float maxPhi = fovOffset + fovPhi;
 
             /*************************************************************
              * Get our lookup table and loop through our phi/theta pairs *
              *************************************************************/
             auto phiIterator = lut.getLUT(cameraHeight, minPhi, maxPhi);
-            std::vector<arma::vec3> camPoints;
+            std::vector<arma::fvec3> camPoints;
 
             for(auto it = phiIterator.first; it != phiIterator.second; ++it) {
 
-                const double& phi = it->first;
-                const double& dTheta = it->second;
+                const float& phi = it->first;
+                const float& dTheta = it->second;
+
+                std::cout << "fovPhi: " << fovPhi << std::endl;
+                std::cout << "fovOffset: " << fovOffset << std::endl;
+                std::cout << "minPhi: " << minPhi << std::endl;
+                std::cout << "maxPhi: " << maxPhi << std::endl;
 
                 /*********************************************************
                  * Calculate our min and max theta values for each plane *
                  *********************************************************/
-                double sinPhi = sin(phi);
-                double cosPhi = cos(phi);
+                float sinPhi = sin(phi);
+                float cosPhi = cos(phi);
 
-                std::vector<double> thetaLimits;
+                std::vector<float> thetaLimits;
                 thetaLimits.reserve(4);
 
                 for(int i = 0; i < 4; ++i) {
@@ -193,29 +231,29 @@ namespace vision {
                     if (minPhi < phi && phi < maxPhi) {
 
                         // Get the unit vector that describes the normal to the screen plane
-                        double& x = screenEdgeMatricies(0, 2, i);
-                        double& y = screenEdgeMatricies(1, 2, i);
-                        double& z = screenEdgeMatricies(2, 2, i);
+                        float& x = screenEdgeMatricies(0, 2, i);
+                        float& y = screenEdgeMatricies(1, 2, i);
+                        float& z = screenEdgeMatricies(2, 2, i);
 
                         // Solve our equation to find our theta intercepts
-                        arma::vec v = solveAcosThetaPlusBsinThetaEqualsC(sinPhi * x, sinPhi * y, cosPhi * z);
+                        arma::fvec v = solveAcosThetaPlusBsinThetaEqualsC(sinPhi * x, sinPhi * y, cosPhi * z);
 
                         // We only care about the case with two solutions
                         if(v.n_elem == 2) {
 
-                            arma::vec2 cosV = arma::cos(v);
-                            arma::vec2 sinV = arma::sin(v);
+                            arma::fvec2 cosV = arma::cos(v);
+                            arma::fvec2 sinV = arma::sin(v);
 
                             // Calculate a unit vector to this solution and rotate it
                             // into the screen edge plane space (removing the z component)
-                            arma::vec3 p1 = { cosV[0] * sinPhi, sinV[0] * sinPhi, -cosPhi };
-                            arma::vec3 p2 = { cosV[1] * sinPhi, sinV[1] * sinPhi, -cosPhi };
+                            arma::fvec3 p1 = { cosV[0] * sinPhi, sinV[0] * sinPhi, -cosPhi };
+                            arma::fvec3 p2 = { cosV[1] * sinPhi, sinV[1] * sinPhi, -cosPhi };
                             p1 = screenEdgeMatricies.slice(i).t() * p1;
                             p2 = screenEdgeMatricies.slice(i).t() * p2;
 
                             // Do an atan2 to find out how far around this solution is
-                            double p1V = atan2(p1[1], p1[0]);
-                            double p2V = atan2(p2[1], p2[0]);
+                            float p1V = atan2(p1[1], p1[0]);
+                            float p2V = atan2(p2[1], p2[0]);
 
                             // Check solution 1 is between 0 and our other point
                             if (0 < p1V && p1V < screenEdgeArcs[i]) {
@@ -238,22 +276,22 @@ namespace vision {
                  ***********************************/
                 for (size_t i = 0; i < thetaLimits.size(); i += 2) {
 
-                    double minTheta = thetaLimits[i];
-                    const double& maxTheta = thetaLimits[i + 1];
+                    float minTheta = thetaLimits[i];
+                    const float& maxTheta = thetaLimits[i + 1];
 
                     // Theta must be a multiple of dtheta
-                    minTheta += minTheta + fmod(minTheta, dTheta);
+                    minTheta += std::fmod(std::abs(minTheta), dTheta);
 
                     // Loop through our valid theta range using delta theta
-                    for (double theta = minTheta; theta < maxTheta; theta += dTheta) {
+                    for (float theta = minTheta; theta < maxTheta; theta += dTheta) {
 
                         /*******************************************************************
                          * Add this phi/theta point to the list to project onto the screen *
                          *******************************************************************/
-                        double cosTheta = std::cos(theta);
-                        double sinTheta = std::sin(theta);
+                        float cosTheta = std::cos(theta);
+                        float sinTheta = std::sin(theta);
 
-                        camPoints.push_back(camToGround.i() * arma::vec3({ cosTheta * sinPhi, sinTheta * sinPhi, -cosPhi }));
+                        camPoints.push_back(camToGround.i() * arma::fvec3({ cosTheta * sinPhi, sinTheta * sinPhi, -cosPhi }));
                     }
                 }
             }
@@ -262,12 +300,15 @@ namespace vision {
              * Project our phi/theta pairs onto the screen *
              ***********************************************/
             std::vector<arma::ivec2> screenPoints;
-
             std::vector<std::pair<arma::ivec2, arma::ivec2>> helperPoints;
 
             screenPoints.reserve(camPoints.size());
             for(auto& point : camPoints) {
-                screenPoints.push_back(utility::math::vision::screenToImage(arma::vec2({(focalLengthPixels * point[1] / point[0]), (focalLengthPixels * point[2] / point[0])}), params.imageSizePixels));
+
+                arma::fvec2 floatPixel = screenCentreOffset - arma::fvec2({(focalLengthPixels * point[1] / point[0]), (focalLengthPixels * point[2] / point[0])});
+
+                screenPoints.push_back(arma::ivec2({lround(floatPixel[0]), lround(floatPixel[1])}));
+
                 helperPoints.push_back(std::make_pair(screenPoints.back(), screenPoints.back() + arma::ivec2({1,1})));
             }
 

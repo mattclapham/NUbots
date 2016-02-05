@@ -24,7 +24,7 @@
 #include <limits>
 
 #include "message/vision/MeshObjectRequest.h"
-#include "Circle.h"
+#include "Sphere.h"
 
 namespace module {
 namespace vision {
@@ -36,11 +36,11 @@ namespace vision {
 
             // Look at spheres at the top and base and choose the smallest one
             auto topRequest = request;
-            double top = Circle::deltaPhi(topRequest, phi, cameraHeight);
+            double top = Sphere::deltaPhi(topRequest, phi, cameraHeight);
 
             auto baseRequest = request;
             baseRequest.height = 0;
-            auto base = Circle::deltaPhi(baseRequest, phi, cameraHeight);
+            double base = Sphere::deltaPhi(baseRequest, phi, cameraHeight);
 
             return std::min(top, base);
         }
@@ -49,11 +49,11 @@ namespace vision {
 
             // Look at spheres at the top and base and choose the smallest one
             auto topRequest = request;
-            double top = Circle::deltaTheta(topRequest, phi, cameraHeight);
+            double top = Sphere::deltaTheta(topRequest, phi, cameraHeight);
 
             auto baseRequest = request;
             baseRequest.height = 0;
-            auto base =  Circle::deltaTheta(baseRequest, phi, cameraHeight);
+            double base =  Sphere::deltaTheta(baseRequest, phi, cameraHeight);
 
             return std::min(top, base);
         }

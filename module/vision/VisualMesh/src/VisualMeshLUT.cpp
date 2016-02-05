@@ -157,7 +157,6 @@ namespace vision {
 
     std::pair<std::vector<std::pair<double, double>>::iterator, std::vector<std::pair<double, double>>::iterator> VisualMeshLUT::getLUT(double height, double minPhi, double maxPhi) {
 
-
         int index = int(((height - minHeight) / (maxHeight - minHeight)) * (slices - 1));
         auto& lut = luts[index < 0 ? 0 : index >= slices ? slices - 1 : index];
 

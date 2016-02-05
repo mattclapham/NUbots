@@ -57,15 +57,12 @@ namespace module {
                 auto cameraParameters = std::make_unique<CameraParameters>();
 
                 cameraParameters->imageSizePixels << config["imageWidth"].as<uint>() << config["imageHeight"].as<uint>();
-                cameraParameters->FOV << config["FOV_X"].as<double>() << config["FOV_Y"].as<double>();
+                cameraParameters->FOV = { config["FOV_X"].as<double>(), config["FOV_Y"].as<double>() };
                 cameraParameters->distortionFactor = config["DISTORTION_FACTOR"].as<double>();
-                arma::vec2 tanHalfFOV;
-                tanHalfFOV << std::tan(cameraParameters->FOV[0] * 0.5) << std::tan(cameraParameters->FOV[1] * 0.5);
-                arma::vec2 imageCentre;
-                imageCentre << cameraParameters->imageSizePixels[0] * 0.5 << cameraParameters->imageSizePixels[1] * 0.5;
-                cameraParameters->pixelsToTanThetaFactor << (tanHalfFOV[0] / imageCentre[0]) << (tanHalfFOV[1] / imageCentre[1]);
+                arma::vec2 tanHalfFOV = arma::tan(cameraParameters->FOV * 0.5);
+                arma::vec2 imageCentre = arma::conv_to<arma::vec>::from(cameraParameters->imageSizePixels) * 0.5;
+                cameraParameters->pixelsToTanThetaFactor = tanHalfFOV / imageCentre;
                 cameraParameters->focalLengthPixels = imageCentre[0] / tanHalfFOV[0];
-
 
                 emit<Scope::DIRECT>(std::move(cameraParameters));
 
