@@ -104,10 +104,9 @@ namespace vision {
             lut.addShape(request);
         });
 
-        on<Trigger<Sensors>, With<CameraParameters>, Single>().then([this] (const Sensors& sensors, const CameraParameters& params) {
+        on<Trigger<Image>, With<Sensors>, With<CameraParameters>, Single>().then([this] (const Image&, const Sensors& sensors, const CameraParameters& params) {
 
             // get field of view
-
             float fovX = params.FOV[0];
             float fovY = params.FOV[1];
             float focalLengthPixels = params.focalLengthPixels;
@@ -132,7 +131,7 @@ namespace vision {
             };
 
             // Normalise our cam space vectors
-            cornerPointsCam /= arma::norm(cornerPointsCam.col(0));
+            cornerPointsCam *= (1 / arma::norm(cornerPointsCam.col(0)));
 
             // Rotate the camera points into world space
             arma::mat::fixed<3,4> cornerPointsWorld = camToGround * cornerPointsCam;
@@ -162,7 +161,8 @@ namespace vision {
 
             // Phi field of view comes from the vectors from the centre to the corner
             // There are two of these, so we chose the larger of the two
-            double fovPhi = std::atan(std::max(std::abs(yMax * sinRoll + zMax * cosRoll), std::abs(yMax * sinRoll - zMax * cosRoll)));
+            double fovPhi = std::atan(std::max(std::abs(yMax * sinRoll + zMax * cosRoll)
+                                             , std::abs(yMax * sinRoll - zMax * cosRoll)));
             double fovOffset = M_PI_2 - std::acos(camToGround(0, 0));
 
             double minPhi = fovOffset - fovPhi;
@@ -237,8 +237,12 @@ namespace vision {
                  * Loop through our theta segments *
                  ***********************************/
                 for (size_t i = 0; i < thetaLimits.size(); i += 2) {
-                    const double& minTheta = thetaLimits[i];
+
+                    double minTheta = thetaLimits[i];
                     const double& maxTheta = thetaLimits[i + 1];
+
+                    // Theta must be a multiple of dtheta
+                    minTheta += minTheta + fmod(minTheta, dTheta);
 
                     // Loop through our valid theta range using delta theta
                     for (double theta = minTheta; theta < maxTheta; theta += dTheta) {

@@ -11,9 +11,10 @@ NUCLEAR_ROLE(
     support::NUbugger
 
     #Sensors
-    #input::LinuxCamera
-    support::VirtualCamera
-    platform::darwin::HardwareSimulator
+    input::LinuxCamera
+    platform::darwin::HardwareIO
+    #support::VirtualCamera
+    #platform::darwin::HardwareSimulator
     platform::darwin::SensorFilter
 
     #Vision
