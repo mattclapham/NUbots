@@ -65,8 +65,7 @@ namespace vision {
 
             // If we are looking on the correct side of the horizon
             if (phi < M_PI_2) {
-                // TODO this is broken, doesn't consider number of intersections
-                return 2 * std::asin(request.radius / distanceFromCameraToObjectCentre(phi, cameraHeight, request.radius));
+                return (2 * std::asin(request.radius / distanceFromCameraToObjectCentre(phi, cameraHeight, request.radius))) / request.intersections;
             }
 
             // The circle is currently out of our visible range

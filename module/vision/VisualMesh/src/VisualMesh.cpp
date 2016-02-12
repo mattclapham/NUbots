@@ -193,7 +193,7 @@ namespace vision {
             const float& sinRoll = camToGround(2, 1);
 
             // Phi field of view comes from the vectors from the centre to the corner
-            // There are two of these, so we chose the larger of the two
+            // There are two of these, so we choose the larger of the two
             float fovPhi = std::atan(std::max(std::abs(yMax * sinRoll + zMax * cosRoll)
                                              , std::abs(yMax * sinRoll - zMax * cosRoll)));
             float fovOffset = M_PI_2 - std::asin(camToGround(0, 2));
@@ -201,92 +201,106 @@ namespace vision {
             float minPhi = fovOffset - fovPhi;
             float maxPhi = fovOffset + fovPhi;
 
+            /****************************
+             * Calculate min angle jump *
+             ****************************/
+            float minAngleJump = 2 * std::atan(focalLengthPixels / M_SQRT2);
+
             /*************************************************************
              * Get our lookup table and loop through our phi/theta pairs *
              *************************************************************/
             auto phiIterator = lut.getLUT(cameraHeight, minPhi, maxPhi);
             std::vector<arma::fvec3> camPoints;
 
+            float lastPhi = std::numeric_limits<float>::min();
             for(auto it = phiIterator.first; it != phiIterator.second; ++it) {
 
                 const float& phi = it->first;
                 const float& dTheta = it->second;
 
-                /*********************************************************
-                 * Calculate our min and max theta values for each plane *
-                 *********************************************************/
-                float sinPhi = sin(phi);
-                float cosPhi = cos(phi);
+                // Check we jumped far enough
+                if (phi - lastPhi >= minAngleJump) {
 
-                std::vector<float> thetaLimits;
-                thetaLimits.reserve(4);
+                    lastPhi = phi;
 
-                for(int i = 0; i < 4; ++i) {
+                    /*********************************************************
+                     * Calculate our min and max theta values for each plane *
+                     *********************************************************/
+                    float sinPhi = sin(phi);
+                    float cosPhi = cos(phi);
 
-                    if (minPhi < phi && phi < maxPhi) {
+                    std::vector<float> thetaLimits;
+                    thetaLimits.reserve(4);
 
-                        // Get the unit vector that describes the normal to the screen plane
-                        float& x = screenEdgeMatricies(0, 2, i);
-                        float& y = screenEdgeMatricies(1, 2, i);
-                        float& z = screenEdgeMatricies(2, 2, i);
+                    for(int i = 0; i < 4; ++i) {
 
-                        // Solve our equation to find our theta intercepts
-                        arma::fvec v = solveAcosThetaPlusBsinThetaEqualsC(sinPhi * x, sinPhi * y, cosPhi * z);
+                        if (minPhi < phi && phi < maxPhi) {
 
-                        // We only care about the case with two solutions
-                        if(v.n_elem == 2) {
+                            // Get the unit vector that describes the normal to the screen plane
+                            float& x = screenEdgeMatricies(0, 2, i);
+                            float& y = screenEdgeMatricies(1, 2, i);
+                            float& z = screenEdgeMatricies(2, 2, i);
 
-                            arma::fvec2 cosV = arma::cos(v);
-                            arma::fvec2 sinV = arma::sin(v);
+                            // Solve our equation to find our theta intercepts
+                            arma::fvec v = solveAcosThetaPlusBsinThetaEqualsC(sinPhi * x, sinPhi * y, cosPhi * z);
 
-                            // Calculate a unit vector to this solution and rotate it
-                            // into the screen edge plane space (removing the z component)
-                            arma::fvec3 p1 = { cosV[0] * sinPhi, sinV[0] * sinPhi, -cosPhi };
-                            arma::fvec3 p2 = { cosV[1] * sinPhi, sinV[1] * sinPhi, -cosPhi };
-                            p1 = screenEdgeMatricies.slice(i).t() * p1;
-                            p2 = screenEdgeMatricies.slice(i).t() * p2;
+                            // We only care about the case with two solutions
+                            if(v.n_elem == 2) {
 
-                            // Do an atan2 to find out how far around this solution is
-                            float p1V = atan2(p1[1], p1[0]);
-                            float p2V = atan2(p2[1], p2[0]);
+                                arma::fvec2 cosV = arma::cos(v);
+                                arma::fvec2 sinV = arma::sin(v);
 
-                            // Check solution 1 is between 0 and our other point
-                            if (0 < p1V && p1V < screenEdgeArcs[i]) {
-                                thetaLimits.push_back(v[0]);
-                            }
+                                // Calculate a unit vector to this solution and rotate it
+                                // into the screen edge plane space (removing the z component)
+                                arma::fvec3 p1 = { cosV[0] * sinPhi, sinV[0] * sinPhi, -cosPhi };
+                                arma::fvec3 p2 = { cosV[1] * sinPhi, sinV[1] * sinPhi, -cosPhi };
+                                p1 = screenEdgeMatricies.slice(i).t() * p1;
+                                p2 = screenEdgeMatricies.slice(i).t() * p2;
 
-                            // Check solution 2 is between 0 and our other point
-                            if (0 < p2V && p2V < screenEdgeArcs[i]) {
-                                thetaLimits.push_back(v[1]);
+                                // Do an atan2 to find out how far around this solution is
+                                float p1V = atan2(p1[1], p1[0]);
+                                float p2V = atan2(p2[1], p2[0]);
+
+                                // Check solution 1 is between 0 and our other point
+                                if (0 < p1V && p1V < screenEdgeArcs[i]) {
+                                    thetaLimits.push_back(v[0]);
+                                }
+
+                                // Check solution 2 is between 0 and our other point
+                                if (0 < p2V && p2V < screenEdgeArcs[i]) {
+                                    thetaLimits.push_back(v[1]);
+                                }
                             }
                         }
                     }
-                }
 
-                // Sort the limits to make pairs
-                std::sort(thetaLimits.begin(), thetaLimits.end());
+                    // Sort the limits to make pairs
+                    std::sort(thetaLimits.begin(), thetaLimits.end());
 
-                /***********************************
-                 * Loop through our theta segments *
-                 ***********************************/
-                for (size_t i = 0; i < thetaLimits.size(); i += 2) {
+                    /***********************************
+                     * Loop through our theta segments *
+                     ***********************************/
+                    for (size_t i = 0; i < thetaLimits.size(); i += 2) {
 
-                    float minTheta = thetaLimits[i];
-                    const float& maxTheta = thetaLimits[i + 1];
+                        float minTheta = thetaLimits[i];
+                        const float& maxTheta = thetaLimits[i + 1];
+                        float thetaJump = std::min(dTheta, minAngleJump);
 
-                    // Theta must be a multiple of dtheta
-                    minTheta += std::fmod(std::abs(minTheta), dTheta);
+                        // Theta must be a multiple of dtheta
+                        minTheta += minTheta > 0 ? std::fmod(std::abs(minTheta), thetaJump) : std::fmod(std::abs(2*M_PI - minTheta), thetaJump);
 
-                    // Loop through our valid theta range using delta theta
-                    for (float theta = minTheta; theta < maxTheta; theta += dTheta) {
+                        // Loop through our valid theta range using delta theta
+                        for (float theta = minTheta; theta < maxTheta; theta += thetaJump) {
 
-                        /*******************************************************************
-                         * Add this phi/theta point to the list to project onto the screen *
-                         *******************************************************************/
-                        float cosTheta = std::cos(theta);
-                        float sinTheta = std::sin(theta);
 
-                        camPoints.push_back(camToGround.i() * arma::fvec3({ cosTheta * sinPhi, sinTheta * sinPhi, -cosPhi }));
+                            /*******************************************************************
+                             * Add this phi/theta point to the list to project onto the screen *
+                             *******************************************************************/
+                            float cosTheta = std::cos(theta);
+                            float sinTheta = std::sin(theta);
+
+                            camPoints.push_back(camToGround.i() * arma::fvec3({ cosTheta * sinPhi, sinTheta * sinPhi, -cosPhi }));
+                        }
                     }
                 }
             }

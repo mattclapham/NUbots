@@ -25,7 +25,7 @@
 namespace message {
     namespace input {
 
-        struct CameraParameters{
+        struct CameraParameters {
            arma::uvec2 imageSizePixels;
            arma::vec2 FOV;     //Anglular Field of view
            arma::vec2 pixelsToTanThetaFactor;    //(x,y) screen -> thetax =atan(x*screenAngularFactor[0]), thetay = atan(y*screenAngularFactor[1])
