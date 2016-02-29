@@ -437,6 +437,7 @@ namespace kinematics {
 
     /*! @return matrix J such that \overdot{X} = J * \overdot{theta}
     */
+    /* previous
     template <typename RobotKinematicModel>
     inline arma::mat33 calculateArmJacobian(const arma::vec3& a, bool isLeft){
         int negativeIfRight = isLeft ? 1 : -1;
@@ -481,9 +482,43 @@ namespace kinematics {
 
         return arma::join_rows(col1,arma::join_rows(col2,col3));
     }
+    */
+    //fayeem
+
+    template <typename RobotKinematicModel>
+    inline arma::mat33 calculateArmJacobian(const arma::vec3& a, bool isLeft){
+        int negativeIfRight = isLeft ? -1 : 1;
+
+        const arma::vec3 L0 = {
+            RobotKinematicModel::Arm::SHOULDER_X_OFFSET,
+            negativeIfRight * RobotKinematicModel::Arm::DISTANCE_BETWEEN_SHOULDERS / 2.0,
+            RobotKinematicModel::Arm::SHOULDER_Z_OFFSET
+        };
+
+        const double L1 = RobotKinematicModel::Arm::SHOULDER_HEIGHT;
+        const double L2 = RobotKinematicModel::Arm::SHOULDER_WIDTH;
+        const double L3 = RobotKinematicModel::Arm::UPPER_ARM_LENGTH;
+        const double L4 = RobotKinematicModel::Arm::UPPER_ARM_X_OFFSET;
+        const double L5 = RobotKinematicModel::Arm::LOWER_ARM_LENGTH;
+
+        double c1 = cos(a[0]);
+        double c2 = cos(a[1]);
+        double c3 = cos(a[2]);
+        double s1 = sin(a[0]);
+        double s2 = sin(a[1]);
+        double s3 = sin(a[2]);
+
+        arma::mat33 Jac = { 
+            {0-L5*s1*c2*c3-L3*s1*c2-L5*c1*s3+L4*c1-L1*s1, 0-L5*c1*s2*c3-L3*c1*s2, 0-L5*c1*c2*s3-L5*s1*c3},
+            {0, L5*c2*c3+L3*c2, 0-L5*s2*s3},
+            {0-L5*c1*c2*c3-L3*c1*c2+L5*s1*s3-L4*s1-L1*c1, L5*s1*s2*c3+L3*s1*s2, L5*s1*c2*s3-L5*c1*c3}
+        };
+
+        return Jac;
+    }
     /*! @return matrix J such that \overdot{X} = J * \overdot{theta}
     */
-    template <typename RobotKinematicModel>
+    /*template <typename RobotKinematicModel>
     inline arma::vec3 calculateArmPosition(const arma::vec3& a, bool isLeft){
         int negativeIfRight = isLeft ? 1 : -1;
 
@@ -512,6 +547,7 @@ namespace kinematics {
             negativeIfRight * RobotKinematicModel::Arm::LOWER_ARM_Y_OFFSET,
             -RobotKinematicModel::Arm::LOWER_ARM_Z_OFFSET
         };
+        //std::cout << "t3" << t2.t();
 
         arma::mat33 RY_PI_2 = utility::math::matrix::Rotation3D::createRotationY(M_PI_2);
         
@@ -526,6 +562,44 @@ namespace kinematics {
 
         return pos;
     }
+    */ //previous
+    /*fayeem*/
+    template <typename RobotKinematicModel>
+    inline arma::vec3 calculateArmPosition(const arma::vec3& a, bool isLeft){
+        int negativeIfRight = isLeft ? -1 : 1;
+
+        const arma::vec3 L0 = {
+            RobotKinematicModel::Arm::SHOULDER_X_OFFSET,
+            negativeIfRight * RobotKinematicModel::Arm::DISTANCE_BETWEEN_SHOULDERS / 2.0,
+            RobotKinematicModel::Arm::SHOULDER_Z_OFFSET
+        };
+
+        const double L1 = RobotKinematicModel::Arm::SHOULDER_HEIGHT;
+        const double L2 = negativeIfRight * RobotKinematicModel::Arm::SHOULDER_WIDTH;
+        const double L3 = RobotKinematicModel::Arm::UPPER_ARM_LENGTH;
+        const double L4 = RobotKinematicModel::Arm::UPPER_ARM_X_OFFSET;
+        const double L5 = RobotKinematicModel::Arm::LOWER_ARM_LENGTH;
+
+        double c1 = cos(a[0]);
+        double c2 = cos(a[1]);
+        double c3 = cos(a[2]);
+        double s1 = sin(a[0]);
+        double s2 = sin(a[1]);
+        double s3 = sin(a[2]);
+
+        //std::cout << "t3" << t2.t();
+
+        arma::vec3 pos =  {
+            L5*c1*c2*c3+L3*c1*c2-L5*s1*s3+L4*s1+L1*c1+L0[0],
+            L5*s2*c3+L3*s2+L2+L0[1],
+            0-L5*s1*c2*c3-L3*s1*c2-L5*c1*s3+L4*c1-L1*s1+L0[2]
+        };
+
+
+        return pos;
+    }
+
+    /*fayeem end*/
 
 
 }  // kinematics
