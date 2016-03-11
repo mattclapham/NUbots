@@ -131,6 +131,14 @@ namespace vision {
             lut.addShape(request);
         });
 
+        on<Trigger<CameraParameters>>().then([this] (const CameraParameters& params) {
+
+            // Work out the minimum angle we can jump
+            double minimumAngleJump = 2 * std::atan(M_SQRT2 / params.focalLengthPixels);
+
+            lut.setMinimumJump(minimumAngleJump);
+        });
+
         on<Trigger<Image>, With<Sensors>, With<CameraParameters>, Single>().then([this] (const Image&, const Sensors& sensors, const CameraParameters& params) {
 
             // get field of view
@@ -204,7 +212,7 @@ namespace vision {
             /****************************
              * Calculate min angle jump *
              ****************************/
-            float minAngleJump = 2 * std::atan(focalLengthPixels / M_SQRT2);
+            float minAngleJump = 2 * std::atan(M_SQRT2 / focalLengthPixels);
 
             /*************************************************************
              * Get our lookup table and loop through our phi/theta pairs *

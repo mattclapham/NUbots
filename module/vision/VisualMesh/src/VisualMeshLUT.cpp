@@ -32,11 +32,12 @@ namespace vision {
 
     using message::vision::MeshObjectRequest;
 
-    VisualMeshLUT::VisualMeshLUT(double minHeight, double maxHeight, int slices)
+    VisualMeshLUT::VisualMeshLUT(double minHeight, double maxHeight, int slices, double minAngleJump)
     : slices(slices)
     , minHeight(minHeight)
     , maxHeight(maxHeight)
-    , luts(slices) {}
+    , luts(slices)
+    , minAngleJump(minAngleJump) {}
 
     double deltaPhi(const message::vision::MeshObjectRequest& request, double phi, double height) {
 
@@ -73,6 +74,11 @@ namespace vision {
 
     void VisualMeshLUT::regenerate() {
 
+        // We need a minimum jump set, otherwise ignore
+        if (minAngleJump < 0) {
+            return;
+        }
+
         // Our new luts
         std::vector<std::vector<std::pair<double, double>>> newLUTs;
 
@@ -98,8 +104,8 @@ namespace vision {
                     double thetaJump = deltaTheta(request, phi, height);
 
                     // Find if this is the new minimum
-                    minPhiJump = std::min(minPhiJump, phiJump);
-                    minThetaJump = std::min(minThetaJump, thetaJump);
+                    minPhiJump   = std::max(minAngleJump, std::min(minPhiJump, phiJump));
+                    minThetaJump = std::max(minAngleJump, std::min(minThetaJump, thetaJump));
                 }
 
                 // Add the value if we didn't jump past the horizon
@@ -125,8 +131,8 @@ namespace vision {
                     double thetaJump = deltaTheta(request, phi, height);
 
                     // Find if this is the new minimum
-                    minPhiJump = std::min(minPhiJump, phiJump);
-                    minThetaJump = std::min(minThetaJump, thetaJump);
+                    minPhiJump   = std::max(minAngleJump, std::min(minPhiJump, phiJump));
+                    minThetaJump = std::max(minAngleJump, std::min(minThetaJump, thetaJump));
                 }
 
                 // Add the value if we didn't jump past the horizon
@@ -143,7 +149,83 @@ namespace vision {
             newLUTs.push_back(values);
         }
 
+        // Loop through each of our heights in the lut
+        for (auto& h : newLUTs) {
+
+            std::vector<Edge> edges;
+            edges.reserve(100000);
+
+            // Loop through each phi/theta values and add our cross lines
+            for(auto& row : h) {
+                for (float theta = -(M_PI_2 - std::fmod(M_PI_2, row.second)); theta < (M_PI_2 - row.second); theta += row.second) {
+                    Edge edge;
+                    edge.p1 = { row.first, theta };
+                    edge.p2 = { row.first, theta + row.second };
+
+                    edges.push_back(edge);
+                }
+            }
+
+            // Loop our phi/theta values as pairs
+            for(int i = 1; i < h.size(); ++i) {
+
+                // Get our two phi lines
+                // Line 1 will always have the greater phi value
+                auto& line1 = h[i - 1];
+                auto& line2 = h[i];
+
+                // These hold the points we generate, phi is constant
+                arma::vec2 p1 = { line1.first, -(M_PI_2 - std::fmod(M_PI_2, line1.second)) };
+                arma::vec2 p2 = { line2.first, -(M_PI_2 - std::fmod(M_PI_2, line1.second)) };
+
+                // We want to loop using the smaller theta
+                // To do this we change where our references point so they
+                // apply and use values in the correct spots.
+                // We can then copy p1 and p2 and they will be in the correct order
+                auto& thetaSmall = line1.second <= line2.second ? p1[1] : p2[1];
+                auto& thetaBig   = line1.second >  line2.second ? p1[1] : p2[1];
+
+                double dThetaSmall = std::min(line1.second, line2.second);
+                double dThetaBig   = std::max(line1.second, line2.second);
+
+                // We loop until our next movement in the small theta would go too far
+                while((thetaSmall + dThetaSmall) < M_PI_2) {
+
+                    // Create our edge
+                    Edge edge;
+                    edge.p1 = p1;
+                    edge.p2 = p2;
+                    edges.push_back(std::move(edge));
+
+                    // If we have moved over to the next major theta
+                    if (thetaSmall > (thetaBig + dThetaBig * 0.5)) {
+                        thetaBig += dThetaBig;
+                    }
+                    // Otherwise we moved to the next minor theta
+                    else {
+                        thetaSmall += dThetaSmall;
+                    }
+                }
+            }
+
+            // The graph is sorted now based on phi1 and then by the theta values
+            // It is sorted by both thetas always as both sets are always monotonic
+
+            // // Now we make a new list to calculate the edges
+            // std::vector<std::vector<Edge>::iterator> edgeSort;
+            // for(auto it = edges.begin(); it != edges.end(); ++it) {
+            //     edgeSort.push_back(it);
+            // }
+
+            // TODO FIND A WAY TO LINK UP THE GRAPH
+        }
+
         luts = newLUTs;
+    }
+
+    void VisualMeshLUT::setMinimumJump(const double& jump) {
+        minAngleJump = jump;
+        regenerate();
     }
 
     void VisualMeshLUT::addShape(const MeshObjectRequest& request) {

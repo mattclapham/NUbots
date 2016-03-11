@@ -21,18 +21,33 @@
 #define MODULE_VISION_VISUALMESHLUT_H
 
 #include "message/vision/MeshObjectRequest.h"
+
 #include <utility>
 #include <vector>
 #include <cstddef>
+
+#include <armadillo>
 
 namespace module {
 namespace vision {
 
     class VisualMeshLUT {
     public:
-        VisualMeshLUT(double minHeight, double maxHeight, int slices = 50);
+
+        struct Edge {
+            // p1[0] >= p2[0]
+            // If p1[0] == p2[0] then p1[1] > p2[1]
+            arma::vec2 p1;
+            arma::vec2 p2;
+
+            std::array<std::vector<Edge>::iterator, 4> connections;
+        };
+
+        VisualMeshLUT(double minHeight, double maxHeight, int slices = 50, double minAngleJump = -1);
 
         void addShape(const message::vision::MeshObjectRequest& request);
+
+        void setMinimumJump(const double& minimumAngleJump);
 
         void regenerate();
         std::pair<std::vector<std::pair<double, double>>::iterator, std::vector<std::pair<double, double>>::iterator> getLUT(double height, double minPhi, double maxPhi);
@@ -41,6 +56,7 @@ namespace vision {
         size_t slices;
         double minHeight;
         double maxHeight;
+        double minAngleJump;
         std::vector<message::vision::MeshObjectRequest> requests;
         std::vector<std::vector<std::pair<double, double>>> luts;
     };
