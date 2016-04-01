@@ -40,7 +40,7 @@ namespace vision {
             arma::vec2 p1;
             arma::vec2 p2;
 
-            std::array<std::vector<Edge>::iterator, 4> connections;
+            std::array<int, 4> connections;
         };
 
         VisualMeshLUT(double minHeight, double maxHeight, int slices = 50, double minAngleJump = -1);
