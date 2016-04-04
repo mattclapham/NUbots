@@ -224,11 +224,12 @@ namespace vision {
                 // Loop through theta
                 for (int lI = 0; lI < halfSize * 2; ++lI) {
 
-                    int gI = lI + rows[i].start;
+                    const int gI = lI + rows[i].start;
+                    const int cI = lI - halfSize;
 
                     // We are symmetrical around the axis so we subtract half the size
-                    double theta1 = (lI - halfSize)     * rows[i].dThetas[0];
-                    double theta2 = (lI - halfSize + 1) * rows[i].dThetas[0];
+                    double theta1 =  cI      * rows[i].dThetas[0];
+                    double theta2 = (cI + 1) * rows[i].dThetas[0];
 
                     edges[gI].p1 = { rows[i].phis[0], theta1 };
                     edges[gI].p2 = { rows[i].phis[0], theta2 };
@@ -249,8 +250,8 @@ namespace vision {
                 const int halfRowSize = halfRowAboveSize + halfRowBelowSize;
 
                 // Calculate our relative row starts
-                const int rRowAbove = gRow - gRowAbove;
-                const int rRowBelow = gRow - gRowBelow;
+                const int rRowAbove = gRowAbove - gRow;
+                const int rRowBelow = gRowBelow - gRow;
 
                 // The horizontal movement ratio (how fast the relative indicies move)
                 const double hRatio = rows[i].dThetas[1] / (rows[i].dThetas[0] + rows[i].dThetas[1]);
@@ -282,15 +283,9 @@ namespace vision {
                                         ? rRowBelow + lPrevBelowI
                                         : rRowAbove + lPrevAboveI;
 
-                    int rNextLink = lNextAboveI != lAboveI
+                    int rNextLink = lNextAboveI == lAboveI
                                         ? rNextLink = rRowBelow + lBelowI
                                         : rNextLink = rRowAbove + lAboveI;
-
-                    // std::cout << gI << std::endl;
-                    // std::cout << rPrevLink << std::endl;
-                    // std::cout << rNextLink << std::endl;
-                    // std::cout << std::endl;
-
 
                     // Set our points from our above/below points
                     edges[gI].p1 = edges[gAboveI].p1;
@@ -313,174 +308,6 @@ namespace vision {
             }
 
             newEdgeLUTs.emplace_back(std::make_pair(std::move(rows), std::move(edges)));
-
-            // // Generate the diagonal lines
-            // for (int lI = 0; lI <= (int(M_PI / dTheta1) + int(M_PI / dTheta2)) * 2; ++lI) {
-
-            //     // Get our global indicies for row starts
-            //     int gCurrRow = somemagichere;
-            //     int gPrevRow = somemagichere;
-            //     int gNextRow = somemagichere;
-
-            //     // Calculate our relative row starts
-            //     int rPrevRow = gRow - gPrevRow;
-            //     int rNextRow = gRow - gNextRow;
-
-            //     // Calculate our global index
-            //     int gI = i + gRow;
-
-            //     // The horizontal movement ratio
-            //     double hRatio = theta2 / (theta1 + theta2);
-
-            //     // Calculate our index above and below
-            //     int lAboveI = lI * hRatio;
-            //     int lBelowI = lI - lAboveI;
-
-            //     // Calculate our indexes before and after to see how we move
-            //     int lPrevAboveI = int((lI - 1) * hRatio); // TODO if the edges look offset round here
-            //     int lNextAboveI = int((lI + 1) * hRatio);
-
-            //     if (lPrevAboveI != lAboveI) {
-            //         // Above has moved on the left
-            //         rPrevLink = rPrevRow + lPrevAboveI;
-            //     }
-            //     else {
-            //         // Below has moved on the left
-            //         rPrevLink = rNextRow + ((index - 1) - lPrevAboveI);
-            //     }
-
-            //     if (lNextAboveI != lAboveI) {
-            //         // Above has moved on the right
-            //         rNextLink = rPrevRow + lAboveI;
-            //     }
-            //     else {
-            //         // Below has moved to the right
-            //         rNextLink = rNextRow + lBelowI;
-            //     }
-
-            //     // Set our points from our above/below points
-            //     edges[gI].p1 = edges[above].p1;
-            //     edges[gI].p2 = edges[below].p1;
-
-            //     // Calculate ours next previous index
-            //     edges[gI].connections[0] = +1;
-            //     edges[gI].connections[1] = -1;
-            //     edges[gI].connections[2] = rPrevLink; // Which one changed from previous
-            //     edges[gI].connections[3] = rNextLink; // Which one changed to next
-
-            //     // Link those ones
-            //     edges[gI + rPrevLink].connections[rPrevLink > 0 ? 0 : 2] = todoindexrelativetothem; // TODO this is wrong!! links should be based on prev/next and something something
-            //     edges[gI + rNextLink].connections[rNextLink > 0 ? 1 : 3] = todoindexrelativetothem;
-            // }
-
-
-
-
-
-            // its int(M_PI/theta) * 2 for each horizontal line
-            // and then added for each pair
-            // so times 2 - first and last
-
-            // // We have one row for each single phi, and one for each phi pair
-            // std::vector<Edge> edges(h.size() * 2 - 1);
-
-            // // Generate the values for the same phi edges
-            // for (size_t i = 0; i < h.size(); ++i) {
-
-            //     // Loop through our theta values to make our edges
-            //     for (double theta = -(M_PI_2 - std::fmod(M_PI_2, h[i].second));
-            //          theta < (M_PI_2 - h[i].second);
-            //          theta += h[i].second) {
-
-            //         Edge edge;
-            //         edge.p1 = { h[i].first, theta };
-            //         edge.p2 = { h[i].first, theta + h[i].second };
-
-            //         edges[i * 2].push_back(edge);
-            //     }
-            // }
-
-            // std::cout << "done generating the horizontal lines!" << std::endl;
-
-            // Now we generate the pairs and the edges
-
-
-            // indexSmall = indexofdiagonal - indexLarge
-
-
-            // for (auto& row : h) {
-
-            // }
-
-
-
-            // // For each phi/dTheta there are round(M_PI/dTheta) horizontal lines
-
-            // // For each phi/dTheta pair there are round(M_PI/dTheta1) + round(M_PI/dTheta2) points
-
-            // // Given the index of an edge in the theta pairs (between 0 and round(M_PI/dTheta1) + round(M_PI/dTheta2) find the index of the edges it connects to
-
-
-
-
-            // std::vector<Edge> edges;
-            // edges.reserve(100000);
-
-            // // Loop through each phi/theta values and add our cross lines
-            // for(auto& row : h) {
-            //     for (float theta = -(M_PI_2 - std::fmod(M_PI_2, row.second)); theta < (M_PI_2 - row.second); theta += row.second) {
-            //         Edge edge;
-            //         edge.p1 = { row.first, theta };
-            //         edge.p2 = { row.first, theta + row.second };
-
-            //         edges.push_back(edge);
-            //     }
-            // }
-
-            // // Loop our phi/theta values as pairs
-            // for(int i = 1; i < h.size(); ++i) {
-
-            //     // Get our two phi lines
-            //     // Line 1 will always have the greater phi value
-            //     auto& line1 = h[i - 1];
-            //     auto& line2 = h[i];
-
-            //     // These hold the points we generate, phi is constant
-            //     arma::vec2 p1 = { line1.first, -(M_PI_2 - std::fmod(M_PI_2, line1.second)) };
-            //     arma::vec2 p2 = { line2.first, -(M_PI_2 - std::fmod(M_PI_2, line1.second)) };
-
-            //     // We want to loop using the smaller theta
-            //     // To do this we change where our references point so they
-            //     // apply and use values in the correct spots.
-            //     // We can then copy p1 and p2 and they will be in the correct order
-            //     auto& thetaSmall = line1.second <= line2.second ? p1[1] : p2[1];
-            //     auto& thetaBig   = line1.second >  line2.second ? p1[1] : p2[1];
-
-            //     double dThetaSmall = std::min(line1.second, line2.second);
-            //     double dThetaBig   = std::max(line1.second, line2.second);
-
-            //     // We loop until our next movement in the small theta would go too far
-            //     while((thetaSmall + dThetaSmall) < M_PI_2) {
-
-            //         // Create our edge
-            //         Edge edge;
-            //         edge.p1 = p1;
-            //         edge.p2 = p2;
-            //         edges.push_back(std::move(edge));
-
-            //         // If we have moved over to the next major theta
-            //         if (thetaSmall > (thetaBig + dThetaBig * 0.5)) {
-            //             thetaBig += dThetaBig;
-            //         }
-            //         // Otherwise we moved to the next minor theta
-            //         else {
-            //             thetaSmall += dThetaSmall;
-            //         }
-
-            //         // TODO Edge connections
-            //         // Each edge will always connect two two interphi edges, and two intraphi edges
-            //     }
-            // }
         }
 
         std::cout << "Done Graph!" << std::endl;
