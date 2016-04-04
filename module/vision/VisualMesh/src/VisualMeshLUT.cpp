@@ -249,10 +249,6 @@ namespace vision {
                 const int halfRowBelowSize = int(M_PI / rows[i].dThetas[1]);
                 const int halfRowSize = halfRowAboveSize + halfRowBelowSize;
 
-                // Calculate our relative row starts
-                const int rRowAbove = gRowAbove - gRow;
-                const int rRowBelow = gRowBelow - gRow;
-
                 // The horizontal movement ratio (how fast the relative indicies move)
                 const double hRatio = rows[i].dThetas[1] / (rows[i].dThetas[0] + rows[i].dThetas[1]);
 
@@ -280,12 +276,12 @@ namespace vision {
                     // Check which rows above/below we should link too
                     // We check if left/right edge is above or below us
                     int rPrevLink = lPrevAboveI == lAboveI
-                                        ? rRowBelow + lPrevBelowI
-                                        : rRowAbove + lPrevAboveI;
+                                        ? (gRowBelow + lPrevBelowI - gI)
+                                        : (gRowAbove + lPrevAboveI - gI);
 
                     int rNextLink = lNextAboveI == lAboveI
-                                        ? rNextLink = rRowBelow + lBelowI
-                                        : rNextLink = rRowAbove + lAboveI;
+                                        ? (gRowBelow + lBelowI - gI)
+                                        : (gRowAbove + lAboveI - gI);
 
                     // Set our points from our above/below points
                     edges[gI].p1 = edges[gAboveI].p1;
