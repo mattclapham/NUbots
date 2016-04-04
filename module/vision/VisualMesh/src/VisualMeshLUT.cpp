@@ -147,26 +147,25 @@ namespace vision {
             // Sort the list so it goes from lowest to highest phi
             std::sort(std::begin(values), std::end(values));
 
-            std::cout << values.size() << std::endl;
-
             // This is our height for this index
             newLUTs.push_back(values);
         }
 
         std::cout << "Done Points!" << std::endl;
 
+        /*
+            EDGE GRAPH
+         */
+
+        std::vector<std::pair<std::vector<Row>, std::vector<Edge>>> newEdgeLUTs;
+        newEdgeLUTs.reserve(newLUTs.size());
+
         // Loop through each of our heights in the lut
         for (auto& h : newLUTs) {
 
-            struct Row {
-                int start;
-                arma::vec2 phis;
-                arma::vec2 dThetas;
-            };
-
             // First row starts at 0
             std::vector<Row> rows;
-            rows.reserve(h.size() - 1);
+            rows.reserve(h.size() * 2 - 1);
 
             // Add our first horizontal row
             rows.emplace_back(Row {
@@ -207,33 +206,29 @@ namespace vision {
                 currentIndex += nextSize;
             }
 
-            std::cout << currentIndex << std::endl;
-
             // Allocate enough storage space to store all our edges
             std::vector<Edge> edges(currentIndex);
 
-
             // 3 Coordinate systems are used in the next section for creating graphs
-            // Local:    (l prefix) is local to a single row
+            // Centred:  (c prefix) is the offset from the centre of a row
+            // Local:    (l prefix) is local to a single row from the left
             // Global:   (g prefix) is the index across the entire array
             // Relative: (r prefix) is the offset from the current index to the target
-
-            // TODO deal with the fact that the list is mirrored
 
             // Loop through the horizontal lines
             for (int i = 0; i < rows.size(); i += 2) {
 
                 // Row's half horizontal size
-                int size = int(M_PI / rows[i].dThetas[0]);
+                int halfSize = int(M_PI / rows[i].dThetas[0]);
 
                 // Loop through theta
-                for (int lI = 0; lI < size * 2; ++lI) {
+                for (int lI = 0; lI < halfSize * 2; ++lI) {
 
                     int gI = lI + rows[i].start;
 
                     // We are symmetrical around the axis so we subtract half the size
-                    double theta1 = (lI - size)     * rows[i].dThetas[0];
-                    double theta2 = (lI - size + 1) * rows[i].dThetas[0];
+                    double theta1 = (lI - halfSize)     * rows[i].dThetas[0];
+                    double theta2 = (lI - halfSize + 1) * rows[i].dThetas[0];
 
                     edges[gI].p1 = { rows[i].phis[0], theta1 };
                     edges[gI].p2 = { rows[i].phis[0], theta2 };
@@ -244,50 +239,60 @@ namespace vision {
             for (int i = 1; i < rows.size(); i += 2) {
 
                 // Get our global indicies for row starts
-                const int& gPrevRow = rows[i - 1].start;
-                const int& gCurrRow = rows[i].start;
-                const int& gNextRow = rows[i + 1].start;
+                const int& gRowAbove = rows[i - 1].start;
+                const int& gRow = rows[i].start;
+                const int& gRowBelow = rows[i + 1].start;
 
-                // Work out the size of our region (so we can find the centre)
-                const int centreOffset = (gNextRow - gCurrRow) / 2;
-                std::cout << (gNextRow - gCurrRow) << std::endl;
+                // Calculate our row sizes for our row and the rows around us
+                const int halfRowAboveSize = int(M_PI / rows[i].dThetas[0]);
+                const int halfRowBelowSize = int(M_PI / rows[i].dThetas[1]);
+                const int halfRowSize = halfRowAboveSize + halfRowBelowSize;
 
                 // Calculate our relative row starts
-                const int rPrevRow = gCurrRow - gPrevRow;
-                const int rNextRow = gCurrRow - gNextRow;
+                const int rRowAbove = gRow - gRowAbove;
+                const int rRowBelow = gRow - gRowBelow;
 
-                // The horizontal movement ratio
+                // The horizontal movement ratio (how fast the relative indicies move)
                 const double hRatio = rows[i].dThetas[1] / (rows[i].dThetas[0] + rows[i].dThetas[1]);
 
-                // Loop through our diagonal indicies
-                for (int gI = gCurrRow; gI < gNextRow; ++gI) {
+                // Loop through our indicies for this diagonal row
+                for (int gI = gRow; gI < gRowBelow; ++gI) {
 
-                    // Get our local index
-                    const int lI = gI - gCurrRow;
+                    // Get our local index and centred index
+                    const int lI = gI - gRow;
+                    const int cI = lI - halfRowSize;
 
-                    // Calculate our  indicies for above and below
-                    const int lAboveI = lI * hRatio;
+                    // Calculate our indicies for above and below
+                    const int cAboveI = cI * hRatio;
+                    const int lAboveI = cAboveI + halfRowAboveSize;
                     const int lBelowI = lI - lAboveI;
-                    const int gAboveI = gPrevRow + lAboveI;
-                    const int gBelowI = gNextRow + lBelowI;
+                    const int gAboveI = gRowAbove + lAboveI;
+                    const int gBelowI = gRowBelow + lBelowI;
 
                     // Calculate our indexes before and after to see how we move
-                    // TODO if the edges look offset round here
-                    const int lPrevAboveI = int((lI - 1) * hRatio);
-                    const int lPrevBelowI = ((lI - 1) - lPrevAboveI);
-                    const int lNextAboveI = int((lI + 1) * hRatio);
+                    const int cPrevAboveI = int((cI - 1) * hRatio);
+                    const int cNextAboveI = int((cI + 1) * hRatio);
+                    const int lPrevAboveI = cPrevAboveI + halfRowAboveSize;
+                    const int lPrevBelowI = (lI - 1) - lAboveI;
+                    const int lNextAboveI = cNextAboveI + halfRowAboveSize;
 
                     // Check which rows above/below we should link too
                     // We check if left/right edge is above or below us
                     int rPrevLink = lPrevAboveI == lAboveI
-                                        ? rNextRow + lPrevBelowI
-                                        : rPrevRow + lPrevAboveI;
+                                        ? rRowBelow + lPrevBelowI
+                                        : rRowAbove + lPrevAboveI;
 
                     int rNextLink = lNextAboveI != lAboveI
-                                        ? rNextLink = rNextRow + lBelowI
-                                        : rNextLink = rPrevRow + lAboveI;
+                                        ? rNextLink = rRowBelow + lBelowI
+                                        : rNextLink = rRowAbove + lAboveI;
 
-                     // Set our points from our above/below points
+                    // std::cout << gI << std::endl;
+                    // std::cout << rPrevLink << std::endl;
+                    // std::cout << rNextLink << std::endl;
+                    // std::cout << std::endl;
+
+
+                    // Set our points from our above/below points
                     edges[gI].p1 = edges[gAboveI].p1;
                     edges[gI].p2 = edges[gBelowI].p1;
 
@@ -300,13 +305,14 @@ namespace vision {
                     edges[gI].connections[2] = rPrevLink; // Which one changed from previous
                     edges[gI].connections[3] = rNextLink; // Which one changed to next
 
-                    // We need to reverse the links as well
-                    // It will connect NW NE SE SW
+                    // // We need to reverse the links as well
                     edges[gI + rPrevLink].connections[rPrevLink > 0 ? 0 : 2] = -rPrevLink;
                     edges[gI + rNextLink].connections[rNextLink > 0 ? 1 : 3] = -rNextLink;
 
                 }
             }
+
+            newEdgeLUTs.emplace_back(std::make_pair(std::move(rows), std::move(edges)));
 
             // // Generate the diagonal lines
             // for (int lI = 0; lI <= (int(M_PI / dTheta1) + int(M_PI / dTheta2)) * 2; ++lI) {

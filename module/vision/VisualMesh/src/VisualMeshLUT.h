@@ -34,6 +34,12 @@ namespace vision {
     class VisualMeshLUT {
     public:
 
+        struct Row {
+            int start;
+            arma::vec2 phis;
+            arma::vec2 dThetas;
+        };
+
         struct Edge {
             // p1[0] >= p2[0]
             // If p1[0] == p2[0] then p1[1] > p2[1]
