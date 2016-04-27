@@ -314,6 +314,7 @@ namespace kinematics {
         auto start_compute = NUClear::clock::now();
 
         //Initial guess for angles
+
         arma::vec3 angles = angleHint;
         //std::cout << "angleHint" << angleHint.t();
         //std::cout << "left = " << left;
@@ -325,11 +326,26 @@ namespace kinematics {
         for(; i < number_of_iterations; i++){
             X = calculateArmPosition<RobotKinematicModel>(angles, left);
             arma::vec3 dX = pos - X;
+
+            for (int j = 1; j < 4; j++){
+                if (dX[j] > 0.02){
+                    dX[j] = 0.02;
+                    
+                }
+            //    std::cout << j;
+            }
+
+            for (int j = 1; j < 4; j++){
+               if (dX[j] < -0.02){
+                   dX[j] = -0.02;
+               }
+            }
+
             // std::cout << angles[1] << " " << angles[2] << " " << angles[3] << std::endl;
             arma::mat33 J = calculateArmJacobian<RobotKinematicModel>(angles, left);
             //std::cout << "pos = " << pos.t() << std::endl;
             //std::cout << "X = " << X.t() << std::endl;
-            // std::cout << "dX = " << dX.t() << std::endl;
+            //std::cout << "dX = " << dX.t() << std::endl;
             // std::cout << "angles = " << angles.t() << std::endl;
             // std::cout << "error = " << arma::norm(dX) << std::endl;
             if(arma::norm(dX) < 0.001){
@@ -344,14 +360,14 @@ namespace kinematics {
             //std::cout << "jacobian" << pInvJ;
             angles = dAngles + angles;
             //std::cout << "angles = " << angles.t() << std::endl;
-            angles = {0,1.5708,0};
+            //angles = {0,0.1754*9,0};
         }
         auto end_compute = NUClear::clock::now();
 
         //std::cout << "Computation Time (ms) = " << std::chrono::duration_cast<std::chrono::microseconds>(end_compute - start_compute).count() * 1e-3 << std::endl;
         X = calculateArmPosition<RobotKinematicModel>(angles, left);
-        std::cout << "Final angles = " << angles.t() << std::endl;
-        std::cout << "Final position = " << X.t() << std::endl;
+        //std::cout << "Final angles = " << angles.t() << std::endl;
+        //std::cout << "Final position = " << X.t() << std::endl;
         //std::cout << "Goal position = " << pos.t() << std::endl;
         // std::cout << "Final error = " << arma::norm(pos-X) << std::endl;
         // std::cout << "Iterations = " << i << std::endl;

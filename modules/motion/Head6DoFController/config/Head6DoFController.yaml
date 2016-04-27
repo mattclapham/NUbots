@@ -1,4 +1,4 @@
-foot_separation: 0.15
+foot_separation: 0.05
 body_angle: 0.0
 
 test_yaw: 0
@@ -6,5 +6,5 @@ test_pitch: 0
 test_pos: [0,0,0.4]
 
 
-l_arm: [0.2,-0.0,0.05]
-r_arm: [0.2, 0.08,0.15]
+l_arm: [0.15,0.12,0.11711]
+r_arm: [0.15,-0.12,0.11671]

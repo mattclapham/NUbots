@@ -487,7 +487,7 @@ namespace kinematics {
 
     template <typename RobotKinematicModel>
     inline arma::mat33 calculateArmJacobian(const arma::vec3& a, bool isLeft){
-        int negativeIfRight = isLeft ? -1 : 1;
+        int negativeIfRight = isLeft ? 1 : -1;
 
         const arma::vec3 L0 = {
             RobotKinematicModel::Arm::SHOULDER_X_OFFSET,
@@ -496,7 +496,7 @@ namespace kinematics {
         };
 
         const double L1 = RobotKinematicModel::Arm::SHOULDER_HEIGHT;
-        const double L2 = RobotKinematicModel::Arm::SHOULDER_WIDTH;
+        const double L2 = negativeIfRight * RobotKinematicModel::Arm::SHOULDER_WIDTH;
         const double L3 = RobotKinematicModel::Arm::UPPER_ARM_LENGTH;
         const double L4 = RobotKinematicModel::Arm::UPPER_ARM_X_OFFSET;
         const double L5 = RobotKinematicModel::Arm::LOWER_ARM_LENGTH;
@@ -509,9 +509,9 @@ namespace kinematics {
         double s3 = sin(a[2]);
 
         arma::mat33 Jac = { 
-            {0-L5*s1*c2*c3-L3*s1*c2-L5*c1*s3+L4*c1-L1*s1, 0-L5*c1*s2*c3-L3*c1*s2, 0-L5*c1*c2*s3-L5*s1*c3},
+            {-L5*c1*s3+L4*c1-L5*s1*c2*c3-L3*s1*c2-L1*s1, 0-L5*c1*s2*c3-L3*c1*s2, 0-L5*s1*c3-L5*c1*c2*s3},
             {0, L5*c2*c3+L3*c2, 0-L5*s2*s3},
-            {0-L5*c1*c2*c3-L3*c1*c2+L5*s1*s3-L4*s1-L1*c1, L5*s1*s2*c3+L3*s1*s2, L5*s1*c2*s3-L5*c1*c3}
+            {L5*s1*s3-L4*s1-L5*c1*c2*c3-L3*c1*c2-L1*c1, L5*s1*s2*c3+L3*s1*s2, 0-L5*c1*c3+L5*s1*c2*s3}
         };
 
         return Jac;
@@ -566,7 +566,7 @@ namespace kinematics {
     /*fayeem*/
     template <typename RobotKinematicModel>
     inline arma::vec3 calculateArmPosition(const arma::vec3& a, bool isLeft){
-        int negativeIfRight = isLeft ? -1 : 1;
+        int negativeIfRight = isLeft ? 1 : -1;
 
         const arma::vec3 L0 = {
             RobotKinematicModel::Arm::SHOULDER_X_OFFSET,
@@ -587,15 +587,13 @@ namespace kinematics {
         double s2 = sin(a[1]);
         double s3 = sin(a[2]);
 
-        //std::cout << "t3" << t2.t();
 
         arma::vec3 pos =  {
-            L5*c1*c2*c3+L3*c1*c2-L5*s1*s3+L4*s1+L1*c1+L0[0],
+            0-L5*s1*s3+L4*s1+L5*c1*c2*c3+L3*c1*c2+L1*c1+L0[0],
             L5*s2*c3+L3*s2+L2+L0[1],
-            0-L5*s1*c2*c3-L3*s1*c2-L5*c1*s3+L4*c1-L1*s1+L0[2]
+            0-L5*c1*s3+c1*L4-L5*s1*c2*c3-L3*s1*c2-L1*s1+L0[2]
         };
-
-
+        //std::cout << "pos" << pos.t();
         return pos;
     }
 
