@@ -106,7 +106,7 @@ namespace modules {
                     emit(std::move(waypoints));
                 });
 
-                on<Configuration>("InverseKinematicsRequest.yaml").then([this](const Configuration& request) {
+                on<Configuration>("LegKinematicsNULLTest.yaml").then([this](const Configuration& request) {
                     int iterations = 1;
                     int numberOfFails = 0;
                     float ERROR_THRESHOLD = request.config["ERROR_THRESHOLD"].as<float>();
@@ -143,7 +143,7 @@ namespace modules {
                         sensors->servos = std::vector<Sensors::Servo>(20);
 
                         if (left) {
-                            std::vector<std::pair<ServoID, float> > legJoints = calculateLegJoints<DarwinModel>(ikRequest, LimbID::LEFT_LEG);
+                            std::vector<std::pair<ServInverseKinematicsRequestoID, float> > legJoints = calculateLegJoints<DarwinModel>(ikRequest, LimbID::LEFT_LEG);
                             for (auto& legJoint : legJoints) {
                                 ServoID servoID;
                                 float position;
