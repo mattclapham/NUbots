@@ -34,20 +34,30 @@ namespace vision {
     class VisualMeshLUT {
     public:
 
+
         struct Row {
-            int start;
+            int begin;
+            int end;
             arma::vec2 phis;
             arma::vec2 dThetas;
         };
 
         struct Edge {
-            // p1[0] >= p2[0]
-            // If p1[0] == p2[0] then p1[1] > p2[1]
-            arma::vec2 p1;
-            arma::vec2 p2;
+            /// The upper right point in this edge
+            arma::vec3 p1;
+            /// The lower left point in this edge
+            arma::vec3 p2;
 
+            // The relative offset to the indicies of the four closest edges
             std::array<int, 4> connections;
         };
+
+        struct LUTSet {
+            std::vector<std::pair<double, double>> rowDeltas;
+            std::vector<Row> rows;
+            std::vector<Edge> edges;
+        };
+
 
         VisualMeshLUT(double minHeight, double maxHeight, int slices = 50, double minAngleJump = -1);
 
@@ -56,7 +66,44 @@ namespace vision {
         void setMinimumJump(const double& minimumAngleJump);
 
         void regenerate();
-        std::pair<std::vector<std::pair<double, double>>::iterator, std::vector<std::pair<double, double>>::iterator> getLUT(double height, double minPhi, double maxPhi);
+
+        template <typename TFunc>
+        void lookup(double height, double minPhi, double maxPhi, TFunc&& thetaFunction) {
+            // Get lutset for this height
+            int index = int(((height - minHeight) / (maxHeight - minHeight)) * (slices - 1));
+            auto& lut = luts[index < 0 ? 0 : index >= slices ? slices - 1 : index];
+
+            // Make a row to compare to
+            Row compareRow;
+            compareRow.phis = { minPhi, maxPhi };
+
+            // Do a binary search for the min/max row in this lut
+            auto start = std::lower_bound(lut.rows.begin(), lut.rows.end(), compareRow, [] (const Row& a, const Row& b) {
+                return a.phis[0] < b.phis[0];
+            });
+
+            auto end = std::upper_bound(lut.rows.begin(), lut.rows.end(), compareRow, [] (const Row& a, const Row& b) {
+                return a.phis[1] < b.phis[1];
+            });
+
+            // Calculate the min/max theta for each row in range and the corresponding index
+            for (auto it = start; it != end; ++it) {
+                auto& row = *it;
+
+                // Calculate our min and max theta values for each phi
+                thetaFunction(row.phis[0]);
+                thetaFunction(row.phis[1]);
+
+                // Work out what index these theta values correspond to
+
+                // Pick the smaller subset of these
+
+                // Store this chunk
+            }
+
+
+            // Return an array of begin/end pairs for each edge in the LUT
+        }
 
     private:
         size_t slices;
@@ -64,7 +111,8 @@ namespace vision {
         double maxHeight;
         double minAngleJump;
         std::vector<message::vision::MeshObjectRequest> requests;
-        std::vector<std::vector<std::pair<double, double>>> luts;
+
+        std::vector<LUTSet> luts;
     };
 
 }
