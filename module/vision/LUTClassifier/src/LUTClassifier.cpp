@@ -104,12 +104,8 @@ namespace module {
                 greenCentroid /= float(nPoints);
                 this->greenCentroid = greenCentroid;
 
-<<<<<<< HEAD:modules/vision/LUTClassifier/src/LUTClassifier.cpp
-                
-=======
-                LUT_PATH = config.path;
->>>>>>> origin/feature/Fayeem_Kinematics:module/vision/LUTClassifier/src/LUTClassifier.cpp
 
+                LUT_PATH = config.path;
                 emit(std::move(lut));
             });
 

@@ -29,17 +29,12 @@
 #include "utility/math/matrix/Transform3D.h"
 #include "utility/math/coordinates.h"
 #include "utility/motion/RobotModels.h"
-<<<<<<< HEAD
+
 #include "utility/motion/ForwardKinematics.h"
 #include "messages/input/ServoID.h"
 #include "messages/input/Sensors.h"
 #include "utility/math/angle.h"
 #include "messages/behaviour/Action.h"
-=======
-#include "message/input/ServoID.h"
-#include "message/input/Sensors.h"
-#include "message/behaviour/Action.h"
->>>>>>> origin/feature/Fayeem_Kinematics
 
 namespace utility {
 namespace motion {
