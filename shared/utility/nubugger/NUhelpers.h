@@ -22,9 +22,9 @@
 
 #include <nuclear>
 #include <armadillo>
-#include "messages/support/nubugger/proto/DataPoint.pb.h"
-#include "messages/support/nubugger/proto/DrawObjects.pb.h"
-#include "messages/vision/proto/VisionObjects.pb.h"
+#include "message/support/nubugger/proto/DataPoint.pb.h"
+#include "message/support/nubugger/proto/DrawObjects.pb.h"
+#include "message/vision/proto/VisionObjects.pb.h"
 #include "utility/math/matrix/Rotation3D.h"
 #include "utility/math/geometry/RotatedRectangle.h"
 #include "utility/math/geometry/Circle.h"
@@ -34,13 +34,14 @@
 namespace utility {
 namespace nubugger {
     using utility::math::geometry::RotatedRectangle;
+    
     using utility::math::geometry::Circle;
     using utility::math::matrix::Transform2D;
-    using messages::support::nubugger::proto::DrawObjects;
+    using message::support::nubugger::proto::DrawObjects;
 
     namespace {
 
-        using messages::support::nubugger::proto::DataPoint;
+        using message::support::nubugger::proto::DataPoint;
         using utility::math::matrix::Rotation3D;
 
         constexpr float TIMEOUT = 2.5;
@@ -80,7 +81,7 @@ namespace nubugger {
     }
 
     template<typename... Values>
-    inline std::unique_ptr<messages::support::nubugger::proto::DataPoint> graph(std::string label, Values... values) {
+    inline std::unique_ptr<message::support::nubugger::proto::DataPoint> graph(std::string label, Values... values) {
         auto dataPoint = std::make_unique<DataPoint>();
         dataPoint->set_label(label);
         dataPoint->set_type(DataPoint::FLOAT_LIST);
@@ -88,7 +89,7 @@ namespace nubugger {
         return dataPoint;
     }
 
-    inline std::unique_ptr<messages::support::nubugger::proto::DataPoint> graph(std::string label, Rotation3D rotation) {
+    inline std::unique_ptr<message::support::nubugger::proto::DataPoint> graph(std::string label, Rotation3D rotation) {
         auto dataPoint = std::make_unique<DataPoint>();
         dataPoint->set_label(label);
         dataPoint->set_type(DataPoint::ROTATION_3D);
@@ -103,7 +104,7 @@ namespace nubugger {
         auto drawObjects = std::make_unique<DrawObjects>();
         auto* object = drawObjects->add_objects();
         object->set_name(name);
-        object->set_shape(messages::support::nubugger::proto::DrawObject::ARROW);
+        object->set_shape(message::support::nubugger::proto::DrawObject::ARROW);
         object->set_timeout(timeout);
 
         *object->mutable_position() << position;
@@ -117,7 +118,7 @@ namespace nubugger {
         auto drawObjects = std::make_unique<DrawObjects>();
         auto* object = drawObjects->add_objects();
         object->set_name(name);
-        object->set_shape(messages::support::nubugger::proto::DrawObject::ARROW);
+        object->set_shape(message::support::nubugger::proto::DrawObject::ARROW);
         object->set_timeout(timeout);
         *object->mutable_position() << position;
         *object->mutable_target() << target;
@@ -129,7 +130,7 @@ namespace nubugger {
         auto drawObjects = std::make_unique<DrawObjects>();
         auto* object = drawObjects->add_objects();
         object->set_name(name);
-        object->set_shape(messages::support::nubugger::proto::DrawObject::ARROW);
+        object->set_shape(message::support::nubugger::proto::DrawObject::ARROW);
         object->set_timeout(timeout);
         *object->mutable_position() << arma::vec3({position(0), position(1), 0});
         *object->mutable_target() <<  arma::vec3({target(0), target(1), 0});
@@ -141,7 +142,7 @@ namespace nubugger {
         auto drawObjects = std::make_unique<DrawObjects>();
         auto* object = drawObjects->add_objects();
         object->set_name(name);
-        object->set_shape(messages::support::nubugger::proto::DrawObject::ARROW);
+        object->set_shape(message::support::nubugger::proto::DrawObject::ARROW);
         object->set_timeout(timeout);
 
         *object->mutable_position() << arma::vec3({position.x(), position.y(), 0});;
@@ -158,7 +159,7 @@ namespace nubugger {
         auto drawObjects = std::make_unique<DrawObjects>();
         auto* object = drawObjects->add_objects();
         object->set_name(name);
-        object->set_shape(messages::support::nubugger::proto::DrawObject::BOX);
+        object->set_shape(message::support::nubugger::proto::DrawObject::BOX);
         object->set_timeout(timeout);
 
         *object->mutable_position() << position;
@@ -175,7 +176,7 @@ namespace nubugger {
         auto drawObjects = std::make_unique<DrawObjects>();
         auto* object = drawObjects->add_objects();
         object->set_name(name);
-        object->set_shape(messages::support::nubugger::proto::DrawObject::CIRCLE);
+        object->set_shape(message::support::nubugger::proto::DrawObject::CIRCLE);
         object->set_timeout(timeout);
 
         *object->mutable_position() << position;
@@ -207,7 +208,7 @@ namespace nubugger {
         auto drawObjects = std::make_unique<DrawObjects>();
         auto* object = drawObjects->add_objects();
         object->set_name(name);
-        object->set_shape(messages::support::nubugger::proto::DrawObject::CYLINDER);
+        object->set_shape(message::support::nubugger::proto::DrawObject::CYLINDER);
         object->set_timeout(timeout);
 
         *object->mutable_position() << position;
@@ -225,7 +226,7 @@ namespace nubugger {
         auto drawObjects = std::make_unique<DrawObjects>();
         auto* object = drawObjects->add_objects();
         object->set_name(name);
-        object->set_shape(messages::support::nubugger::proto::DrawObject::PYRAMID);
+        object->set_shape(message::support::nubugger::proto::DrawObject::PYRAMID);
         object->set_timeout(timeout);
 
         *object->mutable_position() << position;
@@ -242,7 +243,7 @@ namespace nubugger {
         auto drawObjects = std::make_unique<DrawObjects>();
         auto* object = drawObjects->add_objects();
         object->set_name(name);
-        object->set_shape(messages::support::nubugger::proto::DrawObject::RECTANGLE);
+        object->set_shape(message::support::nubugger::proto::DrawObject::RECTANGLE);
         object->set_timeout(timeout);
 
         *object->mutable_position() << position;
@@ -258,7 +259,7 @@ namespace nubugger {
         auto drawObjects = std::make_unique<DrawObjects>();
         auto* object = drawObjects->add_objects();
         object->set_name(name);
-        object->set_shape(messages::support::nubugger::proto::DrawObject::RECTANGLE);
+        object->set_shape(message::support::nubugger::proto::DrawObject::RECTANGLE);
         object->set_timeout(timeout);
 
         auto* objPosition = object->mutable_position();
@@ -291,7 +292,7 @@ namespace nubugger {
         auto drawObjects = std::make_unique<DrawObjects>();
         auto* object = drawObjects->add_objects();
         object->set_name(name);
-        object->set_shape(messages::support::nubugger::proto::DrawObject::SPHERE);
+        object->set_shape(message::support::nubugger::proto::DrawObject::SPHERE);
         object->set_timeout(timeout);
 
         *object->mutable_position() << position;
@@ -313,7 +314,7 @@ namespace nubugger {
         auto drawObjects = std::make_unique<DrawObjects>();
         auto* object = drawObjects->add_objects();
         object->set_name(name);
-        object->set_shape(messages::support::nubugger::proto::DrawObject::POLYLINE);
+        object->set_shape(message::support::nubugger::proto::DrawObject::POLYLINE);
         object->set_timeout(timeout);
         object->set_width(line_width);
 
@@ -353,11 +354,11 @@ namespace nubugger {
         return utility::nubugger::drawPolyline(name, positions, line_width, colour, timeout);
     }
 
-    inline std::unique_ptr<messages::vision::proto::VisionObject> drawVisionLines(std::vector<std::tuple<arma::ivec2, arma::ivec2, arma::vec4>> lines) {
+    inline std::unique_ptr<message::vision::proto::VisionObject> drawVisionLines(std::vector<std::tuple<arma::ivec2, arma::ivec2, arma::vec4>> lines) {
 
-        auto visionObject = std::make_unique<messages::vision::proto::VisionObject>();
+        auto visionObject = std::make_unique<message::vision::proto::VisionObject>();
 
-        visionObject->set_type(messages::vision::proto::VisionObject::LINE);
+        visionObject->set_type(message::vision::proto::VisionObject::LINE);
         visionObject->set_camera_id(0); // TODO
 
         for (const auto& line : lines) {
@@ -372,7 +373,7 @@ namespace nubugger {
 
     }
 
-    inline std::unique_ptr<messages::vision::proto::VisionObject> drawVisionLines(std::vector<std::pair<arma::ivec2, arma::ivec2>> lines, arma::vec4 colour = arma::vec4({1, 1, 1, 1})) {
+    inline std::unique_ptr<message::vision::proto::VisionObject> drawVisionLines(std::vector<std::pair<arma::ivec2, arma::ivec2>> lines, arma::vec4 colour = arma::vec4({1, 1, 1, 1})) {
         std::vector<std::tuple<arma::ivec2, arma::ivec2, arma::vec4>> colouredLines;
         colouredLines.reserve(lines.size());
         for (auto const line : lines) {
@@ -381,7 +382,7 @@ namespace nubugger {
         return drawVisionLines(colouredLines);
     }
 
-    inline std::unique_ptr<messages::vision::proto::VisionObject> drawVisionLine(arma::ivec2 start, arma::ivec2 end, arma::vec4 colour = arma::vec4({1, 1, 1, 1})) {
+    inline std::unique_ptr<message::vision::proto::VisionObject> drawVisionLine(arma::ivec2 start, arma::ivec2 end, arma::vec4 colour = arma::vec4({1, 1, 1, 1})) {
         return drawVisionLines({std::make_tuple(start, end, colour)});
     }
 
