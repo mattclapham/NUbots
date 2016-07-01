@@ -119,7 +119,7 @@ namespace localisation {
             // std::cerr << "Hcf : " << std::endl << Hcf << std::endl;
             // std::cerr << "currentOdometry : " << std::endl << currentOdometry << std::endl;
             //std::cerr << "internal Localisation state: " << std::endl << Tgr << std::endl;
-            //std::cerr << "currentLocalisation: " << std::endl << currentLocalisation << std::endl;
+            std::cerr << "currentLocalisation: " << std::endl << currentLocalisation << std::endl;
             //set position, covariance, and rotation
             robot.position = currentLocalisation.rows(0,1);
             robot.robot_to_world_rotation = utility::math::matrix::Rotation2D::createRotation(currentLocalisation[2]);
@@ -133,84 +133,125 @@ namespace localisation {
             float deltaT = std::chrono::duration_cast<std::chrono::nanoseconds>(now - lastUpdateTime).count() * (1 / std::nano::den);
             lastUpdateTime = now;
             filter.timeUpdate(std::fmin(deltaT,0.1));
-            // If we have two goals that are left/right
-            if(goals.size() == 2) {
 
-                // Build our measurement list
-                std::vector<double> measurement;
+            //create the common camera to world transform we will use multiple times in this section
+            Transform3D Htw = sensors.world;
+            Transform3D Htc = sensors.forwardKinematics.find(ServoID::HEAD_PITCH)->second;
+            Transform3D Hwc = Htw.i() * Htc;
 
-                // Build our measurement types list
-                std::vector<std::tuple<Goal::Team, Goal::Side, Goal::MeasurementType>> measurementTypesOwn;
-                std::vector<std::tuple<Goal::Team, Goal::Side, Goal::MeasurementType>> measurementTypesOpponent;
+            //TODO: collect and pre-calculate per-goal normals
 
-                for (auto& goal : goals) {
-                    for (auto& m : goal.measurements) {
-                        // Insert the measurements into our vector
-                        measurement.push_back(m.second[0]);
-                        measurement.push_back(m.second[1]);
-                        measurement.push_back(m.second[2]);
 
-                        // Insert the measurement type into our measurement type vector
-                        measurementTypesOwn.push_back(std::make_tuple(Goal::Team::OWN, goal.side, m.first));
-                        measurementTypesOpponent.push_back(std::make_tuple(Goal::Team::OPPONENT, goal.side, m.first));
+            //--------------------------------------------------------------------------------------
+            //BOUNDING QUAD ERROR MEASUREMENTS
+            if (config.boundingQuadMeasurements) {
+                // If we have two goals that are left/right
+                if(goals.size() == 2) {
+
+                    // Build our measurement list
+                    std::vector<double> measurement;
+
+                    // Build our measurement types list
+                    std::vector<std::tuple<Goal::Team, Goal::Side, Goal::MeasurementType>> measurementTypesOwn;
+                    std::vector<std::tuple<Goal::Team, Goal::Side, Goal::MeasurementType>> measurementTypesOpponent;
+
+                    for (auto& goal : goals) {
+                        for (auto& m : goal.measurements) {
+                            // Insert the measurements into our vector
+                            measurement.push_back(m.second[0]);
+                            measurement.push_back(m.second[1]);
+                            measurement.push_back(m.second[2]);
+
+                            // Insert the measurement type into our measurement type vector
+                            measurementTypesOwn.push_back(std::make_tuple(Goal::Team::OWN, goal.side, m.first));
+                            measurementTypesOpponent.push_back(std::make_tuple(Goal::Team::OPPONENT, goal.side, m.first));
+                        }
                     }
+
+                    arma::vec armaMeas = measurement;
+
+                    // Apply our multiple measurement updates
+                    arma::mat covmat = arma::diagmat(
+                                        arma::repmat(
+                                            arma::mat(defaultMeasurementCovariance),
+                                            armaMeas.n_elem/defaultMeasurementCovariance.n_elem,
+                                            1)
+                                        );
+                    filter.measurementUpdate({
+                          std::make_tuple(armaMeas, covmat, measurementTypesOwn,      field, Hwc, FieldModel::MeasurementType::GOAL())
+                        , std::make_tuple(armaMeas, covmat, measurementTypesOpponent, field, Hwc, FieldModel::MeasurementType::GOAL())
+                    });
                 }
 
-                arma::vec armaMeas = measurement;
+                // We have one ambigous goal
+                else if(goals.size() == 1) {
 
-                // Apply our multiple measurement updates
-                arma::mat covmat = arma::diagmat(
-                                    arma::repmat(
-                                        arma::mat(defaultMeasurementCovariance),
-                                        armaMeas.n_elem/defaultMeasurementCovariance.n_elem,
-                                        1)
-                                    );
-                filter.measurementUpdate({
-                      std::make_tuple(armaMeas, covmat, measurementTypesOwn,      field, *goals[0].sensors, FieldModel::MeasurementType::GOAL())
-                    , std::make_tuple(armaMeas, covmat, measurementTypesOpponent, field, *goals[0].sensors, FieldModel::MeasurementType::GOAL())
-                });
+                    // Build our measurement list
+                    std::vector<double> measurement;
+                    measurement.reserve(3*goals.size());
+
+                    // Build our measurement types list
+                    std::vector<std::tuple<Goal::Team, Goal::Side, Goal::MeasurementType>> measurementTypes[4];
+
+                    for (auto& goal : goals) {
+                        for (auto& m : goal.measurements) {
+                            // Insert the measurements into our vector
+                            measurement.push_back(m.second[0]);
+                            measurement.push_back(m.second[1]);
+                            measurement.push_back(m.second[2]);
+
+                            // Insert the measurement type into our measurement type vector
+                            measurementTypes[0].push_back(std::make_tuple(Goal::Team::OWN, Goal::Side::LEFT, m.first));
+                            measurementTypes[1].push_back(std::make_tuple(Goal::Team::OWN, Goal::Side::RIGHT, m.first));
+                            measurementTypes[2].push_back(std::make_tuple(Goal::Team::OPPONENT, Goal::Side::LEFT, m.first));
+                            measurementTypes[3].push_back(std::make_tuple(Goal::Team::OPPONENT, Goal::Side::RIGHT, m.first));
+                        }
+                    }
+
+                    arma::vec armaMeas = measurement;
+
+                    // Apply our multiple measurement updates
+                    arma::mat covmat = arma::diagmat(
+                                        arma::repmat(
+                                            arma::mat(defaultMeasurementCovariance),
+                                            armaMeas.n_elem/defaultMeasurementCovariance.n_elem,
+                                            1)
+                                        );
+                    filter.measurementUpdate({
+                          std::make_tuple(armaMeas, covmat, measurementTypes[0], field, Hwc, FieldModel::MeasurementType::GOAL())
+                        , std::make_tuple(armaMeas, covmat, measurementTypes[1], field, Hwc, FieldModel::MeasurementType::GOAL())
+                        , std::make_tuple(armaMeas, covmat, measurementTypes[2], field, Hwc, FieldModel::MeasurementType::GOAL())
+                        , std::make_tuple(armaMeas, covmat, measurementTypes[3], field, Hwc, FieldModel::MeasurementType::GOAL())
+                    });
+                }
             }
 
-            // We have one ambigous goal
-            else if(goals.size() == 1) {
+            if (config.centreYawMeasurements) {
 
-                // Build our measurement list
-                std::vector<double> measurement;
-                measurement.reserve(3*goals.size());
+            }
 
-                // Build our measurement types list
-                std::vector<std::tuple<Goal::Team, Goal::Side, Goal::MeasurementType>> measurementTypes[4];
+            if (config.midPointWidth) {
 
-                for (auto& goal : goals) {
-                    for (auto& m : goal.measurements) {
-                        // Insert the measurements into our vector
-                        measurement.push_back(m.second[0]);
-                        measurement.push_back(m.second[1]);
-                        measurement.push_back(m.second[2]);
+            }
 
-                        // Insert the measurement type into our measurement type vector
-                        measurementTypes[0].push_back(std::make_tuple(Goal::Team::OWN, Goal::Side::LEFT, m.first));
-                        measurementTypes[1].push_back(std::make_tuple(Goal::Team::OWN, Goal::Side::RIGHT, m.first));
-                        measurementTypes[2].push_back(std::make_tuple(Goal::Team::OPPONENT, Goal::Side::LEFT, m.first));
-                        measurementTypes[3].push_back(std::make_tuple(Goal::Team::OPPONENT, Goal::Side::RIGHT, m.first));
-                    }
-                }
+            if (config.basePointWidth) {
 
-                arma::vec armaMeas = measurement;
+            }
 
-                // Apply our multiple measurement updates
-                arma::mat covmat = arma::diagmat(
-                                    arma::repmat(
-                                        arma::mat(defaultMeasurementCovariance),
-                                        armaMeas.n_elem/defaultMeasurementCovariance.n_elem,
-                                        1)
-                                    );
-                filter.measurementUpdate({
-                      std::make_tuple(armaMeas, covmat, measurementTypes[0], field, *goals[0].sensors, FieldModel::MeasurementType::GOAL())
-                    , std::make_tuple(armaMeas, covmat, measurementTypes[1], field, *goals[0].sensors, FieldModel::MeasurementType::GOAL())
-                    , std::make_tuple(armaMeas, covmat, measurementTypes[2], field, *goals[0].sensors, FieldModel::MeasurementType::GOAL())
-                    , std::make_tuple(armaMeas, covmat, measurementTypes[3], field, *goals[0].sensors, FieldModel::MeasurementType::GOAL())
-                });
+            if (config.topPointWidth) {
+
+            }
+
+            if (config.goalHeight) {
+
+            }
+
+            if (config.topRayDist) {
+
+            }
+
+            if (config.baseRayDist) {
+
             }
         });
     }

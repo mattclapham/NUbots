@@ -37,13 +37,13 @@ namespace module {
         using message::input::ServoID;
 
         arma::vec::fixed<FieldModel::size> FieldModel::timeUpdate(const arma::vec::fixed<size>& state, double /*deltaT*/) {
-            return state;
+            return arma::clamp(state,-5.,5.);
         }
 
         arma::vec FieldModel::predictedObservation(const arma::vec::fixed<size>& state
             , const std::vector<std::tuple<Goal::Team, Goal::Side, Goal::MeasurementType>>& measurements
             , const FieldDescription& field
-            , const Sensors& sensors
+            , const Transform3D& Hwc
             , const MeasurementType::GOAL&) 
         {
 
@@ -51,12 +51,7 @@ namespace module {
             arma::vec3 goalLocation;
             goalLocation.fill(0.0);
             arma::mat::fixed<3,4> goalNormals;
-            // Transform2D world = sensors.world.projectTo2D(arma::vec3({0,0,1}),arma::vec3({1,0,0}));
-
-            //Transform2D world = sensors.world.projectTo2D(arma::vec3({0,0,1}),arma::vec3({1,0,0}));
-            Transform3D Htw = sensors.world;
-            Transform3D Htc = sensors.forwardKinematics.find(ServoID::HEAD_PITCH)->second;
-            Transform3D Hwc = Htw.i() * Htc;
+            
             //Get the x/y position for goals
             arma::vec prediction(3*measurements.size());
             int counter = 0;
@@ -102,7 +97,6 @@ namespace module {
                 }
                 //only update the goal data if we're looking at a different i
                 if ( !arma::all(lastGoalLocation == goalLocation) ) {
-                    //std::cerr << ans << " goal" << std::endl;
                     goalNormals = cameraSpaceGoalProjection(state,goalLocation,field,Hwc,false);
                 }
                 // Switch on normal type
