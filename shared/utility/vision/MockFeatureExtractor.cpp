@@ -23,7 +23,7 @@
 #include <armadillo>
 
 #include "MockFeatureExtractor.h"
-#include "message/input/ServoID.h"
+#include "message/input/Sensors.h"
 #include "utility/math/vision.h"
 #include "utility/support/yaml_armadillo.h"
 
@@ -31,9 +31,8 @@ namespace utility {
 	namespace vision {
 		bool operator==(const MockFeatureExtractor::ExtractedFeature& lhs, const MockFeatureExtractor::ExtractedFeature& rhs){return (lhs.featureID == rhs.featureID);}
 
-		using message::input::ServoID;
-
-		MockFeatureExtractor::MockFeatureExtractor(){}
+		MockFeatureExtractor::MockFeatureExtractor()
+			 : numberOfFalseFeaturesDetected(1), MAX_DISTINCT_FALSE_FEATURES(0), mockFeatures(), FOV_X(0.0), FOV_Y(0.0) {}
 
 		std::vector<MockFeatureExtractor::MockFeature> MockFeatureExtractor::setParameters(const YAML::Node& config){
 			int NUMBER_OF_MOCK_POINTS = config["NUMBER_OF_MOCK_POINTS"].as<int>();

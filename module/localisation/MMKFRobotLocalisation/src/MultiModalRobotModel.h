@@ -25,7 +25,7 @@
 #include "utility/localisation/LocalisationFieldObject.h"
 #include "utility/math/filter/ParticleFilter.h"
 #include "utility/math/filter/UKF.h"
-#include "message/support/Configuration.h"
+#include "extension/Configuration.h"
 #include "message/vision/VisionObjects.h"
 #include "RobotModel.h"
 #include "message/input/Sensors.h"
@@ -61,13 +61,13 @@ namespace localisation {
 
         RobotHypothesis(const message::localisation::ResetRobotHypotheses::Self& reset_self, const message::input::Sensors& sensors)
             : RobotHypothesis() {
-            arma::vec2 imuDirection = arma::normalise(sensors.orientation.col(0).rows(0,1));
+            arma::vec2 imuDirection = arma::normalise(sensors.world.col(0).rows(0,1));
             double imuHeading = std::atan2(imuDirection(1), imuDirection(0));
             double imuOffset = reset_self.heading + imuHeading;
 
             // arma::vec3 mean = arma::join_rows(reset_self.position, arma::vec(imuOffset));
-            arma::vec::fixed<robot::RobotModel::size> mean = arma::vec::fixed<robot::RobotModel::size>({reset_self.position(0), reset_self.position(1), imuOffset, 0, 0 });
-            arma::mat::fixed<robot::RobotModel::size, robot::RobotModel::size> cov = arma::eye(5,5) * 0.1;
+            arma::vec::fixed<robot::RobotModel::size> mean = arma::vec::fixed<robot::RobotModel::size>({reset_self.position(0), reset_self.position(1), imuOffset});
+            arma::mat::fixed<robot::RobotModel::size, robot::RobotModel::size> cov = arma::eye(robot::RobotModel::size,robot::RobotModel::size) * 0.1;
             cov.submat(0,0,1,1) = reset_self.position_cov;
             cov(2,2) = reset_self.heading_var;
             filter_.setState(mean, cov);
@@ -92,9 +92,6 @@ namespace localisation {
             const message::vision::Goal& observed_object,
             const utility::localisation::LocalisationFieldObject& actual_object);
 
-        //Odometry
-        double MeasurementUpdate(const message::input::Sensors& sensors);
-
         double MeasurementUpdate(
             const std::vector<message::vision::Goal>& observed_objects,
             const std::vector<utility::localisation::LocalisationFieldObject>& actual_objects);
@@ -106,11 +103,11 @@ namespace localisation {
 
     class MultiModalRobotModel {
     public:
-        MultiModalRobotModel() {
+        MultiModalRobotModel() : robot_models_(), cfg_() {
             robot_models_.push_back(std::make_unique<RobotHypothesis>());
         }
 
-        void UpdateConfiguration( const message::support::Configuration& config) {
+        void UpdateConfiguration( const extension::Configuration& config) {
             cfg_.merging_enabled = config["MergingEnabled"].as<bool>();
             cfg_.max_models_after_merge = config["MaxModelsAfterMerge"].as<int>();
             cfg_.merge_min_translation_dist = config["MergeMinTranslationDist"].as<float>();

@@ -37,9 +37,9 @@ namespace robot {
     enum RobotModelStateComponents : int {
         kX = 0, // world space
         kY = 1, // world space
-        kImuOffset = 2,
-        kVX = 3, // robot space
-        kVY = 4  // robot space
+        kImuOffset = 2
+        // kVX = 3, // robot space
+        // kVY = 4  // robot space
         // kHeading = 2,
         // kHeadingX = 2,
         // kHeadingY = 3,
@@ -54,32 +54,28 @@ namespace robot {
 
     class RobotModel {
     public:
-        static constexpr size_t size = 5;
+        static constexpr size_t size = 3;
 
-        RobotModel() {
-            currentImuOrientation.zeros();
-        } // empty constructor
+        RobotModel() : cfg_(), currentImuOrientation() {
+        }
 
         arma::vec::fixed<RobotModel::size> timeUpdate(
             const arma::vec::fixed<RobotModel::size>& state, double deltaT,
             const message::input::Sensors& sensors);
-
-        // arma::vec predictedObservation(
-        //     const arma::vec::fixed<RobotModel::size>& state,
-        //     const arma::vec& actual_position);
 
         arma::vec predictedObservation(
             const arma::vec::fixed<RobotModel::size>& state,
             const arma::vec3& actual_position,
             const message::input::Sensors& sensors);
 
-        arma::vec predictedObservation(
-            const arma::vec::fixed<RobotModel::size>& state,
-            const message::input::Sensors& sensors);
+        //arma::vec predictedObservation(
+        //    const arma::vec::fixed<RobotModel::size>& state,
+        //    const message::input::Sensors& sensors);
 
         arma::vec predictedObservation(
             const arma::vec::fixed<RobotModel::size>& state,
-            const std::vector<arma::vec>& actual_positions);
+            const std::vector<arma::vec>& actual_positions,
+            const message::input::Sensors& sensors);
 
         arma::vec observationDifference(const arma::vec& a, const arma::vec& b);
 

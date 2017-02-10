@@ -24,27 +24,12 @@ namespace module {
     namespace support {
 
         // Set our initial shutdown request state
-        volatile bool SignalCatcher::userRequestedShutdown = false;
+        volatile bool userRequestedShutdown = false;
 
         // Initialize our powerplant variable
-        NUClear::PowerPlant* SignalCatcher::POWER_PLANT = nullptr;
+        NUClear::PowerPlant* POWER_PLANT = nullptr;
 
-        SignalCatcher::SignalCatcher(std::unique_ptr<NUClear::Environment> environment) : Reactor(std::move(environment)) {
-
-            // Store our powerplant in the static variable
-            POWER_PLANT = &powerplant;
-
-            // On sigint run the sigint handler
-            std::signal(SIGINT, &SignalCatcher::sigintHandler);
-
-            // On a segfault run the sigsev handler
-            std::signal(SIGSEGV, &SignalCatcher::segfaultConverter);
-
-            // On a segfault run the sigsev handler
-            std::signal(SIGABRT, &SignalCatcher::segfaultConverter);
-        }
-
-        void SignalCatcher::sigintHandler(int) {
+        void sigint(int) {
 
             // Output that a shutdown command was sent (so the user knows the ctrl-c worked)
             std::cout << std::endl << "Shutdown Command Sent" << std::endl;
@@ -62,8 +47,40 @@ namespace module {
             }
         }
 
-        void SignalCatcher::segfaultConverter(int) {
-            throw message::support::SegmentationFault();
+        // Our segmentation fault converter function
+        void sigsegv(int) {
+
+            throw std::runtime_error("Segmentation Fault");
+        }
+
+        void sigabrt(int) {
+
+            throw std::runtime_error("Abort signal");
+        }
+
+        SignalCatcher::SignalCatcher(std::unique_ptr<NUClear::Environment> environment) : Reactor(std::move(environment)) {
+
+            // Store our powerplant in the static variable
+            POWER_PLANT = &powerplant;
+            struct sigaction action;
+
+            // Setup our segmentation fault signal handler/converter
+            std::memset(&action, 0, sizeof(action));
+            action.sa_handler = sigsegv;
+            action.sa_flags = SA_NODEFER;
+            sigaction(SIGSEGV, &action, nullptr);
+
+            // Setup our abort signal handler/converter
+            std::memset(&action, 0, sizeof(action));
+            action.sa_handler = sigabrt;
+            action.sa_flags = SA_NODEFER;
+            sigaction(SIGABRT, &action, nullptr);
+
+            // On sigint run the sigint handler
+            std::memset(&action, 0, sizeof(action));
+            action.sa_handler = sigint;
+            action.sa_flags = SA_NODEFER;
+            sigaction(SIGINT, &action, nullptr);
         }
 
     }  // support

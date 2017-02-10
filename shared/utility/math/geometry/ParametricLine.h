@@ -34,8 +34,8 @@ namespace geometry {
         Vector direction;
         Vector point;
         arma::vec2 tLimits = {-std::numeric_limits<double>::infinity(), std::numeric_limits<double>::infinity()};
-        ParametricLine(){}
-        ParametricLine(const Vector& p1, const Vector& p2, bool segment = false) {
+        ParametricLine() : direction(arma::fill::zeros), point(arma::fill::zeros) {}
+        ParametricLine(const Vector& p1, const Vector& p2, bool segment = false) : direction(arma::fill::zeros), point(arma::fill::zeros) {
             setFromTwoPoints(p1, p2, segment);
         };
 
@@ -79,7 +79,8 @@ namespace geometry {
         }
 
         double distanceToPoint(const Vector& p) const {
-            return arma::norm(vectorToLine(p));
+            //TODO: optimise
+            return arma::norm(vectorToLineFromPoint(p));
         }
 
         Vector intersect(const ParametricLine<n>& l) const{

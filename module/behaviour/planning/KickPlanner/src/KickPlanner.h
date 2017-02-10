@@ -21,8 +21,9 @@
 #define MODULES_BEHAVIOUR_PLANNING_KICKPLANNER_H
 
 #include <armadillo>
-#include "message/motion/KickCommand.h"
+
 #include "message/input/Sensors.h"
+#include "message/motion/KickCommand.h"
 
 #include <nuclear>
 namespace module {
@@ -37,6 +38,8 @@ namespace planning {
     private:
         bool kickValid(const arma::vec3& ballPos, float standHeight, const message::input::Sensors& sensors);
        	message::motion::KickPlannerConfig cfg;
+       	NUClear::clock::time_point ball_last_measurement_time;
+       	NUClear::clock::time_point lastTimeValid;
     };
 
 }

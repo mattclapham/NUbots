@@ -23,11 +23,13 @@
 #include <nuclear>
 #include <armadillo>
 #include <cmath>
-#include "message/support/Configuration.h"
-#include "message/input/Sensors.h"
+
+#include "extension/Configuration.h"
+
+#include "message/behaviour/MotionCommand.h"
+#include "message/behaviour/KickPlan.h"
 #include "message/localisation/FieldObject.h"
 #include "message/vision/VisionObjects.h"
-#include "message/behaviour/MotionCommand.h"
 
 
 namespace module {
@@ -42,19 +44,26 @@ namespace module {
                  */
                 class SimpleWalkPathPlanner : public NUClear::Reactor {
                 private:
-                    float turnSpeed;
-                    float forwardSpeed;
-                    float a;
-                    float b;
+                    message::behaviour::MotionCommand latestCommand;
+                    const size_t subsumptionId;
+                    float turnSpeed = 0.8;
+                    float forwardSpeed = 1;
+                    float a = 7;
+                    float b = 0;
+                    float search_timeout = 3;
 
                     //-----------non-config variables (not defined in WalkPathPlanner.yaml)-----------
 
                     //info for the current walk
                     arma::vec2 currentTargetPosition;
                     arma::vec2 currentTargetHeading;
-                    message::behaviour::WalkApproach planType;
-                    message::behaviour::WalkTarget targetHeading,targetPosition;
-
+                    message::behaviour::KickPlan targetHeading;
+                    arma::vec2 targetPosition = {0, 0}; 
+                    
+                    NUClear::clock::time_point timeBallLastSeen;
+                    arma::vec3 rBWw = {10,0,0};
+                    bool robot_ground_space = true;
+                    arma::vec3 position = {1,0,0};//ball pos rel to robot
                 public:
                     explicit SimpleWalkPathPlanner(std::unique_ptr<NUClear::Environment> environment);
             };

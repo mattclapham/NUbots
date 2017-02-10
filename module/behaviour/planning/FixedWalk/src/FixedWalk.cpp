@@ -27,8 +27,7 @@ namespace behaviour {
 namespace planning {
 
     using message::motion::WalkCommand;
-    using message::motion::WalkStartCommand;
-    using message::motion::WalkStopCommand;
+    using message::motion::StopCommand;
 	using message::motion::WalkStopped;
 	using message::behaviour::FixedWalkCommand;
     using message::behaviour::FixedWalkFinished;
@@ -61,11 +60,11 @@ namespace planning {
 
                 if(walkSegments.empty()){
                     emit(std::make_unique<WalkCommand>());
-                    emit(std::make_unique<WalkStopCommand>());
+                    emit(std::make_unique<StopCommand>());
                     active = false;
                     return;
                 }
-    			beginningOrientation = sensors.orientation;
+    			beginningOrientation = sensors.world.rotation();
             }
             //Emit command
             if(!walkSegments.empty()){
@@ -74,7 +73,7 @@ namespace planning {
         });
 
         on<Trigger<CancelFixedWalk>, Sync<FixedWalk>>().then([this] {
-            emit(std::make_unique<WalkStopCommand>());
+            emit(std::make_unique<StopCommand>());
             active = false;
             walkSegments.clear();
         });
@@ -83,7 +82,7 @@ namespace planning {
             if(!active){
                 emit(std::make_unique<FixedWalkFinished>());
             } else {
-                NUClear::log("!!!!!!!!!!!!!!!!!!!!WARNING: Walk finised prematurely!!!!!!!!!!!!!!!!!!!!");
+                NUClear::log("!!!!!!!!!!!!!!!!!!!!WARNING: Walk finished prematurely!!!!!!!!!!!!!!!!!!!!");
             }
         });
 
@@ -91,8 +90,7 @@ namespace planning {
             if(!active && !command.segments.empty()){
                 active = true;
     			segmentStart = NUClear::clock::now();
-    			beginningOrientation = sensors.orientation;
-                emit(std::make_unique<WalkStartCommand>());
+    			beginningOrientation = sensors.world.rotation();
     		}
     		for(auto& segment: command.segments){
     			walkSegments.push_back(segment);

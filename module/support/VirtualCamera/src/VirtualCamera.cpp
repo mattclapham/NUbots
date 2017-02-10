@@ -19,33 +19,65 @@
 
 #include "VirtualCamera.h"
 
-#include "message/support/Configuration.h"
+#include "extension/Configuration.h"
+
 #include "message/input/CameraParameters.h"
+#include "message/input/Image.h"
+
+#include "utility/vision/fourcc.h"
 
 namespace module {
 namespace support {
 
-    using message::support::Configuration;
+    using extension::Configuration;
+
     using message::input::CameraParameters;
+    using message::input::Image;
+
+    using FOURCC = utility::vision::FOURCC;
 
     VirtualCamera::VirtualCamera(std::unique_ptr<NUClear::Environment> environment)
-    : Reactor(std::move(environment)) {
+        : Reactor(std::move(environment)), emitImageHandle() {
 
-        on<Configuration>("VirtualCamera.yaml").then("VirtualCamera: Emit VirCam params", [this] (const Configuration& config) {
+        emitImageHandle =
+        on<Every<30, Per<std::chrono::seconds>>, With<CameraParameters>, Single>().then("Simulated Images (VCamera)",
+        [this](const CameraParameters& cam){
+
+            //2 Bytes per pixel
+            std::vector<uint8_t> data(2 * cam.imageSizePixels[0] * cam.imageSizePixels[1], 255); // White pixels
+            emit(std::make_unique<Image>(FOURCC::YUYV, cam.imageSizePixels, std::move(data), 0, "VirtualCamera", NUClear::clock::now()));
+
+        });
+
+
+        on<Configuration>("VirtualCamera.yaml").then("VirtualCamera: Emit VirCam params",[this] (const Configuration& config) {
             // Use configuration here from file VirtualCamera.yaml
 
-            auto cameraParameters = std::make_unique<CameraParameters>();
+        	auto cameraParameters = std::make_unique<CameraParameters>();
 
-            cameraParameters->imageSizePixels << config["imageWidth"].as<uint>() << config["imageHeight"].as<uint>();
-            cameraParameters->FOV = { config["FOV_X"].as<double>(), config["FOV_Y"].as<double>() };
+            cameraParameters->imageSizePixels << config["imageWidth"].as<uint>(), config["imageHeight"].as<uint>();
+            cameraParameters->FOV << config["FOV_X"].as<double>(), config["FOV_Y"].as<double>();
             cameraParameters->distortionFactor = config["DISTORTION_FACTOR"].as<double>();
-            arma::vec2 tanHalfFOV = arma::tan(cameraParameters->FOV * 0.5);
-            arma::vec2 imageCentre = arma::conv_to<arma::vec>::from(cameraParameters->imageSizePixels) * 0.5;
-            cameraParameters->pixelsToTanThetaFactor = tanHalfFOV / imageCentre;
+            double tanHalfFOV[2], imageCentre[2];
+            tanHalfFOV[0] = std::tan(cameraParameters->FOV[0] * 0.5);
+            tanHalfFOV[1] = std::tan(cameraParameters->FOV[1] * 0.5);
+            imageCentre[0] = cameraParameters->imageSizePixels[0] * 0.5;
+            imageCentre[1] = cameraParameters->imageSizePixels[1] * 0.5;
+            cameraParameters->pixelsToTanThetaFactor << (tanHalfFOV[0] / imageCentre[0]), (tanHalfFOV[1] / imageCentre[1]);
             cameraParameters->focalLengthPixels = imageCentre[0] / tanHalfFOV[0];
 
-            emit(std::move(cameraParameters));
+            bool emit_images = config["emit_images"].as<bool>();
+            if(emit_images){
+                emitImageHandle.enable();
+            } else {
+                emitImageHandle.disable();
+            }
+            std::cout << "Emitting camera parameters from VirtualCamera" << std::endl;
+
+            emit<Scope::DIRECT>(std::move(cameraParameters));
+
         });
+
     }
 }
 }

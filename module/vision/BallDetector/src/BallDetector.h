@@ -22,10 +22,13 @@
 
 #include <nuclear>
 #include <armadillo>
-#include "utility/math/geometry/Circle.h"
+
 #include "message/vision/LookUpTable.h"
 #include "message/input/Image.h"
-#include "utility/math/learning/KMeans.h"
+
+#include "utility/learning/KMeans.h"
+#include "utility/math/geometry/Circle.h"
+#include "utility/vision/LookUpTable.h"
 
 namespace module {
 namespace vision {
@@ -49,14 +52,21 @@ namespace vision {
         double green_radial_samples;
         double green_angular_samples;
 
-        utility::math::learning::KMeans kmeansClusterer;
+        utility::learning::KMeans kmeansClusterer;
 
         struct Frame{
+            Frame() : time(), widthBall(arma::fill::zeros), projBall(arma::fill::zeros) {}
+            Frame(const NUClear::clock::time_point& time, const arma::vec3& width, const arma::vec3& proj)
+                : time(time), widthBall(width), projBall(proj) {}
+
             NUClear::clock::time_point time;
             arma::vec3 widthBall;
             arma::vec3 projBall;
         };
         Frame lastFrame;
+
+
+        bool print_throwout_logs;
 
         float approximateCircleGreenRatio(const utility::math::geometry::Circle& circle, const message::input::Image& image, const message::vision::LookUpTable& lut);
     public:

@@ -26,7 +26,7 @@
 
 #include "utility/math/filter/UKF.h"
 #include "utility/math/filter/ParticleFilter.h"
-#include "message/support/Configuration.h"
+#include "extension/Configuration.h"
 #include "message/vision/VisionObjects.h"
 #include "message/localisation/FieldObject.h"
 #include "BallModel.h"
@@ -37,15 +37,14 @@ namespace localisation {
     class KFBallLocalisationEngine {
         public:
 
-        KFBallLocalisationEngine() :
-            ball_filter_(
+        KFBallLocalisationEngine()
+            : ball_filter_(
                 {3, 2, 0, 0}, // mean
                 // {0, 0, 3.141},
                 arma::eye(ball::BallModel::size, ball::BallModel::size) * 1, // cov
                 0.1) // alpha
-                {
-            last_time_update_time_ = NUClear::clock::now();
-        }
+            , cfg_()
+            , last_time_update_time_(NUClear::clock::now()) { }
 
         void TimeUpdate(NUClear::clock::time_point current_time);
 
@@ -54,7 +53,7 @@ namespace localisation {
 
         double MeasurementUpdate(const message::vision::VisionObject& observed_object);
 
-        void UpdateConfiguration(const message::support::Configuration& config);
+        void UpdateConfiguration(const extension::Configuration& config);
 
         bool CanEmitFieldObjects();
 
@@ -62,7 +61,10 @@ namespace localisation {
         utility::math::filter::UKF<ball::BallModel> ball_filter_;
 
     private:
-        struct {
+        struct Config {
+            Config() : emitBallFieldobjects(false) {}
+            Config(bool emit) : emitBallFieldobjects(emit) {}
+
             bool emitBallFieldobjects;
         } cfg_;
 

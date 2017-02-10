@@ -22,8 +22,7 @@
 
 #include <nuclear>
 #include "message/vision/LookUpTable.h"
-#include "message/vision/proto/LookUpTable.pb.h"
-#include "message/input/Image.h"
+#include "message/vision/VisionObjects.h"
 
 namespace module {
 namespace research {
@@ -35,17 +34,20 @@ namespace research {
 
     private:
         int ballEdgeBuffer  = 0;
-        int ballLightnessMin = 0;
-        int ballLightnessMax = 255;
+        uint8_t ballLightnessMin = 0;
+        uint8_t ballLightnessMax = 255;
         int goalEdgeBuffer  = 0;
-        int goalLightnessMin = 0;
-        int goalLightnessMax = 255;
+        uint8_t goalLightnessMin = 0;
+        uint8_t goalLightnessMax = 255;
         int fieldEdgeBuffer = 0;
-        int fieldLightnessMin = 0;
-        int fieldLightnessMax = 255;
+        uint8_t fieldLightnessMin = 0;
+        uint8_t fieldLightnessMax = 255;
         int lineEdgeBuffer  = 0;
         int lineLightnessMin = 0;
         int lineLightnessMax = 255;
+
+        void handleVisionGoals(const message::vision::VisionObject& goals);
+        void handleVisionBalls(const message::vision::VisionObject& balls);
 
         ReactionHandle ballProvider;
         ReactionHandle goalProvider;

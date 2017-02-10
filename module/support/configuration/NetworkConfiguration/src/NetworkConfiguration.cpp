@@ -19,13 +19,13 @@
 
 #include "NetworkConfiguration.h"
 
-#include "message/support/Configuration.h"
+#include "extension/Configuration.h"
 
 namespace module {
 namespace support {
 namespace configuration {
 
-    using message::support::Configuration;
+    using extension::Configuration;
 
     NetworkConfiguration::NetworkConfiguration(std::unique_ptr<NUClear::Environment> environment)
     : Reactor(std::move(environment)) {
@@ -33,9 +33,23 @@ namespace configuration {
         on<Configuration>("NetworkConfiguration.yaml").then([this] (const Configuration& config) {
             auto netConfig = std::make_unique<NUClear::message::NetworkConfiguration>();
             netConfig->name = config["name"].as<std::string>();
-            netConfig->multicastGroup = config["address"].as<std::string>();
-            netConfig->multicastPort = config["port"].as<int>();
+            netConfig->multicast_group = config["address"].as<std::string>();
+            netConfig->multicast_port = config["port"].as<int>();
             emit<Scope::DIRECT>(netConfig);
+        });
+
+        on<Trigger<NUClear::message::NetworkJoin>>().then([this](const NUClear::message::NetworkJoin& message){
+            char str[INET_ADDRSTRLEN];
+            uint32_t addr = htonl(message.address);
+            inet_ntop(AF_INET, &addr, str, INET_ADDRSTRLEN);
+            log<NUClear::INFO>("Connected to", message.name, "on", str);
+        });
+
+        on<Trigger<NUClear::message::NetworkLeave>>().then([this](const NUClear::message::NetworkLeave& message){
+            char str[INET_ADDRSTRLEN];
+            uint32_t addr = htonl(message.address);
+            inet_ntop(AF_INET, &addr, str, INET_ADDRSTRLEN);
+            log<NUClear::INFO>("Disconnected from", message.name, "on", str);
         });
     }
 }

@@ -24,6 +24,7 @@
 #include <array>
 #include <vector>
 #include <fstream>
+#include <chrono>
 
 namespace utility {
     /**
@@ -46,7 +47,10 @@ namespace utility {
 
         bool exists(const std::string& path);
 
+        std::chrono::system_clock::time_point getModificationTime(const std::string& path);
+
         bool isDir(const std::string& path);
+        void makeDir(const std::string& path);
 
         std::vector<std::string> listDir(const std::string& path);
 
@@ -71,6 +75,8 @@ namespace utility {
          * @return The list of file paths within a specified directory.
          */
         std::vector<std::string> listFiles(const std::string& directory, bool recursive = false);
+
+        bool makeDirectory(const std::string& directory, bool parent = false);
     }
 }
 #endif

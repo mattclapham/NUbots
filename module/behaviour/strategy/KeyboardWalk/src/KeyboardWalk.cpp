@@ -24,10 +24,10 @@
 #include <cstdio>
 #include <cppformat/format.h>
 
+#include "utility/behaviour/MotionCommand.h"
 #include "message/behaviour/MotionCommand.h"
 #include "message/motion/HeadCommand.h"
 #include "message/motion/KickCommand.h"
-#include "message/behaviour/Action.h"
 #include "utility/math/matrix/Transform2D.h"
 
 namespace module {
@@ -38,13 +38,10 @@ namespace strategy {
     using message::behaviour::MotionCommand;
     using message::motion::HeadCommand;
     using message::motion::KickCommand;
-    using message::input::LimbID;
     using utility::math::matrix::Transform2D;
 
     KeyboardWalk::KeyboardWalk(std::unique_ptr<NUClear::Environment> environment)
-        : Reactor(std::move(environment)) {
-
-        velocity.zeros();
+        : Reactor(std::move(environment)), velocity(arma::fill::zeros) {
 
         // Start curses mode
         initscr();
@@ -59,7 +56,7 @@ namespace strategy {
         printStatus();
 
         // Trigger when stdin has something to read
-        on<IO>(::fileno(stdin), IO::READ).then([this] {
+        on<IO>(STDIN_FILENO, IO::READ).then([this] {
 
             switch (tolower(getch())) {
                 case 'w':
@@ -191,14 +188,14 @@ namespace strategy {
     }
 
     void KeyboardWalk::lookUp() {
-        headPitch -= HEAD_DIFF;
+        headPitch += HEAD_DIFF;
         updateCommand();
         printStatus();
         log("look up");
     }
 
     void KeyboardWalk::lookDown() {
-        headPitch += HEAD_DIFF;
+        headPitch -= HEAD_DIFF;
         updateCommand();
         printStatus();
         log("look down");
@@ -206,7 +203,7 @@ namespace strategy {
 
     void KeyboardWalk::walkToggle() {
         if (moving) {
-            emit(std::make_unique<MotionCommand>(MotionCommand::StandStill()));
+            emit(std::make_unique<MotionCommand>(utility::behaviour::StandStill()));
             moving = false;
         } else {
             moving = true;
@@ -227,7 +224,8 @@ namespace strategy {
 
     void KeyboardWalk::updateCommand() {
         if (moving) {
-            emit(std::make_unique<MotionCommand>(MotionCommand::DirectCommand(Transform2D(velocity, rotation))));
+            std::cout << "New command " << velocity.t() <<  " " << rotation << std::endl;
+            emit(std::make_unique<MotionCommand>(utility::behaviour::DirectCommand(Transform2D(velocity, rotation))));
         }
 
         auto headCommand = std::make_unique<HeadCommand>();
@@ -247,7 +245,7 @@ namespace strategy {
 
     void KeyboardWalk::quit() {
         endwin();
-        std::raise(SIGINT);
+        std::raise(SIGTERM); //Change back to SIGINT if required by NUbots messaging system//
     }
 
 }

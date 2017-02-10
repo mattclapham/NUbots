@@ -20,12 +20,17 @@
 #include "FallingRelax.h"
 
 #include <cmath>
-#include "message/input/ServoID.h"
-#include "message/motion/Script.h"
-#include "message/behaviour/Action.h"
+
+#include "extension/Configuration.h"
+#include "extension/Script.h"
+
 #include "message/behaviour/ServoCommand.h"
-#include "message/support/Configuration.h"
 #include "message/input/Sensors.h"
+
+#include "utility/behaviour/Action.h"
+#include "utility/input/LimbID.h"
+#include "utility/input/ServoID.h"
+#include "utility/support/eigen_armadillo.h"
 
 namespace module {
     namespace behaviour {
@@ -35,15 +40,24 @@ namespace module {
             struct Falling {};
             struct KillFalling {};
 
-            using message::support::Configuration;
-            using message::input::Sensors;
-            using message::input::ServoID;
-            using message::motion::ExecuteScriptByName;
-            using message::behaviour::RegisterAction;
-            using message::behaviour::ActionPriorites;
-            using message::input::LimbID;
+            using extension::Configuration;
+            using extension::ExecuteScriptByName;
 
-            FallingRelax::FallingRelax(std::unique_ptr<NUClear::Environment> environment) : Reactor(std::move(environment)), id(size_t(this) * size_t(this) - size_t(this)), falling(false) {
+            using message::input::Sensors;
+
+            using utility::behaviour::RegisterAction;
+            using utility::behaviour::ActionPriorites;
+            using LimbID  = utility::input::LimbID;
+            using ServoID = utility::input::ServoID;
+
+            FallingRelax::FallingRelax(std::unique_ptr<NUClear::Environment> environment)
+                : Reactor(std::move(environment))
+                , id(size_t(this) * size_t(this) - size_t(this))
+                , falling(false)
+                , FALLING_ANGLE(0.0f)
+                , FALLING_ACCELERATION(0.0f)
+                , RECOVERY_ACCELERATION()
+                , PRIORITY(0.0f) {
 
                 //do a little configurating
                 on<Configuration>("FallingRelax.yaml").then([this] (const Configuration& config){
@@ -65,13 +79,13 @@ namespace module {
 
                     if(!falling
                         && !sensors.empty()
-                        && fabs(sensors.back()->orientation(2,2)) < FALLING_ANGLE) {
+                        && fabs(sensors.back()->world(2,2)) < FALLING_ANGLE) {
 
                         // We might be falling, check the accelerometer
                         double magnitude = 0;
 
                         for(const auto& sensor : sensors) {
-                            magnitude += arma::norm(sensor->accelerometer, 2);
+                            magnitude += arma::norm(convert<double, 3>(sensor->accelerometer), 2);
                         }
 
                         magnitude /= sensors.size();
@@ -87,7 +101,7 @@ namespace module {
                         double magnitude = 0;
 
                         for(const auto& sensor : sensors) {
-                            magnitude += arma::norm(sensor->accelerometer, 2);
+                            magnitude += arma::norm(convert<double, 3>(sensor->accelerometer), 2);
                         }
 
                         magnitude /= sensors.size();

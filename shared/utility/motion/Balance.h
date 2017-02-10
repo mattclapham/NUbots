@@ -20,19 +20,19 @@
 #ifndef UTILITY_MOTION_BALANCE_H
 #define UTILITY_MOTION_BALANCE_H
 
+#include <nuclear>
+#include <yaml-cpp/yaml.h>
 
+#include "extension/Configuration.h"
+
+#include "message/input/Sensors.h"
+#include "message/motion/KinematicsModels.h"
+
+#include "utility/input/LimbID.h"
+//#include "utility/input/ServoID.h"
 #include "utility/math/matrix/Transform3D.h"
 #include "utility/math/matrix/Rotation3D.h"
 #include "utility/math/geometry/UnitQuaternion.h"
-#include "utility/motion/RobotModels.h"
-
-#include "message/input/Sensors.h"
-#include "message/input/LimbID.h"
-#include "message/support/Configuration.h"
-#include <yaml-cpp/yaml.h>
-
-#include <nuclear>
-
 
 namespace utility {
 namespace motion {
@@ -64,8 +64,9 @@ namespace motion {
         utility::math::geometry::UnitQuaternion lastErrorQuaternion;
         NUClear::clock::time_point lastBalanceTime;
     public:
+        Balancer() : lastErrorQuaternion(), lastBalanceTime() {}
         void configure(const YAML::Node& config);
-        void balance(utility::math::matrix::Transform3D& footToTorso, const message::input::LimbID& leg, const message::input::Sensors& sensors);
+        void balance(const message::motion::KinematicsModel& hip, utility::math::matrix::Transform3D& footToTorso, const utility::input::LimbID& leg, const message::input::Sensors& sensors);
     };
 
 

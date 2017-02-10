@@ -22,17 +22,20 @@
 
 #include <nuclear>
 #include <armadillo>
-#include "message/support/Configuration.h"
+
+#include "extension/Configuration.h"
+
 #include "message/support/GlobalConfig.h"
 #include "message/support/FieldDescription.h"
-#include "utility/math/matrix/Transform2D.h"
-#include "utility/math/angle.h"
 #include "message/platform/darwin/DarwinSensors.h"
-#include "message/input/Sensors.h"
 #include "message/input/CameraParameters.h"
 #include "message/motion/KickCommand.h"
 
-#include "VirtualVision.h"
+#include "utility/math/matrix/Transform2D.h"
+#include "utility/math/angle.h"
+
+#include "VirtualGoalPost.h"
+#include "VirtualBall.h"
 
 namespace module {
 namespace support {
@@ -84,6 +87,7 @@ namespace support {
         static constexpr size_t SIMULATION_UPDATE_FREQUENCY = 180;
 
         struct Config{
+            Config() : robot(), ball() {}
 
             bool simulate_goal_observations = true;
             bool simulate_ball_observations = true;
@@ -91,6 +95,8 @@ namespace support {
             bool distinguish_left_and_right_goals = true;
 
             struct Motion {
+                Motion() : path() {}
+
                 MotionType motion_type = MotionType::PATH;
                 struct Path{
                     float period = 10;
@@ -118,6 +124,7 @@ namespace support {
 
         //World State
         struct WorldState {
+            WorldState() : robotPose(), robotVelocity(), ball() {}
             //Transform2D == (x,y,heading)
             utility::math::matrix::Transform2D robotPose;
             utility::math::matrix::Transform2D robotVelocity;
@@ -130,18 +137,19 @@ namespace support {
 
         std::queue<message::motion::KickCommand> kickQueue;
 
-        Transform2D oldRobotPose;
-        Transform2D oldBallPose;
+        utility::math::matrix::Transform2D oldRobotPose;
+        utility::math::matrix::Transform2D oldBallPose;
 
 
         bool kicking = false;
+        bool walking = false;
         bool lastKicking = false;
         uint PLAYER_ID;
 
         NUClear::clock::time_point lastNow;
 
         //Methods
-        void updateConfiguration(const message::support::Configuration& config, const message::support::GlobalConfig& globalConfig);
+        void updateConfiguration(const ::extension::Configuration& config, const message::support::GlobalConfig& globalConfig);
 
         std::unique_ptr<message::platform::darwin::DarwinSensors::Gyroscope> computeGyro(float heading, float oldHeading);
 

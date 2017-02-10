@@ -23,14 +23,13 @@
 #include <thread>
 #include <algorithm>
 
-#include "message/input/ServoID.h"
+#include "utility/input/ServoID.h"
 
 namespace Darwin {
-    using message::input::ServoID;
-    using message::input::stringFromId;
+    using ServoID = utility::input::ServoID;
 
     // Initialize all of the sensor handler objects using the passed uart
-    Darwin::Darwin(const char* name) : uart(name)
+    Darwin::Darwin(const char* name) : uart(name), bulkReadCommand()
     , cm730(uart, ID::CM730)
     , rShoulderPitch(uart, ID::R_SHOULDER_PITCH)
     , lShoulderPitch(uart, ID::L_SHOULDER_PITCH)
@@ -82,7 +81,7 @@ namespace Darwin {
         for (int i = 0; i < 20; ++i) {
             auto result = std::make_pair(i + 1, (&rShoulderPitch)[i].ping());
             if (!result.second) {
-                NUClear::log<NUClear::WARN>("Servo failed self test:", stringFromId(static_cast<ServoID>(i)));
+                NUClear::log<NUClear::WARN>("Servo failed self test:", static_cast<ServoID>(i));
             }
             results.push_back(result);
         }
@@ -132,7 +131,7 @@ namespace Darwin {
                 case ID::L_FSR:
                 case ID::R_FSR:
                     // TODO this is where we no longer use the FSRs, if you need them again turn them on here
-                    // request.push_back(std::make_tuple(FSR::Address::FSR1_L, sensor.first, sizeof(Types::FSRData)));
+                    //request.push_back(std::make_tuple(FSR::Address::FSR1_L, sensor.first, sizeof(Types::FSRData)));
                     break;
 
                 // Otherwise we assume that it's a servo

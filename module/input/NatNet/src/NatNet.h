@@ -21,7 +21,10 @@
 #define MODULES_INPUT_NATNET_H
 
 #include <nuclear>
-#include <armadillo>
+
+#pragma GCC diagnostic ignored "-Weffc++"
+#include <Eigen/Core>
+#pragma GCC diagnostic pop
 
 namespace module {
 namespace input {
@@ -42,24 +45,28 @@ namespace input {
                 UNRECOGNIZED_REQUEST      = 100
             };
 
+            Packet() : type(Type::PING), length(0), data(0) {}
             Type type;
             uint16_t length;
             char data;
         };
 
         struct MarkerSetModel {
+            MarkerSetModel() : name(""), markerNames() {}
             std::string name;
             std::vector<std::string> markerNames;
         };
 
         struct RigidBodyModel {
+            RigidBodyModel() : name(""), id(0), parentId(0), offset(Eigen::Vector3f::Zero()) {}
             std::string name;
             uint32_t id;
             uint32_t parentId;
-            arma::fvec3 offset;
+            Eigen::Vector3f offset;
         };
 
         struct SkeletonModel {
+            SkeletonModel() : name(""), id(0), boneModels() {}
             std::string name;
             uint32_t id;
             std::map<uint32_t, RigidBodyModel> boneModels;

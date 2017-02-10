@@ -43,6 +43,14 @@ ADD_CUSTOM_COMMAND(
     COMMENT "Generating Quex lexer for vision"
     VERBATIM)
 
+# Prevent Effective C++ and "maybe uninitialized" error checks being performed on generated files.
+SET_SOURCE_FILES_PROPERTIES(${outputpath}/Lexer-token_ids.hpp
+                            ${outputpath}/Lexer.cpp
+                            ${outputpath}/Lexer.hpp
+                            ${outputpath}/Lexer-token.hpp
+                            ${outputpath}/Lexer-configuration.hpp
+                            PROPERTIES COMPILE_FLAGS "-Wno-effc++ -Wno-error=maybe-uninitialized")
+
 # Build our NUClear module
 NUCLEAR_MODULE(SOURCES
     ${outputpath}/Lexer-token_ids.hpp

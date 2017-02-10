@@ -27,7 +27,7 @@
 #include <stdint.h>
 #include <linux/serial.h>
 
-#include "message/support/Configuration.h"
+#include "extension/Configuration.h"
 
 #include <mutex>
 #include <cstring>
@@ -64,6 +64,7 @@ namespace Darwin {
     // This is the header that is contained in the CommandResult
     #pragma pack(push, 1)  // Make sure that this struct is not cache alligned
     struct Header {
+        Header() {}
         uint8_t id = -1;
         uint8_t length = 0;
         uint8_t errorcode = -1;
@@ -74,6 +75,7 @@ namespace Darwin {
 
     // This is the object that is returned when a command is run
     struct CommandResult {
+        CommandResult() : header(), data(), checksum(0) {}
         Header header;
         std::vector<uint8_t> data;
         uint8_t checksum;
@@ -149,7 +151,7 @@ namespace Darwin {
         size_t writeBytes(const void* buf, size_t count);
 
     public:
-        void setConfig(const message::support::Configuration& config);
+        void setConfig(const extension::Configuration& config);
         /**
          * @brief Constructs a new UART instance using the passed device path as the TTY device
          *

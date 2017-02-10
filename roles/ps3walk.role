@@ -1,24 +1,28 @@
 NUCLEAR_ROLE(
-    # This must come first as it populates global variables that other modules depend on.
-    platform::darwin::KinematicsModel
-    # Support and Configuration
+    # FileWatcher, ConsoleLogHandler and Signal Catcher Must Go First. KinematicsConfiguration usually goes after these and without it many roles do not run
+    extension::FileWatcher
     support::SignalCatcher
     support::logging::ConsoleLogHandler
-    support::extension::FileWatcher
+    # This must come first as it emits config which many roles depend on (e.g. SensorFilter, WalkEngine)
+    motion::KinematicsConfiguration
+    # Support and Configuration
     support::configuration::GlobalConfig
     support::configuration::SoccerConfig
     support::configuration::NetworkConfiguration
     support::NUbugger
 
     # Hardware Interface
-    input::LinuxCamera
+    input::Camera
     platform::darwin::HardwareIO
     platform::darwin::SensorFilter
 
     # Motion
-    motion::WalkEngine
+    motion::FootMotionPlanner
+    motion::FootPlacementPlanner
+    motion::TorsoMotionPlanner
+    motion::BalanceKinematicResponse
+    motion::OldWalkEngine
     motion::ScriptEngine
-    motion::IKKick
 
     # Vision
     vision::LUTClassifier
@@ -33,7 +37,9 @@ NUCLEAR_ROLE(
     behaviour::skills::Getup
     behaviour::skills::DirectWalkController
     behaviour::strategy::PS3Walk
+    behaviour::skills::KickScript
 
     # Motion
     motion::HeadController
+
 )

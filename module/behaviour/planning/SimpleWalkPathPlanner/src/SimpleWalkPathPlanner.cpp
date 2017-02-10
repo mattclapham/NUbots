@@ -17,48 +17,75 @@
  * Copyright 2013 NUBots <nubots@nubots.net>
  */
 
+#include <cmath>
+
 #include "SimpleWalkPathPlanner.h"
 
-#include <cmath>
+#include "extension/Configuration.h"
+
 #include "message/behaviour/KickPlan.h"
-#include "message/support/Configuration.h"
+#include "message/behaviour/MotionCommand.h"
+#include "message/behaviour/Subsumption.h"
 #include "message/input/Sensors.h"
 #include "message/localisation/FieldObject.h"
 #include "message/vision/VisionObjects.h"
 #include "message/motion/WalkCommand.h"
 #include "message/motion/KickCommand.h"
-#include "utility/nubugger/NUhelpers.h"
+
+#include "utility/behaviour/Action.h"
+#include "utility/behaviour/MotionCommand.h"
+#include "utility/input/LimbID.h"
+#include "utility/input/ServoID.h"
 #include "utility/localisation/transform.h"
 #include "utility/math/matrix/Transform2D.h"
-
+#include "utility/math/matrix/Transform3D.h"
+#include "utility/nubugger/NUhelpers.h"
+#include "utility/support/eigen_armadillo.h"
 
 namespace module {
     namespace behaviour {
         namespace planning {
 
-            using message::support::Configuration;
+            using extension::Configuration;
+
+            using LimbID  = utility::input::LimbID;
+            using ServoID = utility::input::ServoID;
             using message::input::Sensors;
+            
             using message::motion::WalkCommand;
-            using message::behaviour::WalkTarget;
-            using message::behaviour::WalkApproach;
-            using message::behaviour::KickPlan;
-            using message::behaviour::MotionCommand;
-            using message::motion::WalkStartCommand;
-            using message::motion::WalkStopCommand;
+            using message::motion::StopCommand;
+            using message::motion::WalkStopped;
+            using message::motion::EnableWalkEngineCommand;
+            using message::motion::DisableWalkEngineCommand;
             using message::motion::KickFinished;
+
+            using message::behaviour::KickPlan;
+            using KickType = message::behaviour::KickPlan::KickType;
+            using message::behaviour::WantsToKick;
+            using message::behaviour::MotionCommand;
+
+            using message::localisation::Self;
+
+            using message::vision::Ball;
+
             using utility::localisation::transform::RobotToWorldTransform;
+           
+            using utility::behaviour::RegisterAction;
+            using utility::behaviour::ActionPriorites;
             using utility::math::matrix::Transform2D;
+            using utility::math::matrix::Transform3D;
             using utility::nubugger::graph;
             using utility::nubugger::drawSphere;
 
-            using LocalisationBall = message::localisation::Ball;
-            using Self = message::localisation::Self;
-            using VisionBall = message::vision::Ball;
-            using VisionObstacle = message::vision::Obstacle;
-
-            SimpleWalkPathPlanner::SimpleWalkPathPlanner(std::unique_ptr<NUClear::Environment> environment) : Reactor(std::move(environment)) {
-                //we will initially stand still
-                planType = message::behaviour::WalkApproach::StandStill;
+            SimpleWalkPathPlanner::SimpleWalkPathPlanner(std::unique_ptr<NUClear::Environment> environment)
+             : Reactor(std::move(environment)),
+             latestCommand(utility::behaviour::StandStill()),
+             subsumptionId(size_t(this) * size_t(this) - size_t(this)),
+             currentTargetPosition(arma::fill::zeros),
+             currentTargetHeading(arma::fill::zeros),
+             targetHeading(Eigen::Vector2d::Zero(), KickType::SCRIPTED),
+             timeBallLastSeen(NUClear::clock::now())
+             {
 
                 //do a little configurating
                 on<Configuration>("SimpleWalkPathPlanner.yaml").then([this] (const Configuration& file){
@@ -67,78 +94,148 @@ namespace module {
                     forwardSpeed = file.config["forwardSpeed"].as<float>();
                     a = file.config["a"].as<float>();
                     b = file.config["b"].as<float>();
+                    search_timeout = file.config["search_timeout"].as<float>();
+                    robot_ground_space = file.config["robot_ground_space"].as<bool>();
 
                 });
 
+                emit<Scope::INITIALIZE>(std::make_unique<RegisterAction>(RegisterAction {
+                    subsumptionId,
+                    "Simple Walk Path Planner",
+                    {
+                        // Limb sets required by the walk engine:
+                        std::pair<double, std::set<LimbID>>(0, {LimbID::LEFT_LEG, LimbID::RIGHT_LEG}),
+                        std::pair<double, std::set<LimbID>>(0, {LimbID::LEFT_ARM, LimbID::RIGHT_ARM}),
+                    },
+                    [this] (const std::set<LimbID>& givenLimbs) {
+                        if (givenLimbs.find(LimbID::LEFT_LEG) != givenLimbs.end()) {
+                            // Enable the walk engine.
+                            emit<Scope::DIRECT>(std::move(std::make_unique<EnableWalkEngineCommand>(subsumptionId)));
+                        }
+                    },
+                    [this] (const std::set<LimbID>& takenLimbs) {
+                        if (takenLimbs.find(LimbID::LEFT_LEG) != takenLimbs.end()) {
+                            // Shut down the walk engine, since we don't need it right now.
+                            emit<Scope::DIRECT>(std::move(std::make_unique<DisableWalkEngineCommand>(subsumptionId)));
+                        }
+                    },
+                    [this] (const std::set<ServoID>&) {
+                        // nothing
+                    }
+                }));
 
-                on<Trigger<KickFinished>>().then([this] (const KickFinished&) {
-                    emit(std::move(std::make_unique<WalkStartCommand>()));
+                on<Trigger<WalkStopped>>().then([this]{
+                    emit(std::make_unique<ActionPriorites>(ActionPriorites { subsumptionId, { 0, 0 }}));
                 });
 
                 on<Every<20, Per<std::chrono::seconds>>
-                 , With<message::localisation::Ball>
-                 , With<std::vector<message::localisation::Self>>
-                 , With<Optional<std::vector<message::vision::Obstacle>>>
+                 , With<std::vector<Ball>>
+                 , With<std::vector<Self>>
+                 , With<Sensors>
+                 , With<WantsToKick>
                  , Sync<SimpleWalkPathPlanner>>().then([this] (
-                     const LocalisationBall& ball,
-                     const std::vector<Self>& selfs,
-                     std::shared_ptr<const std::vector<VisionObstacle>> robots) {
+                    const std::vector<Ball>& ball,
+                    const std::vector<Self>& selfs,
+                    const Sensors& sensors,
+                    const WantsToKick& wantsTo
+                    ) {
 
-                    if (planType == message::behaviour::WalkApproach::StandStill) {
+                    if(wantsTo.kick){
+                        emit(std::make_unique<StopCommand>(subsumptionId));
+                        return;
+                    }
 
-                        emit(std::make_unique<WalkStopCommand>());
+                    if (latestCommand.type == message::behaviour::MotionCommand::Type::StandStill) {
+
+                        
+                        emit(std::make_unique<StopCommand>(subsumptionId));
+                        //emit(std::make_unique<ActionPriorites>(ActionPriorites { subsumptionId, { 40, 11 }}));
+
                         return;
 
                     }
-                    else if (planType == message::behaviour::WalkApproach::DirectCommand) {
+                    else if (latestCommand.type == message::behaviour::MotionCommand::Type::DirectCommand) {
+                        //TO DO, change to Bezier stuff
 
-                        std::unique_ptr<WalkCommand> command = std::make_unique<WalkCommand>();
-                        command->command.xy()    = currentTargetPosition;
-                        command->command.angle() = currentTargetHeading[0];
+                        std::unique_ptr<WalkCommand> command = std::make_unique<WalkCommand>(subsumptionId,latestCommand.walkCommand);
                         emit(std::move(command));
-                        emit(std::move(std::make_unique<WalkStartCommand>()));
+                        emit(std::make_unique<ActionPriorites>(ActionPriorites { subsumptionId, { 40, 11 }}));
                         return;
 
                     }
 
+                    Transform3D Htw = convert<double, 4, 4>(sensors.world);
+                    auto now = NUClear::clock::now();
+                    float timeSinceBallSeen = std::chrono::duration_cast<std::chrono::nanoseconds>(now - timeBallLastSeen).count() * (1 / std::nano::den);
+                    
+                    // position = {1,0,0};
                     // TODO: support non-ball targets
+                    if(!robot_ground_space){
+                        if(ball.size() > 0){
+                            rBWw = convert<double, 2>(ball[0].position.head<2>());
+                            timeBallLastSeen = now;
+                            // log("ball seen");
+                        } else {
+                            rBWw = timeSinceBallSeen < search_timeout ? 
+                                   rBWw : // Place last seen
+                                   Htw.x() + Htw.translation(); //In front of the robot 
+                        }
+                        position = Htw.transformPoint(rBWw);
+                    } else {
+                        if(ball.size() > 0){
+                            position =  convert<double, 3>(ball[0].torsoSpacePosition);
+                            timeBallLastSeen = now;
+                        } else {
+                            position = timeSinceBallSeen < search_timeout ? 
+                                   position : // Place last seen
+                                   arma::vec3({1,0,0}); //In front of the robot 
+                        }
+                    }
 
-                    float angle = std::atan2(ball.position[1], ball.position[0]);
+                    // log("rBWw",rBWw.t());
+                    // log("Htw\n",Htw);
+
+
+
+                    float angle = std::atan2(position[1], position[0]);
+                    // log("ball bearing", angle);
                     angle = std::min(turnSpeed, std::max(angle, -turnSpeed));
-                    // emit(graph("angle", angle));
-                    // emit(graph("ball position", ball.position));
-                    // emit(graph("robot position", selfs.front().position));
-                    // emit(graph("robot heading", selfs.front().heading));
+                    // log("turnSpeed", turnSpeed);
+                    // log("ball bearing", angle);
+                    // log("ball position", position);
+                    // log("loc position", selfs.front().position.t());
+                    // log("loc heading", selfs.front().heading);
 
-                    float distanceToBall = arma::norm(ball.position);
+                    //Euclidean distance to ball
+                    float distanceToBall = arma::norm(position.rows(0,1));
                     float scale = 2.0 / (1.0 + std::exp(-a * distanceToBall + b)) - 1.0;
                     float scale2 = angle / M_PI;
                     float finalForwardSpeed = forwardSpeed * scale * (1.0 - scale2);
-                    // emit(graph("forwardSpeed1", forwardSpeed));
-                    // emit(graph("scale", scale));
-                    // emit(graph("distanceToBall", distanceToBall));
-                    // emit(graph("forwardSpeed2", finalForwardSpeed));
+                    // log("forwardSpeed1", forwardSpeed);
+                    // log("scale", scale);
+                    // log("distanceToBall", distanceToBall);
+                    // log("forwardSpeed2", finalForwardSpeed);
 
-                    std::unique_ptr<WalkCommand> command = std::make_unique<WalkCommand>();
-                    command->command = Transform2D({finalForwardSpeed, 0, angle});
+                    std::unique_ptr<WalkCommand> command = std::make_unique<WalkCommand>(subsumptionId, convert<double, 3>(Transform2D({0, 0, 0})));
+                    command->command = convert<double, 3>(Transform2D({finalForwardSpeed, 0, angle}));
 
-                    arma::vec2 ball_world_position = RobotToWorldTransform(selfs.front().position, selfs.front().heading, ball.position);
-                    arma::vec2 kick_target = 2 * ball_world_position - selfs.front().position;
+                    arma::vec2 ball_world_position = RobotToWorldTransform(convert<double, 2>(selfs.front().locObject.position), 
+                                                                           convert<double, 2>(selfs.front().heading), position);
+                    arma::vec2 kick_target = 2 * ball_world_position - convert<double, 2>(selfs.front().locObject.position);
                     emit(drawSphere("kick_target", arma::vec3({kick_target[0], kick_target[1], 0.0}), 0.1, arma::vec3({1, 0, 0}), 0));
+                    // log("walkcommand",command->command[0],command->command[1]);
+                    // log("anglewalkcommand",command->command[2]);
 
-                    emit(std::make_unique<KickPlan>(KickPlan{kick_target}));
-                    emit(std::move(std::make_unique<WalkStartCommand>()));
+                    emit(std::make_unique<KickPlan>(KickPlan(convert<double, 2>(kick_target), KickPlan::KickType::SCRIPTED)));
+                    
                     emit(std::move(command));
-
+                    emit(std::make_unique<ActionPriorites>(ActionPriorites { subsumptionId, { 40, 11 }}));
                 });
 
                 on<Trigger<MotionCommand>, Sync<SimpleWalkPathPlanner>>().then([this] (const MotionCommand& cmd) {
                     //save the plan
-                    planType = cmd.walkMovementType;
-                    targetHeading = cmd.targetHeadingType;
-                    targetPosition = cmd.targetPositionType;
-                    currentTargetPosition = cmd.target;
-                    currentTargetHeading = cmd.heading;
+                    latestCommand = cmd;
+
                 });
 
             }

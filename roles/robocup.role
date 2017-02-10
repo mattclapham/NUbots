@@ -1,10 +1,11 @@
 NUCLEAR_ROLE(
-    # This must come first as it populates global variables that other modules depend on.
-    platform::darwin::KinematicsModel
-    #Support
-    support::SignalCatcher
+    # FileWatcher, ConsoleLogHandler and Signal Catcher Must Go First. KinematicsConfiguration usually goes after these and without it many roles do not run
+    extension::FileWatcher
+    #support::SignalCatcher
     support::logging::ConsoleLogHandler
-    support::extension::FileWatcher
+    # This must come first as it emits config which many roles depend on (e.g. SensorFilter, WalkEngine)
+    motion::KinematicsConfiguration
+    #Support
     support::configuration::GlobalConfig
     support::configuration::NetworkConfiguration
     support::NUbugger
@@ -14,39 +15,43 @@ NUCLEAR_ROLE(
     input::GameController
 
     #Sensors
-    input::LinuxCamera
+    input::Camera
     platform::darwin::HardwareIO
     platform::darwin::SensorFilter
 
     #Vision
     vision::LUTClassifier
-    vision::GoalDetector
+    #vision::GoalDetector
     vision::BallDetector
-    vision::ObstacleDetector
+    #vision::ObstacleDetector
 
     #Localisation
-    localisation::MMKFRobotLocalisation
-    localisation::KFBallLocalisation
+    #localisation::RobotFieldLocalisation
+    localisation::BallLocalisation
 
     #Behaviour
     behaviour::Controller
-    behaviour::skills::Stand
+    behaviour::skills::WalkEngineStand
     behaviour::skills::FallingRelax
     behaviour::skills::Getup
     behaviour::skills::KickScript
     behaviour::skills::HeadBehaviourSoccer
-    behaviour::skills::WalkPathFollower # Follows WalkPaths.
-    behaviour::skills::DirectWalkController
     behaviour::planning::KickPlanner
-    behaviour::planning::OMPLPathPlanner  # Creates WalkPaths.
+    behaviour::planning::SimpleWalkPathPlanner  # Creates WalkPaths.
+    #behaviour::planning::BezierWalkPathPlanner  # Creates WalkPaths.
     behaviour::strategy::SoccerStrategy
+    behaviour::skills::Nod
 
     #Motion
     motion::ScriptEngine
-    motion::WalkEngine
+    motion::FootMotionPlanner
+    motion::FootPlacementPlanner
+    motion::TorsoMotionPlanner
+    motion::BalanceKinematicResponse
+    motion::OldWalkEngine
     motion::IKKick
     motion::HeadController
 
     #Output
-    output::eSpeak
+    #output::eSpeak
 )

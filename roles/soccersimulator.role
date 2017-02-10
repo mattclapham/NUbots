@@ -1,15 +1,15 @@
 NUCLEAR_ROLE(
-    # This must come first as it populates global variables that other modules depend on.
-    platform::darwin::KinematicsModel
-    #Support
+    # FileWatcher, ConsoleLogHandler and Signal Catcher Must Go First. KinematicsConfiguration usually goes after these and without it many roles do not run
+    extension::FileWatcher
     support::SignalCatcher
     support::logging::ConsoleLogHandler
-    support::extension::FileWatcher
+    # This must come first as it emits config which many roles depend on (e.g. SensorFilter, WalkEngine)
+    motion::KinematicsConfiguration
+    #Support
     support::configuration::GlobalConfig
     support::configuration::NetworkConfiguration
     support::NUbugger
     support::configuration::SoccerConfig
-    support::GrimReaper
 
     #input
     input::GameController
@@ -23,9 +23,8 @@ NUCLEAR_ROLE(
     platform::darwin::SensorFilter
 
     #Localisation
-    localisation::MMKFRobotLocalisation
-    localisation::KFBallLocalisation
-    localisation::SideChecker
+    localisation::RobotFieldLocalisation
+    localisation::BallLocalisation
 
     #Behaviour
     behaviour::Controller
@@ -33,16 +32,20 @@ NUCLEAR_ROLE(
     behaviour::skills::FallingRelax
     behaviour::skills::HeadBehaviourSoccer
     behaviour::skills::Getup
+    behaviour::skills::KickScript
     behaviour::planning::KickPlanner
-    behaviour::planning::OMPLPathPlanner  # Creates WalkPaths.
-    behaviour::skills::WalkPathFollower # Follows WalkPaths.
-    behaviour::skills::DirectWalkController
+    behaviour::planning::SimpleWalkPathPlanner 
+    #behaviour::planning::BezierWalkPathPlanner 
     behaviour::strategy::SoccerStrategy
 
     #Motion
     motion::ScriptEngine
-    motion::WalkEngine
+    motion::FootMotionPlanner
+    motion::FootPlacementPlanner
+    motion::TorsoMotionPlanner
+    motion::BalanceKinematicResponse
+    motion::OldWalkEngine
     motion::HeadController
-    motion::IKKick
+    #motion::IKKick
 )
 

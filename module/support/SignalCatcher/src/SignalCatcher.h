@@ -23,8 +23,6 @@
 #include <nuclear>
 #include <exception>
 
-#include "message/support/SegmentationFault.h"
-
 namespace module {
     namespace support {
 
@@ -42,33 +40,6 @@ namespace module {
         class SignalCatcher : public NUClear::Reactor {
         public:
             explicit SignalCatcher(std::unique_ptr<NUClear::Environment> environment);
-        private:
-
-            /// Our static PowerPlant variable that we use to shutdown the system
-            static NUClear::PowerPlant* POWER_PLANT;
-
-            /// This boolean is set to true if the user sends sigint, the second time this is sent exit(1) is called
-            static volatile bool userRequestedShutdown;
-
-            /**
-             * @brief TODO
-             *
-             * @details
-             *  TODO
-             *
-             * @param signal the signal that was passed to this signal handler
-             */
-            static void sigintHandler(int signal);
-
-            /**
-             * @brief TODO
-             *
-             * @details
-             *  TODO
-             *
-             * @param signal the signal that was passed to this signal handler
-             */
-            static void segfaultConverter(int signal);
         };
 
     }  // support

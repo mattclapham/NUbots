@@ -1,18 +1,18 @@
 /*
- * This file is part of the NUbots Codebase.
+ * This file is part of the Autocalibration Codebase.
  *
- * The NUbots Codebase is free software: you can redistribute it and/or modify
+ * The Autocalibration Codebase is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * The NUbots Codebase is distributed in the hope that it will be useful,
+ * The Autocalibration Codebase is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with the NUbots Codebase.  If not, see <http://www.gnu.org/licenses/>.
+ * along with the Autocalibration Codebase.  If not, see <http://www.gnu.org/licenses/>.
  *
  * Copyright 2013 NUBots <nubots@nubots.net>
  */
@@ -52,6 +52,7 @@ namespace matrix {
              */
             Rotation();
 
+            Rotation(const arma::mat& m);
             /**
              * @brief Convert from a quaternions vec4
              */
@@ -127,6 +128,24 @@ namespace matrix {
              */
             arma::vec3 eulerAngles() const;
 
+            Rotation3D orthogonalise() const;
+
+            inline const arma::vec3 x() const { return submat(0,0,2,0); }
+            inline arma::subview<double> x() { return submat(0,0,2,0); }
+
+            inline const arma::vec3 y() const { return submat(0,1,2,1); }
+            inline arma::subview<double> y() { return submat(0,1,2,1); }
+
+            inline const arma::vec3 z() const { return submat(0,2,2,2); }
+            inline arma::subview<double> z() { return submat(0,2,2,2); }
+
+
+            /**
+             * @brief Computes 'size' of the transform T
+             *
+             */
+            static float norm(Rotation3D T);
+
             /**
              * @return The roll (x-axis) of the rotation matrix
              */
@@ -149,6 +168,7 @@ namespace matrix {
              * @return The rotation matrix
              */
             static Rotation3D createRotationX(double radians);
+            static Rotation3D createRotationXJacobian(double radians);
 
             /**
              * @brief Creates a rotation matrix around the Y axis by the given radians
@@ -157,6 +177,7 @@ namespace matrix {
              * @return The rotation matrix
              */
             static Rotation3D createRotationY(double radians);
+            static Rotation3D createRotationYJacobian(double radians);
 
             /**
              * @brief Creates a rotation matrix around the Z axis by the given radians
@@ -165,6 +186,17 @@ namespace matrix {
              * @return The rotation matrix
              */
             static Rotation3D createRotationZ(double radians);
+            static Rotation3D createRotationZJacobian(double radians);
+
+            /**
+             * @brief Create a rotation matrix from euler angles
+                See: http://staff.city.ac.uk/~sbbh653/publications/euler.pdf
+                Computing Euler angles from a rotation matrix
+                Gregory G. Slabaugh
+                double roll, pitch, yaw; // psi, theta, phi
+             */
+            static Rotation3D createFromEulerAngles(const arma::vec3& a);
+
     };
 
 }  // matrix

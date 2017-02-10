@@ -25,35 +25,39 @@
 #include <cmath>
 #include <nuclear>
 
-#include "InverseKinematics.h"
+#include "message/input/Sensors.h"
+#include "message/motion/KinematicsModels.h"
 
+#include "utility/input/LimbID.h"
+#include "utility/input/ServoID.h"
 #include "utility/math/matrix/Transform3D.h"
 #include "utility/math/matrix/Rotation3D.h"
-#include "utility/motion/RobotModels.h"
 #include "utility/math/angle.h"
-
-#include "message/input/Sensors.h"
-#include "message/input/ServoID.h"
+#include "utility/math/geometry/Line.h"
+#include "utility/support/eigen_armadillo.h"
 
 namespace utility {
 namespace motion {
 namespace kinematics {
 
+    using LimbID  = utility::input::LimbID;
+    using ServoID = utility::input::ServoID;
+    using message::input::Sensors;
+    using message::motion::KinematicsModel;
+    using BodySide = message::motion::BodySide::Value;
+ 
 
-    template <typename RobotKinematicModel>
-    inline std::map<message::input::ServoID, utility::math::matrix::Transform3D> calculateHeadJointPosition(const message::input::Sensors& sensors, message::input::ServoID servoID){
-        std::map<message::input::ServoID, utility::math::matrix::Transform3D> positions;
+    inline std::map<ServoID, utility::math::matrix::Transform3D> calculateHeadJointPosition(const KinematicsModel& model, const float& HEAD_PITCH, const float& HEAD_YAW, ServoID servoID){
+        std::map<ServoID, utility::math::matrix::Transform3D> positions;
 
         utility::math::matrix::Transform3D runningTransform;
-        float HEAD_PITCH = sensors.servos[static_cast<int>(message::input::ServoID::HEAD_PITCH)].presentPosition;
-        float HEAD_YAW =  sensors.servos[static_cast<int>(message::input::ServoID::HEAD_YAW)].presentPosition;
-        arma::vec3 NECK_POS = {RobotKinematicModel::Head::NECK_BASE_POS_FROM_ORIGIN_X,
-                               RobotKinematicModel::Head::NECK_BASE_POS_FROM_ORIGIN_Y,
-                               RobotKinematicModel::Head::NECK_BASE_POS_FROM_ORIGIN_Z};
-        float NECK_LENGTH = RobotKinematicModel::Head::NECK_LENGTH;
-        arma::vec3 NECK_TO_CAMERA = {RobotKinematicModel::Head::NECK_TO_CAMERA_X,
-                                     RobotKinematicModel::Head::NECK_TO_CAMERA_Y,
-                                     RobotKinematicModel::Head::NECK_TO_CAMERA_Z};
+        arma::vec3 NECK_POS = {model.head.NECK_BASE_POS_FROM_ORIGIN_X,
+                               model.head.NECK_BASE_POS_FROM_ORIGIN_Y,
+                               model.head.NECK_BASE_POS_FROM_ORIGIN_Z};
+        float NECK_LENGTH = model.head.NECK_LENGTH;
+        arma::vec3 NECK_TO_CAMERA = {model.head.NECK_TO_CAMERA_X,
+                                     model.head.NECK_TO_CAMERA_Y,
+                                     model.head.NECK_TO_CAMERA_Z};
 
         //Translate to base of neck from origin
         runningTransform = runningTransform.translate(NECK_POS);
@@ -65,8 +69,8 @@ namespace kinematics {
         runningTransform = runningTransform.translateX(NECK_LENGTH);
         //YAW
         //Return the basis pointing out of the top of the torso with z pointing out the back of the neck. Pos is top of neck (at hip pitch motor)
-        positions[message::input::ServoID::HEAD_YAW] = runningTransform;
-        if(servoID == message::input::ServoID::HEAD_YAW) {
+        positions[ServoID::HEAD_YAW] = runningTransform;
+        if(servoID == ServoID::HEAD_YAW) {
             return positions;
         }
 
@@ -77,61 +81,66 @@ namespace kinematics {
         //Translate to camera
         runningTransform = runningTransform.translate(NECK_TO_CAMERA);
         //Rotate to set x to camera vector
-        runningTransform = runningTransform.rotateY(RobotKinematicModel::Head::CAMERA_DECLINATION_ANGLE_OFFSET);
+        runningTransform = runningTransform.rotateY(model.head.CAMERA_DECLINATION_ANGLE_OFFSET);
         //PITCH
         //Return basis pointing along camera vector (ie x is camera vector, z out of top of head). Pos at camera position
-        positions[message::input::ServoID::HEAD_PITCH] = runningTransform;
+        positions[ServoID::HEAD_PITCH] = runningTransform;
         return positions;
     }
 
+    inline std::map<ServoID, utility::math::matrix::Transform3D> calculateHeadJointPosition(const KinematicsModel& model, const Sensors& sensors, ServoID servoID){
+        return calculateHeadJointPosition(model, 
+                                          sensors.servo[static_cast<int>(ServoID::HEAD_PITCH)].presentPosition,
+                                          sensors.servo[static_cast<int>(ServoID::HEAD_YAW)  ].presentPosition,
+                                          servoID);
+    }
     /*! @brief
         @NOTE read " runningTransform *= utility::math::matrix::_RotationMatrix(angle, 4); " as "Rotate the running transform about its local _ coordinate by angle."
         @return Returns basis matrix for position of end of limb controlled by the specified motor.
 
         The basis 'faces' down its x axis.
     */
-    template <typename RobotKinematicModel>
-    inline std::map<message::input::ServoID, utility::math::matrix::Transform3D> calculateLegJointPosition(const message::input::Sensors& sensors, message::input::ServoID servoID, Side isLeft){
-        std::map<message::input::ServoID, utility::math::matrix::Transform3D> positions;
+    inline std::map<ServoID, utility::math::matrix::Transform3D> calculateLegJointPosition(const KinematicsModel& model, const Sensors& sensors, ServoID servoID, BodySide isLeft){
+        std::map<ServoID, utility::math::matrix::Transform3D> positions;
         utility::math::matrix::Transform3D runningTransform;
         //Variables to mask left and right leg differences:
-        message::input::ServoID HIP_YAW, HIP_ROLL, HIP_PITCH, KNEE, ANKLE_PITCH, ANKLE_ROLL;
+        ServoID HIP_YAW, HIP_ROLL, HIP_PITCH, KNEE, ANKLE_PITCH, ANKLE_ROLL;
         int negativeIfRight = 1;
 
         if(static_cast<bool>(isLeft)){
-            HIP_YAW = message::input::ServoID::L_HIP_YAW;
-            HIP_ROLL = message::input::ServoID::L_HIP_ROLL;
-            HIP_PITCH = message::input::ServoID::L_HIP_PITCH;
-            KNEE = message::input::ServoID::L_KNEE;
-            ANKLE_PITCH = message::input::ServoID::L_ANKLE_PITCH;
-            ANKLE_ROLL = message::input::ServoID::L_ANKLE_ROLL;
+            HIP_YAW     = ServoID::L_HIP_YAW;
+            HIP_ROLL    = ServoID::L_HIP_ROLL;
+            HIP_PITCH   = ServoID::L_HIP_PITCH;
+            KNEE        = ServoID::L_KNEE;
+            ANKLE_PITCH = ServoID::L_ANKLE_PITCH;
+            ANKLE_ROLL  = ServoID::L_ANKLE_ROLL;
         } else {
-            HIP_YAW = message::input::ServoID::R_HIP_YAW;
-            HIP_ROLL = message::input::ServoID::R_HIP_ROLL;
-            HIP_PITCH = message::input::ServoID::R_HIP_PITCH;
-            KNEE = message::input::ServoID::R_KNEE;
-            ANKLE_PITCH = message::input::ServoID::R_ANKLE_PITCH;
-            ANKLE_ROLL = message::input::ServoID::R_ANKLE_ROLL;
+            HIP_YAW         = ServoID::R_HIP_YAW;
+            HIP_ROLL        = ServoID::R_HIP_ROLL;
+            HIP_PITCH       = ServoID::R_HIP_PITCH;
+            KNEE            = ServoID::R_KNEE;
+            ANKLE_PITCH     = ServoID::R_ANKLE_PITCH;
+            ANKLE_ROLL      = ServoID::R_ANKLE_ROLL;
             negativeIfRight = -1;
         }
 
         //Hip pitch
         runningTransform = runningTransform.translate({
-            RobotKinematicModel::Leg::HIP_OFFSET_X,
-            negativeIfRight * RobotKinematicModel::Leg::HIP_OFFSET_Y,
-            -RobotKinematicModel::Leg::HIP_OFFSET_Z
+            model.leg.HIP_OFFSET_X,
+            negativeIfRight * model.leg.HIP_OFFSET_Y,
+            -model.leg.HIP_OFFSET_Z
         });
         //Rotate to face down the leg (see above for definitions of terms, including 'facing')
         runningTransform = runningTransform.rotateY(M_PI_2);
         //Using right hand rule along global z gives positive direction of yaw:
-        runningTransform = runningTransform.rotateX(-sensors.servos[static_cast<int>(HIP_YAW)].presentPosition);
+        runningTransform = runningTransform.rotateX(-sensors.servo[static_cast<int>(HIP_YAW)].presentPosition);
         //Return basis facing from body to hip centre (down) with z aligned with the axis of the hip roll motor axis. Position at hip joint
         positions[HIP_YAW] = runningTransform;
         if(servoID == HIP_YAW) {
             return positions;
         }
 
-        runningTransform = runningTransform.rotateZ(sensors.servos[static_cast<int>(HIP_ROLL)].presentPosition);
+        runningTransform = runningTransform.rotateZ(sensors.servo[static_cast<int>(HIP_ROLL)].presentPosition);
         //Return basis facing down leg plane, with z oriented through axis of roll motor. Position still hip joint
         positions[HIP_ROLL] = runningTransform;
         if(servoID == HIP_ROLL) {
@@ -139,9 +148,9 @@ namespace kinematics {
         }
 
         //Rotate to face down upper leg
-        runningTransform = runningTransform.rotateY(sensors.servos[static_cast<int>(HIP_PITCH)].presentPosition);
+        runningTransform = runningTransform.rotateY(sensors.servo[static_cast<int>(HIP_PITCH)].presentPosition);
         //Translate down upper leg
-        runningTransform = runningTransform.translateX(RobotKinematicModel::Leg::UPPER_LEG_LENGTH);
+        runningTransform = runningTransform.translateX(model.leg.UPPER_LEG_LENGTH);
         //Return basis faces down upper leg, with z out of front of thigh. Pos = knee axis centre
         positions[HIP_PITCH] = runningTransform;
         if(servoID == HIP_PITCH) {
@@ -150,9 +159,9 @@ namespace kinematics {
 
 
         //Rotate to face down lower leg
-        runningTransform = runningTransform.rotateY(sensors.servos[static_cast<int>(KNEE)].presentPosition);
+        runningTransform = runningTransform.rotateY(sensors.servo[static_cast<int>(KNEE)].presentPosition);
         //Translate down lower leg
-        runningTransform = runningTransform.translateX(RobotKinematicModel::Leg::UPPER_LEG_LENGTH);
+        runningTransform = runningTransform.translateX(model.leg.UPPER_LEG_LENGTH);
         //Return basis facing down lower leg, with z out of front of shin. Pos = ankle axis centre
         positions[KNEE] = runningTransform;
         if(servoID == KNEE) {
@@ -161,7 +170,7 @@ namespace kinematics {
 
 
         //Rotate to face down foot (pitch)
-        runningTransform = runningTransform.rotateY(sensors.servos[static_cast<int>(ANKLE_PITCH)].presentPosition);
+        runningTransform = runningTransform.rotateY(sensors.servo[static_cast<int>(ANKLE_PITCH)].presentPosition);
         //Return basis facing pitch down to foot with z out the front of the foot. Pos = ankle axis centre
         positions[ANKLE_PITCH] = runningTransform;
         if(servoID == ANKLE_PITCH) {
@@ -169,11 +178,11 @@ namespace kinematics {
         }
 
         //Rotate to face down foot (roll)
-        runningTransform = runningTransform.rotateZ(sensors.servos[static_cast<int>(ANKLE_ROLL)].presentPosition);
+        runningTransform = runningTransform.rotateZ(sensors.servo[static_cast<int>(ANKLE_ROLL)].presentPosition);
         //Rotate so x faces toward toes
         runningTransform = runningTransform.rotateY(-M_PI_2);
         //Translate to ground
-        runningTransform = runningTransform.translateZ(-RobotKinematicModel::Leg::FOOT_HEIGHT);
+        runningTransform = runningTransform.translateZ(-model.leg.FOOT_HEIGHT);
         //Return basis with x out of the front of the toe and z out the top of foot. Pos = ankle axis centre projected to ground
         positions[ANKLE_ROLL] = runningTransform;
         return positions;
@@ -185,65 +194,75 @@ namespace kinematics {
 
         The basis 'faces' down its x axis.
     */
-    template <typename RobotKinematicModel>
-    inline std::map<message::input::ServoID, utility::math::matrix::Transform3D> calculateArmJointPosition(const message::input::Sensors& sensors, message::input::ServoID servoID, Side isLeft){
-        std::map<message::input::ServoID, utility::math::matrix::Transform3D> positions;
+    inline std::map<ServoID, utility::math::matrix::Transform3D> calculateArmJointPosition(const KinematicsModel& model, const Sensors& sensors, ServoID servoID, BodySide isLeft){
+        std::map<ServoID, utility::math::matrix::Transform3D> positions;
         utility::math::matrix::Transform3D runningTransform;
-        //Variables to mask left and right leg differences:
-        message::input::ServoID SHOULDER_PITCH, SHOULDER_ROLL, ELBOW;
+        //Variables to mask left and right differences:
+        ServoID SHOULDER_PITCH, SHOULDER_ROLL, ELBOW;
         int negativeIfRight = 1;
 
         if(static_cast<bool>(isLeft)){
-            SHOULDER_PITCH = message::input::ServoID::L_SHOULDER_PITCH;
-            SHOULDER_ROLL = message::input::ServoID::L_SHOULDER_ROLL;
-            ELBOW = message::input::ServoID::L_ELBOW;
+            SHOULDER_PITCH = ServoID::L_SHOULDER_PITCH;
+            SHOULDER_ROLL  = ServoID::L_SHOULDER_ROLL;
+            ELBOW          = ServoID::L_ELBOW;
         } else {
-            SHOULDER_PITCH = message::input::ServoID::R_SHOULDER_PITCH;
-            SHOULDER_ROLL = message::input::ServoID::R_SHOULDER_ROLL;
-            ELBOW = message::input::ServoID::R_ELBOW;
+            SHOULDER_PITCH  = ServoID::R_SHOULDER_PITCH;
+            SHOULDER_ROLL   = ServoID::R_SHOULDER_ROLL;
+            ELBOW           = ServoID::R_ELBOW;
             negativeIfRight = -1;
         }
 
+        float shoulder_pitch = sensors.servo[static_cast<int>(SHOULDER_PITCH)].presentPosition;
+        float shoulder_roll = sensors.servo[static_cast<int>(SHOULDER_ROLL)].presentPosition;
+        float elbow = sensors.servo[static_cast<int>(ELBOW)].presentPosition;
+
+        // std::cout << "shoulder_pitch = " << shoulder_pitch << std::endl;
+        // std::cout << "shoulder_roll = " << shoulder_roll << std::endl;
+        // std::cout << "elbow = " << elbow << std::endl;
+
         //Translate to shoulder
         runningTransform = runningTransform.translate({
-            RobotKinematicModel::Arm::SHOULDER_X_OFFSET,
-             negativeIfRight * RobotKinematicModel::Arm::DISTANCE_BETWEEN_SHOULDERS / 2.0,
-             RobotKinematicModel::Arm::SHOULDER_Z_OFFSET
+            model.arm.SHOULDER_X_OFFSET,
+            negativeIfRight * model.arm.DISTANCE_BETWEEN_SHOULDERS / 2.0,
+            model.arm.SHOULDER_Z_OFFSET
          });
-        //Rotate about shoulder pitch
-        runningTransform = runningTransform.rotateY(sensors.servos[static_cast<int>(SHOULDER_PITCH)].presentPosition);
+        //Rotate about shoulder pitch with zero position Zombie arms
+        runningTransform = runningTransform.rotateY(shoulder_pitch-M_PI_2);
         //Translate to end of shoulder part
         runningTransform = runningTransform.translate({
-            RobotKinematicModel::Arm::SHOULDER_LENGTH,
-            negativeIfRight * RobotKinematicModel::Arm::SHOULDER_WIDTH,
-            RobotKinematicModel::Arm::SHOULDER_HEIGHT
+            model.arm.SHOULDER_LENGTH,
+            negativeIfRight * model.arm.SHOULDER_WIDTH,
+            -model.arm.SHOULDER_HEIGHT
         });
-        //Return matrix pointing down shoulder, y same as global y. Pos = at centre of shoulder roll joint
+        //Return matrix pointing forward out of shoulder, y same as global y. Pos = at centre of shoulder roll joint
         positions[SHOULDER_PITCH] = runningTransform;
         if(servoID == SHOULDER_PITCH){
             return positions;
         }
 
         //Rotate by the shoulder roll
-        runningTransform = runningTransform.rotateZ(sensors.servos[static_cast<int>(SHOULDER_ROLL)].presentPosition);
+        runningTransform = runningTransform.rotateX(shoulder_roll);
         //Translate to centre of next joint
         runningTransform = runningTransform.translate({
-            RobotKinematicModel::Arm::UPPER_ARM_LENGTH,
-            negativeIfRight * RobotKinematicModel::Arm::UPPER_ARM_Y_OFFSET,
-            RobotKinematicModel::Arm::UPPER_ARM_Z_OFFSET
+            model.arm.UPPER_ARM_X_OFFSET,
+            negativeIfRight * model.arm.UPPER_ARM_Y_OFFSET,
+            -model.arm.UPPER_ARM_LENGTH
         });
+        //Rotate to face down arm
+        runningTransform = runningTransform.rotateY(M_PI_2);
+
         positions[SHOULDER_ROLL] = runningTransform;
         if(servoID == SHOULDER_ROLL){
             return positions;
         }
 
         //Rotate by the elbow angle
-        runningTransform = runningTransform.rotateY(sensors.servos[static_cast<int>(ELBOW)].presentPosition);
+        runningTransform = runningTransform.rotateY(elbow);
         //Translate to centre of end of arm, in line with joint
         runningTransform = runningTransform.translate({
-            RobotKinematicModel::Arm::LOWER_ARM_LENGTH,
-            negativeIfRight * RobotKinematicModel::Arm::LOWER_ARM_Y_OFFSET,
-            RobotKinematicModel::Arm::LOWER_ARM_Z_OFFSET
+            model.arm.LOWER_ARM_LENGTH,
+            negativeIfRight * model.arm.LOWER_ARM_Y_OFFSET,
+            -model.arm.LOWER_ARM_Z_OFFSET
         });
         positions[ELBOW] = runningTransform;
         return positions;
@@ -251,64 +270,61 @@ namespace kinematics {
 
     /*! @brief
     */
-    template <typename RobotKinematicModel>
-    inline std::map<message::input::ServoID, utility::math::matrix::Transform3D> calculatePosition(const message::input::Sensors& sensors, message::input::ServoID servoID) {
-        switch(servoID) {
-            case message::input::ServoID::HEAD_YAW:
-            case message::input::ServoID::HEAD_PITCH:
-                return calculateHeadJointPosition<RobotKinematicModel>(sensors, servoID);
-            case message::input::ServoID::R_SHOULDER_PITCH:
-            case message::input::ServoID::R_SHOULDER_ROLL:
-            case message::input::ServoID::R_ELBOW:
-                return calculateArmJointPosition<RobotKinematicModel>(sensors, servoID, Side::RIGHT);
-            case message::input::ServoID::L_SHOULDER_PITCH:
-            case message::input::ServoID::L_SHOULDER_ROLL:
-            case message::input::ServoID::L_ELBOW:
-                return calculateArmJointPosition<RobotKinematicModel>(sensors, servoID, Side::LEFT);
-            case message::input::ServoID::R_HIP_YAW:
-            case message::input::ServoID::R_HIP_ROLL:
-            case message::input::ServoID::R_HIP_PITCH:
-            case message::input::ServoID::R_KNEE:
-            case message::input::ServoID::R_ANKLE_PITCH:
-            case message::input::ServoID::R_ANKLE_ROLL:
-                return calculateLegJointPosition<RobotKinematicModel>(sensors, servoID, Side::RIGHT);
-            case message::input::ServoID::L_HIP_YAW:
-            case message::input::ServoID::L_HIP_ROLL:
-            case message::input::ServoID::L_HIP_PITCH:
-            case message::input::ServoID::L_KNEE:
-            case message::input::ServoID::L_ANKLE_PITCH:
-            case message::input::ServoID::L_ANKLE_ROLL:
-                return calculateLegJointPosition<RobotKinematicModel>(sensors, servoID, Side::LEFT);
+    inline std::map<ServoID, utility::math::matrix::Transform3D> calculatePosition(const KinematicsModel& model, const Sensors& sensors, ServoID servoID) {
+        switch(servoID.value) {
+            case ServoID::HEAD_YAW:
+            case ServoID::HEAD_PITCH:
+                return calculateHeadJointPosition(model,sensors, servoID);
+            case ServoID::R_SHOULDER_PITCH:
+            case ServoID::R_SHOULDER_ROLL:
+            case ServoID::R_ELBOW:
+                return calculateArmJointPosition(model,sensors, servoID, BodySide::RIGHT);
+            case ServoID::L_SHOULDER_PITCH:
+            case ServoID::L_SHOULDER_ROLL:
+            case ServoID::L_ELBOW:
+                return calculateArmJointPosition(model,sensors, servoID, BodySide::LEFT);
+            case ServoID::R_HIP_YAW:
+            case ServoID::R_HIP_ROLL:
+            case ServoID::R_HIP_PITCH:
+            case ServoID::R_KNEE:
+            case ServoID::R_ANKLE_PITCH:
+            case ServoID::R_ANKLE_ROLL:
+                return calculateLegJointPosition(model,sensors, servoID, BodySide::RIGHT);
+            case ServoID::L_HIP_YAW:
+            case ServoID::L_HIP_ROLL:
+            case ServoID::L_HIP_PITCH:
+            case ServoID::L_KNEE:
+            case ServoID::L_ANKLE_PITCH:
+            case ServoID::L_ANKLE_ROLL:
+                return calculateLegJointPosition(model,sensors, servoID, BodySide::LEFT);
             default:
-                return std::map<message::input::ServoID, utility::math::matrix::Transform3D>();
+                return std::map<ServoID, utility::math::matrix::Transform3D>();
         }
     }
 
 
-    template <typename RobotKinematicModel>
-    inline std::map<message::input::ServoID, utility::math::matrix::Transform3D> calculateAllPositions(const message::input::Sensors& sensors) {
-        std::map<message::input::ServoID, utility::math::matrix::Transform3D> result = calculatePosition<RobotKinematicModel>(sensors, message::input::ServoID::L_ANKLE_ROLL);
-        std::map<message::input::ServoID, utility::math::matrix::Transform3D> rightLegPositions = calculatePosition<RobotKinematicModel>(sensors, message::input::ServoID::R_ANKLE_ROLL);
-        std::map<message::input::ServoID, utility::math::matrix::Transform3D> headPositions = calculatePosition<RobotKinematicModel>(sensors, message::input::ServoID::HEAD_PITCH);
-        std::map<message::input::ServoID, utility::math::matrix::Transform3D> leftArm = calculatePosition<RobotKinematicModel>(sensors, message::input::ServoID::L_ELBOW);
-        std::map<message::input::ServoID, utility::math::matrix::Transform3D> rightArm = calculatePosition<RobotKinematicModel>(sensors, message::input::ServoID::R_ELBOW);
-        result.insert(leftArm.begin(), leftArm.end());
-        result.insert(rightArm.begin(), rightArm.end());
+    inline std::map<ServoID, utility::math::matrix::Transform3D> calculateAllPositions(const KinematicsModel& model, const Sensors& sensors) {
+        std::map<ServoID, utility::math::matrix::Transform3D> result            = calculatePosition(model,sensors, ServoID::L_ANKLE_ROLL);
+        std::map<ServoID, utility::math::matrix::Transform3D> rightLegPositions = calculatePosition(model,sensors, ServoID::R_ANKLE_ROLL);
+        std::map<ServoID, utility::math::matrix::Transform3D> headPositions     = calculatePosition(model,sensors, ServoID::HEAD_PITCH);
+        std::map<ServoID, utility::math::matrix::Transform3D> leftArm           = calculatePosition(model,sensors, ServoID::L_ELBOW);
+        std::map<ServoID, utility::math::matrix::Transform3D> rightArm          = calculatePosition(model,sensors, ServoID::R_ELBOW);
+        result.insert(leftArm.begin(),           leftArm.end());
+        result.insert(rightArm.begin(),          rightArm.end());
         result.insert(rightLegPositions.begin(), rightLegPositions.end());
-        result.insert(headPositions.begin(), headPositions.end());
+        result.insert(headPositions.begin(),     headPositions.end());
         return result;
     }
     /*! @brief Adds up the mass vectors stored in the robot model and normalises the resulting position
         @return [x_com, y_com, z_com, total_mass] relative to the torso basis
     */
-    template <typename RobotKinematicModel>
-    inline arma::vec4 calculateCentreOfMass(const std::map<message::input::ServoID, utility::math::matrix::Transform3D>& jointPositions, bool includeTorso){
+    inline arma::vec4 calculateCentreOfMass(const message::motion::KinematicsModel& model, const std::map<uint32_t, Eigen::Matrix<double, 4, 4, Eigen::DontAlign>>& jointPositions, bool includeTorso){
         arma::vec4 totalMassVector = arma::zeros(4);
 
         for(auto& joint : jointPositions){
             arma::vec4 massVector;
             for(size_t i = 0; i < 4; i++){
-                massVector[i] = RobotKinematicModel::MassModel::masses[static_cast<int>(joint.first)][i];
+                massVector[i] = model.massModel.masses[joint.first][i];
             }
             //NUClear::log<NUClear::DEBUG>("calculateCentreOfMass - reading mass ", message::input::stringFromId(joint.first), massVector);
             double jointMass = massVector[3];
@@ -316,13 +332,13 @@ namespace kinematics {
             utility::math::matrix::Transform3D massScaler;
             massScaler.submat(0,0,2,2) *= jointMass;
 
-            totalMassVector +=  joint.second * massScaler * massVector; // = m * local centre of mass in global robot coords
+            totalMassVector +=  convert<double, 4, 4>(joint.second) * massScaler * massVector; // = m * local centre of mass in global robot coords
         }
 
         if(includeTorso){
             arma::vec4 massVector;
              for(size_t i = 0; i < 4; i++){
-                massVector[i] = RobotKinematicModel::MassModel::masses[20][i];
+                massVector[i] = model.massModel.masses[20][i];
             }
             //NUClear::log<NUClear::DEBUG>("calculateCentreOfMass - reading mass Torso", massVector);
             double jointMass = massVector[3];
@@ -341,11 +357,11 @@ namespace kinematics {
         }
     }
 
-    inline utility::math::geometry::Line calculateHorizon(const math::matrix::Rotation3D groundToCamRotation, double cameraDistancePixels) {
+    inline utility::math::geometry::Line calculateHorizon(const math::matrix::Rotation3D Rcw, double cameraDistancePixels) {
 
         // Normal of the line is the y and z of the z axis, however in the image the y axis is negated
-        arma::vec2 normal = -arma::normalise(groundToCamRotation.submat(1,2,2,2));
-        double distance = cameraDistancePixels * std::tan(utility::math::angle::acos_clamped(groundToCamRotation(0,2)) - M_PI_2);
+        arma::vec2 normal = -arma::normalise(Rcw.submat(1,2,2,2));
+        double distance = cameraDistancePixels * std::tan(utility::math::angle::acos_clamped(Rcw(0,2)) - M_PI_2);
 
         return utility::math::geometry::Line(normal, distance);
     }
@@ -389,28 +405,27 @@ namespace kinematics {
         return robotToImu;
     }
 
-    template <typename RobotKinematicModel>
-    inline arma::vec4 fsrCentreInBodyCoords(const message::input::Sensors& sensors, const arma::vec2& foot, bool left) {
+    inline arma::vec4 fsrCentreInBodyCoords(const KinematicsModel& model, const Sensors& sensors, const arma::vec2& foot, bool left) {
         //sensors.orientationBodyToGround
 
         int negativeIfRight = left ? 1 : -1;
 
-        arma::vec2 position = foot % arma::vec2({RobotKinematicModel::Leg::FOOT_LENGTH / 2, RobotKinematicModel::Leg::FOOT_WIDTH / 2});
-        arma::vec4 centerFoot = arma::vec4({position[0], position[1] + negativeIfRight * RobotKinematicModel::Leg::FOOT_CENTRE_TO_ANKLE_CENTRE, 0, 1});
+        arma::vec2 position = foot % arma::vec2({model.leg.FOOT_LENGTH / 2, model.leg.FOOT_WIDTH / 2});
+        arma::vec4 centerFoot = arma::vec4({position[0], position[1] + negativeIfRight * model.leg.FOOT_CENTRE_TO_ANKLE_CENTRE, 0, 1});
 
-        return sensors.forwardKinematics.find(left ? message::input::ServoID::L_ANKLE_ROLL : message::input::ServoID::R_ANKLE_ROLL)->second * centerFoot;
+        return((left) ? convert<double, 4, 4>(sensors.forwardKinematics.at(ServoID::L_ANKLE_ROLL)) * centerFoot
+                      : convert<double, 4, 4>(sensors.forwardKinematics.at(ServoID::R_ANKLE_ROLL)) * centerFoot);
     }
 
-    template <typename RobotKinematicModel>
-    inline arma::vec3 calculateCentreOfPressure(const message::input::Sensors& sensors) {
+    inline arma::vec3 calculateCentreOfPressure(const KinematicsModel& model, const Sensors& sensors) {
         arma::vec4 CoP = {0,0,0,1};
         float number_of_feet_down = 0;
         if (sensors.leftFootDown) {
-            CoP += fsrCentreInBodyCoords<RobotKinematicModel>(sensors, sensors.leftFSRCenter, true);
+            CoP += fsrCentreInBodyCoords(model, sensors, convert<double, 2>(sensors.fsr[LimbID::LEFT_LEG].centre), true);
             number_of_feet_down += 1.0f;
         }
         if(sensors.rightFootDown){
-            CoP += fsrCentreInBodyCoords<RobotKinematicModel>(sensors, sensors.rightFSRCenter, false);
+            CoP += fsrCentreInBodyCoords(model, sensors, convert<double, 2>(sensors.fsr[LimbID::RIGHT_LEG].centre), false);
             number_of_feet_down  += 1.0f;
         }
         if(number_of_feet_down == 2){
@@ -418,10 +433,101 @@ namespace kinematics {
         }
         //reset homogeneous coordinate
         CoP(3) = 1;
-        arma::vec4 CoP_body = sensors.kinematicsBodyToGround * CoP;
+        arma::vec4 CoP_body = convert<double, 4, 4>(sensors.kinematicsBodyToGround) * CoP;
         return CoP_body.rows(0,2);
 
     }
+
+    /*! @return matrix J such that \overdot{X} = J * \overdot{theta}
+    */
+    inline arma::mat33 calculateArmJacobian(const KinematicsModel& model, const arma::vec3& a, bool isLeft){
+        int negativeIfRight = isLeft ? 1 : -1;
+
+        const arma::vec3 t1 =
+        {
+            model.arm.SHOULDER_LENGTH,
+            negativeIfRight * model.arm.SHOULDER_WIDTH,
+            -model.arm.SHOULDER_HEIGHT
+        };
+        const arma::vec3 t2 =
+        {
+            model.arm.UPPER_ARM_X_OFFSET,
+            negativeIfRight * model.arm.UPPER_ARM_Y_OFFSET,
+            -model.arm.UPPER_ARM_LENGTH
+        };
+        const arma::vec3 t3 =
+        {
+            model.arm.LOWER_ARM_LENGTH,
+            negativeIfRight * model.arm.LOWER_ARM_Y_OFFSET,
+            -model.arm.LOWER_ARM_Z_OFFSET
+        };
+
+        arma::mat33 jRY1 = utility::math::matrix::Rotation3D::createRotationYJacobian(a[0]-M_PI_2);
+        arma::mat33 jRX2 = utility::math::matrix::Rotation3D::createRotationXJacobian(a[1]);
+        arma::mat33 jRY3 = utility::math::matrix::Rotation3D::createRotationXJacobian(a[2]);
+
+        arma::mat33 RY1 = utility::math::matrix::Rotation3D::createRotationY(a[0]-M_PI_2);
+        arma::mat33 RX2 = utility::math::matrix::Rotation3D::createRotationX(a[1]);
+        arma::mat33 RY3 = utility::math::matrix::Rotation3D::createRotationY(a[2]);
+
+        arma::mat33 RY_PI_2 = utility::math::matrix::Rotation3D::createRotationY(M_PI_2);
+
+        arma::vec3 col1 = jRY1 * RX2 * RY_PI_2 * RY3 * t3
+                        + jRY1 * RX2 * t2
+                        + jRY1 * t1;
+
+        arma::vec3 col2 = RY1 * jRX2 * RY_PI_2 * RY3 * t3
+                        + RY1 * jRX2 * t2;
+
+        arma::vec3 col3 = RY1 * RX2 * RY_PI_2 * jRY3 * t3;
+
+        return arma::join_rows(col1,arma::join_rows(col2,col3));
+    }
+    /*! @return matrix J such that \overdot{X} = J * \overdot{theta}
+    */
+    inline arma::vec3 calculateArmPosition(const KinematicsModel& model, const arma::vec3& a, bool isLeft){
+        int negativeIfRight = isLeft ? 1 : -1;
+
+        const arma::vec3 t0 =
+        {
+            model.arm.SHOULDER_X_OFFSET,
+            negativeIfRight * model.arm.DISTANCE_BETWEEN_SHOULDERS / 2.0,
+            model.arm.SHOULDER_Z_OFFSET
+        };
+
+        const arma::vec3 t1 =
+        {
+            model.arm.SHOULDER_LENGTH,
+            negativeIfRight * model.arm.SHOULDER_WIDTH,
+            -model.arm.SHOULDER_HEIGHT
+        };
+        const arma::vec3 t2 =
+        {
+            model.arm.UPPER_ARM_X_OFFSET,
+            negativeIfRight * model.arm.UPPER_ARM_Y_OFFSET,
+            -model.arm.UPPER_ARM_LENGTH
+        };
+        const arma::vec3 t3 =
+        {
+            model.arm.LOWER_ARM_LENGTH,
+            negativeIfRight * model.arm.LOWER_ARM_Y_OFFSET,
+            -model.arm.LOWER_ARM_Z_OFFSET
+        };
+
+        arma::mat33 RY_PI_2 = utility::math::matrix::Rotation3D::createRotationY(M_PI_2);
+
+        arma::mat33 RY1 = utility::math::matrix::Rotation3D::createRotationY(a[0]-M_PI_2);
+        arma::mat33 RX2 = utility::math::matrix::Rotation3D::createRotationX(a[1]);
+        arma::mat33 RY3 = utility::math::matrix::Rotation3D::createRotationY(a[2]);
+
+        arma::vec3 pos =  RY1 * RX2 * RY_PI_2 * RY3 * t3
+                        + RY1 * RX2 * t2
+                        + RY1 * t1
+                        + t0;
+
+        return pos;
+    }
+
 
 }  // kinematics
 }  // motion

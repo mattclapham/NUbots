@@ -20,14 +20,19 @@
 #ifndef MODULES_MOTION_IKKICKCONTROLLERS_H
 #define MODULES_MOTION_IKKICKCONTROLLERS_H
 
-#include "utility/math/matrix/Transform3D.h"
-#include "utility/support/yaml_armadillo.h"
-#include "message/input/Sensors.h"
-#include "message/input/LimbID.h"
-#include "message/support/Configuration.h"
-#include "message/input/ServoID.h"
-#include <armadillo>
 #include <nuclear>
+#include <armadillo>
+
+#include "extension/Configuration.h"
+
+#include "message/input/Sensors.h"
+#include "message/motion/KinematicsModels.h"
+
+#include "utility/input/LimbID.h"
+#include "utility/input/ServoID.h"
+#include "utility/math/matrix/Transform3D.h"
+#include "utility/support/eigen_armadillo.h"
+#include "utility/support/yaml_armadillo.h"
 
 namespace module{
 namespace motion{
@@ -49,9 +54,9 @@ namespace motion{
 		public:
 			utility::math::matrix::Transform3D pose;
 			float duration;
-			SixDOFFrame():pose(){}
+			SixDOFFrame() : pose(), duration(0.0f) {}
 			SixDOFFrame(utility::math::matrix::Transform3D pose_, float duration_) : pose(pose_), duration(duration_){}
-			SixDOFFrame(const YAML::Node& config){
+			SixDOFFrame(const YAML::Node& config) : SixDOFFrame() {
 				duration = config["duration"].as<float>();
 				arma::vec3 pos = config["pos"].as<arma::vec>();
 				arma::vec3 orientation = (180.0 / M_PI ) * config["orientation"].as<arma::vec>();
@@ -69,10 +74,8 @@ namespace motion{
 		public:
 			std::vector<SixDOFFrame> frames;
 			int i = 0;
-			Animator(){frames.push_back(SixDOFFrame{utility::math::matrix::Transform3D(),0});}
-			Animator(std::vector<SixDOFFrame> frames_){
-				frames = frames_;
-			}
+			Animator() : frames() {frames.push_back(SixDOFFrame{utility::math::matrix::Transform3D(),0});}
+			Animator(const std::vector<SixDOFFrame>& frames_) : frames(frames_) { }
 			int clampPrev(int k) const {return std::max(std::min(k,int(frames.size()-2)),0);}
 			int clampCurrent(int k) const {return std::max(std::min(k,int(frames.size()-1)),0);}
 			void next(){i = clampPrev(i+1);}
@@ -83,15 +86,13 @@ namespace motion{
 			bool stable(){return i >= int(frames.size()-2);}
 		};
 
-
-
 		class SixDOFFootController{
 			protected:
 				MotionStage stage = MotionStage::READY;
 				bool stable = false;
 
 				//State variables
-				message::input::LimbID supportFoot;
+				utility::input::LimbID supportFoot;
 
 				float forward_duration;
 				float return_duration;
@@ -103,17 +104,26 @@ namespace motion{
 
 				NUClear::clock::time_point motionStartTime;
 			public:
+				SixDOFFootController()
+					: supportFoot()
+					, forward_duration(0.0f)
+					, return_duration(0.0f)
+					, anim()
+					, ballPosition(arma::fill::zeros)
+					, goalPosition(arma::fill::zeros)
+					, motionStartTime() {}
+				virtual ~SixDOFFootController() = default;
 
-				virtual void computeStartMotion(const message::input::Sensors& sensors) = 0;
+				virtual void computeStartMotion(const message::motion::KinematicsModel& kinematicsModel, const message::input::Sensors& sensors) = 0;
 				virtual void computeStopMotion(const message::input::Sensors& sensors) = 0;
 
-				void start(const message::input::Sensors& sensors){
+				void start(const message::motion::KinematicsModel& kinematicsModel, const message::input::Sensors& sensors){
 					if(stage == MotionStage::READY){
         				anim.reset();
 						stage = MotionStage::RUNNING;
 						stable = false;
         				motionStartTime = sensors.timestamp;
-						computeStartMotion(sensors);
+						computeStartMotion(kinematicsModel, sensors);
 					}
 				}
 
@@ -133,7 +143,7 @@ namespace motion{
 				void reset()		{stage = MotionStage::READY; stable = false; anim.reset();}
 
 
-				void setKickParameters(message::input::LimbID supportFoot_, arma::vec3 ballPosition_, arma::vec3 goalPosition_) {
+				void setKickParameters(utility::input::LimbID supportFoot_, arma::vec3 ballPosition_, arma::vec3 goalPosition_) {
 					supportFoot = supportFoot_;
 					ballPosition = ballPosition_;
 					goalPosition = goalPosition_;
@@ -141,12 +151,10 @@ namespace motion{
 				}
 
 				utility::math::matrix::Transform3D getTorsoPose(const message::input::Sensors& sensors) {
-			        // Get our foot positions
-			        auto leftFoot = sensors.forwardKinematics.find(message::input::ServoID::L_ANKLE_ROLL)->second;
-			        auto rightFoot = sensors.forwardKinematics.find(message::input::ServoID::R_ANKLE_ROLL)->second;
-
 			        // Find position vector from support foot to torso in support foot coordinates.
-		        	return supportFoot == message::input::LimbID::LEFT_LEG ? leftFoot.i() : rightFoot.i();
+			        return((supportFoot == utility::input::LimbID::LEFT_LEG) 
+			                   ? convert<double, 4, 4>(sensors.forwardKinematics.at(utility::input::ServoID::L_ANKLE_ROLL))
+			                   : convert<double, 4, 4>(sensors.forwardKinematics.at(utility::input::ServoID::R_ANKLE_ROLL)));
 		        }
 
 				utility::math::matrix::Transform3D getFootPose(const message::input::Sensors& sensors) {
@@ -160,7 +168,7 @@ namespace motion{
 						result = utility::math::matrix::Transform3D::interpolate(anim.previousFrame().pose,anim.currentFrame().pose,alpha);
 
 						bool servosAtGoal = true;
-						for (auto& servo : sensors.servos){
+						for (auto& servo : sensors.servo){
 							if(    int(servo.id) >= 6    //R_HIP_YAW
 								&& int(servo.id) <= 17){ //L_ANKLE_ROLL
 								servosAtGoal = servosAtGoal && std::fabs(servo.goalPosition - servo.presentPosition) < servo_angle_threshold;
@@ -181,7 +189,7 @@ namespace motion{
 		        	return result;
 				}
 
-				virtual void configure(const message::support::Configuration& config) = 0;
+				virtual void configure(const ::extension::Configuration& config) = 0;
 		};
 
 		class KickBalancer : public SixDOFFootController{
@@ -193,8 +201,8 @@ namespace motion{
 			float adjustment = 0.011;
 
 		public:
-			virtual void configure(const message::support::Configuration& config);
-			virtual void computeStartMotion(const message::input::Sensors& sensors);
+			virtual void configure(const ::extension::Configuration& config);
+			virtual void computeStartMotion(const message::motion::KinematicsModel& kinematicsModel, const message::input::Sensors& sensors);
 			virtual void computeStopMotion(const message::input::Sensors& sensors);
 
 		};
@@ -214,8 +222,20 @@ namespace motion{
 			float return_before_place_duration;
 			float lift_before_windup_duration;
 		public:
-			virtual void configure(const message::support::Configuration& config);
-			virtual void computeStartMotion(const message::input::Sensors& sensors);
+			Kicker()
+				: lift_foot()
+				, kick()
+				, place_foot()
+				, kick_velocity(0.0f)
+				, follow_through(0.0f)
+				, kick_height(0.0f)
+				, wind_up(0.0f)
+				, foot_separation_margin(0.0f)
+				, return_before_place_duration(0.0f)
+				, lift_before_windup_duration(0.0f) {}
+
+			virtual void configure(const ::extension::Configuration& config);
+			virtual void computeStartMotion(const message::motion::KinematicsModel& kinematicsModel, const message::input::Sensors& sensors);
 			virtual void computeStopMotion(const message::input::Sensors& sensors);
 		};
 

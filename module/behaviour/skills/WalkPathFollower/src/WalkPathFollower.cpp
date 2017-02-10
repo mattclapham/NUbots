@@ -21,48 +21,50 @@
 
 #include <limits>
 
-#include "message/support/Configuration.h"
-#include "message/localisation/FieldObject.h"
+#include "extension/Configuration.h"
+
+#include "message/behaviour/KickPlan.h"
 #include "message/behaviour/MotionCommand.h"
 #include "message/behaviour/WalkPath.h"
-#include "message/behaviour/Action.h"
-#include "message/motion/WalkCommand.h"
+#include "message/localisation/FieldObject.h"
 #include "message/motion/KickCommand.h"
-#include "message/behaviour/KickPlan.h"
-#include "message/input/LimbID.h"
-#include "message/input/ServoID.h"
-#include "utility/nubugger/NUhelpers.h"
+#include "message/motion/WalkCommand.h"
+
+#include "utility/behaviour/Action.h"
+#include "utility/input/LimbID.h"
+#include "utility/input/ServoID.h"
 #include "utility/math/geometry/RotatedRectangle.h"
 #include "utility/math/matrix/Transform2D.h"
 #include "utility/math/angle.h"
+#include "utility/nubugger/NUhelpers.h"
 
 namespace module {
 namespace behaviour {
 namespace skills {
 
-    using message::support::Configuration;
+    using extension::Configuration;
+
     using Self = message::localisation::Self;
     using Ball = message::localisation::Ball;
 
     using message::behaviour::MotionCommand;
     using message::behaviour::WalkPath;
-    using message::behaviour::RegisterAction;
-    using message::behaviour::ActionPriorites;
 
     using message::motion::KickFinished;
     using message::motion::WalkCommand;
-    using message::motion::WalkStartCommand;
-    using message::motion::WalkStopCommand;
+    using message::motion::StopCommand;
     using message::motion::EnableWalkEngineCommand;
     using message::motion::DisableWalkEngineCommand;
 
-    using message::input::LimbID;
-    using message::input::ServoID;
+    using utility::behaviour::RegisterAction;
+    using utility::behaviour::ActionPriorites;
+
+    using LimbID  = utility::input::LimbID;
+    using ServoID = utility::input::ServoID;
 
     using utility::math::geometry::RotatedRectangle;
     using utility::math::matrix::Transform2D;
     using utility::math::angle::vectorToBearing;
-
 
     WalkPathFollower::WalkPathFollower(std::unique_ptr<NUClear::Environment> environment)
     : Reactor(std::move(environment))
@@ -127,7 +129,7 @@ namespace skills {
 
         // // TODO: Review the interaction of the kick with the WalkPathFollower.
         // on<Trigger<KickFinished>>().then([this] (const KickFinished&) {
-        //     emit(std::move(std::make_unique<WalkStartCommand>(subsumptionId)));
+        //     Re-issue walk command with target velocity...
         // });
 
         updatePathReaction = on<Trigger<WalkPath>,
@@ -224,9 +226,6 @@ namespace skills {
 
             emit(std::move(walkCommand));
 
-
-            emit(std::move(std::make_unique<WalkStartCommand>(subsumptionId)));
-
             emit(utility::nubugger::drawRectangle("WPF_Closest", RotatedRectangle(targetState, {0.12, 0.17}), {0, 0, 0}));
 
             emit(utility::nubugger::drawArrow("WPF_Closest_Arrow", targetState, {1,0,1}, 1));
@@ -239,7 +238,6 @@ namespace skills {
             // }
 
             // // Emit a walk command to move towards the target state:
-            // emit(std::move(std::make_unique<WalkStartCommand>(subsumptionId)));
             // emit(std::move(walkToNextNode(currentState)));
         }).disable();
     }
@@ -325,16 +323,35 @@ namespace skills {
     }
 
     WalkCommand WalkPathFollower::walkBetweenNear(const Transform2D& currentState, const Transform2D& targetState) {
-        // Angle between current heading and target heading
-        double walkAboutAngle = utility::math::angle::signedDifference(targetState.angle(), currentState.angle());
-        int angleSign = (walkAboutAngle < 0) ? -1 : 1;
-        // TODO: Consider using a smaller, non-constant speed.
+        Transform2D localTarget = currentState.worldToLocal(targetState); // creating local target first
+        int angleSign = (localTarget.angle() < 0) ? -1 : 1; // angle must be normalised.
+
         double rotationSpeed = angleSign * cfg_.walk_about_rotational_speed;
+        arma::vec2 translationVec = arma::normalise(localTarget.xy());
+
+        double translationAngle = utility::math::angle::vectorToBearing(translationVec);
+
+        double translationSpeed = (1 - std::abs(translationAngle)*(0.25/M_PI)); 
+        
+        arma::vec2 translationVelocity = translationVec * translationSpeed;
+
+        Transform2D velocity = {translationVelocity, rotationSpeed};
+
+        WalkCommand command(subsumptionId, velocity);
+
+        return command;
+
+
+        // Angle between current heading and target heading
+        /// double walkAboutAngle = utility::math::angle::signedDifference(targetState.angle(), currentState.angle());
+        /// int angleSign = (walkAboutAngle < 0) ? -1 : 1;
+        // TODO: Consider using a smaller, non-constant speed.
+        /// double rotationSpeed = angleSign * cfg_.walk_about_rotational_speed;
 
         // if (std::abs(walkAboutAngle) < M_PI*0.125) {
-            Transform2D velocity = {cfg_.walk_to_near_speed * arma::normalise(targetState.xy() - currentState.xy()), rotationSpeed}; //TODO make 20 seconds the variable update_frequency
-            WalkCommand command(subsumptionId, velocity);
-            return command;
+        ///     Transform2D velocity = {cfg_.walk_to_near_speed * arma::normalise(targetState.xy() - currentState.xy()), rotationSpeed}; //TODO make 20 seconds the variable update_frequency
+        ///     WalkCommand command(subsumptionId, velocity);
+        ///     return command;
         // } else {
         //     arma::vec2 strafe = { std::max(cfg_.walk_about_x_strafe, 0.0), -angleSign * cfg_.walk_about_y_strafe };
 

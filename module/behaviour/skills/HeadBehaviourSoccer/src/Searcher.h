@@ -52,10 +52,14 @@ namespace module {
 				bool forward = true;
 
             public:
-	           	Searcher():current(0), new_goal(false), switch_period(1000.0f){
-					lastSwitchTime = NUClear::clock::now();
+	           	Searcher()
+                    : points(std::vector<T>(1, arma::zeros<arma::vec>(2)))
+                    , current(0)
+                    , refPoint()
+                    , new_goal(false)
+                    , lastSwitchTime(NUClear::clock::now())
+                    , switch_period(1000.0f) {
 					//Init points to something sane
-					points = std::vector<T>(1,arma::vec({0,0}));
 				}
 
 				~Searcher(){}
@@ -66,7 +70,7 @@ namespace module {
         			for (auto& p : relativePoints){
         				p = p - refPoint;
         			}
-	        		auto iter = std::min_element(relativePoints.begin(),relativePoints.end(),comparator);
+	        		//auto iter = std::min_element(relativePoints.begin(),relativePoints.end(),comparator);
 	        		// current = std::distance(relativePoints.begin(), iter);
 					current = current % int(points.size());
 
@@ -81,6 +85,10 @@ namespace module {
         			// 	newPoints[i] = points[relativePoints[i].first];
         			// }
         			// points = newPoints;
+	        	}
+
+	        	int size(){
+	        		return points.size();
 	        	}
 
         		static bool pair_comparator(const std::pair<int, T>& a, const std::pair<int, T>& b){
@@ -104,7 +112,7 @@ namespace module {
 							int new_index = current + 1;
 							if(oscillate){
 								//Moves search forward and backward along path
-								if (new_index >= points.size()){
+								if (new_index >= int(points.size())){
 									forward = false;
 									current = std::max(current - 1, 0);
 								} else {

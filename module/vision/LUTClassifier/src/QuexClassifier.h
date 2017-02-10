@@ -22,11 +22,17 @@
 
 #include <vector>
 
+#include <armadillo>
+
 #define QUEX_SETTING_BUFFER_MIN_FALLBACK_N 0
 #define QUEX_OPTION_ASSERTS_DISABLED
 #define QUEX_OPTION_COMPUTED_GOTOS
 #define QUEX_OPTION_TERMINATION_ZERO_DISABLED
+
+#pragma GCC diagnostic ignored "-Weffc++"
 #include "Lexer.hpp"
+#pragma GCC diagnostic pop
+
 #include "message/input/Image.h"
 #include "message/vision/LookUpTable.h"
 #include "message/vision/ClassifiedImage.h"
@@ -36,14 +42,14 @@ namespace module {
         class QuexClassifier {
         private:
             static constexpr size_t BUFFER_SIZE = 2000;
-            uint8_t buffer[BUFFER_SIZE]; // This should be big enough for now
+            uint8_t buffer[BUFFER_SIZE] = { 0 }; // This should be big enough for now
             quex::Lexer lexer;
             size_t& tknNumber;
 
         public:
             QuexClassifier();
 
-            std::vector<message::vision::ClassifiedImage<message::vision::ObjectClass>::Segment> classify(const message::input::Image& image, const message::vision::LookUpTable& lut, const arma::ivec2& start, const arma::ivec2& end, const uint& stratification = 1);
+            std::vector<message::vision::ClassifiedImage::Segment> classify(const message::input::Image& image, const message::vision::LookUpTable& lut, const arma::ivec2& start, const arma::ivec2& end, const uint& stratification = 1);
         };
     }
 }

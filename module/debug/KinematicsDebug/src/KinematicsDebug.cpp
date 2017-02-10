@@ -21,52 +21,55 @@
 
 #include <cstdlib>
 
-#include "message/behaviour/Action.h"
-#include "message/support/Configuration.h"
-#include "message/input/ServoID.h"
+#include "extension/Configuration.h"
+
 #include "message/input/Sensors.h"
 #include "message/motion/ServoTarget.h"
+#include "message/motion/KinematicsModels.h"
 
+#include "utility/behaviour/Action.h"
+#include "utility/input/ServoID.h"
 #include "utility/motion/InverseKinematics.h"
 #include "utility/motion/ForwardKinematics.h"
 #include "utility/math/matrix/Transform3D.h"
-#include "utility/motion/RobotModels.h"
 
 namespace module {
     namespace debug {
-            using message::input::LimbID;
-            using message::support::Configuration;
-            using message::motion::ServoTarget;
-            using message::input::ServoID;
+            using extension::Configuration;
+
             using message::input::Sensors;
+            using message::motion::ServoTarget;
+            using message::motion::KinematicsModel;
+            using message::motion::BodySide;
+
+            using LimbID  = utility::input::LimbID;
+            using ServoID = utility::input::ServoID;
             using utility::math::matrix::Transform3D;
             using utility::motion::kinematics::calculateLegJoints;
             using utility::motion::kinematics::calculatePosition;
-            using utility::motion::kinematics::Side;
-            using utility::motion::kinematics::DarwinModel;
-            using utility::motion::kinematics::calculateHeadJoints;
+            using utility::motion::kinematics::calculateCameraLookJoints;
 
             KinematicsDebug::KinematicsDebug(std::unique_ptr<NUClear::Environment> environment) : Reactor(std::move(environment)) {
 
-                on<Configuration>("InverseKinematicsRequest.yaml").then([this](const Configuration& request) {
-                    return;
+                on<Configuration, With<KinematicsModel>>("InverseKinematicsRequest.yaml").then([this](const Configuration& request, const KinematicsModel& kinematicsModel) {
+                    return;//WTF is this?
                     Transform3D target;
-                    target = target.rotateY(request.config["yAngle"].as<double>());
                     target = target.rotateX(request.config["xAngle"].as<double>());
+                    target = target.rotateY(request.config["yAngle"].as<double>());
                     target = target.rotateZ(request.config["zAngle"].as<double>());
 
                     // translation
-                    target(0,3) = request.config["x"].as<double>(); // down/up
-                    target(1,3) = request.config["y"].as<double>(); // left/right
-                    target(2,3) = request.config["z"].as<double>(); // front/back
+                    target(0, 3) = request.config["x"].as<double>(); // down/up
+                    target(1, 3) = request.config["y"].as<double>(); // left/right
+                    target(2, 3) = request.config["z"].as<double>(); // front/back
 
-                    bool left = request.config["left"].as<bool>();
+                    bool left  = request.config["left"].as<bool>();
                     bool right = request.config["right"].as<bool>();
 
                     auto waypoints = std::make_unique<std::vector<ServoTarget> >();
 
                     if (left) {
-                        std::vector<std::pair<ServoID, float> > legJoints = calculateLegJoints<DarwinModel>(target, LimbID::LEFT_LEG);
+                        std::vector<std::pair<ServoID, float> > legJoints = calculateLegJoints(kinematicsModel,target, LimbID::LEFT_LEG);
                         for (auto& legJoint : legJoints) {
                             ServoTarget waypoint;
 
@@ -85,7 +88,7 @@ namespace module {
                     }
 
                     if (right) {
-                        std::vector<std::pair<ServoID, float> > legJoints = calculateLegJoints<DarwinModel>(target, LimbID::RIGHT_LEG);
+                        std::vector<std::pair<ServoID, float> > legJoints = calculateLegJoints(kinematicsModel,target, LimbID::RIGHT_LEG);
                         for (auto& legJoint : legJoints) {
                             ServoTarget waypoint;
 
@@ -106,7 +109,7 @@ namespace module {
                     emit(std::move(waypoints));
                 });
 
-                on<Configuration>("InverseKinematicsRequest.yaml").then([this](const Configuration& request) {
+                on<Configuration, With<KinematicsModel>>("LegKinematicsNULLTest.yaml").then([this](const Configuration& request, const KinematicsModel& kinematicsModel) {
                     int iterations = 1;
                     int numberOfFails = 0;
                     float ERROR_THRESHOLD = request.config["ERROR_THRESHOLD"].as<float>();
@@ -140,34 +143,34 @@ namespace module {
                         bool right = request.config["right"].as<bool>();
 
                         std::unique_ptr<Sensors> sensors = std::make_unique<Sensors>();
-                        sensors->servos = std::vector<Sensors::Servo>(20);
+                        sensors->servo = std::vector<Sensors::Servo>(20);
 
                         if (left) {
-                            std::vector<std::pair<ServoID, float> > legJoints = calculateLegJoints<DarwinModel>(ikRequest, LimbID::LEFT_LEG);
+                            std::vector<std::pair<ServoID, float> > legJoints = calculateLegJoints(kinematicsModel,ikRequest, LimbID::LEFT_LEG);
                             for (auto& legJoint : legJoints) {
                                 ServoID servoID;
                                 float position;
 
                                 std::tie(servoID, position) = legJoint;
 
-                                sensors->servos[static_cast<int>(servoID)].presentPosition = position;
+                                sensors->servo[servoID].presentPosition = position;
                             }
                         }
 
                         if (right) {
-                            std::vector<std::pair<ServoID, float> > legJoints = calculateLegJoints<DarwinModel>(ikRequest, LimbID::RIGHT_LEG);
+                            std::vector<std::pair<ServoID, float> > legJoints = calculateLegJoints(kinematicsModel,ikRequest, LimbID::RIGHT_LEG);
                             for (auto& legJoint : legJoints) {
                                 ServoID servoID;
                                 float position;
 
                                 std::tie(servoID, position) = legJoint;
 
-                                sensors->servos[static_cast<int>(servoID)].presentPosition = position;
+                                sensors->servo[servoID].presentPosition = position;
                             }
                         }
                         std::cout<< "KinematicsNULLTest -calculating forward kinematics." <<std::endl;
-                        Transform3D lFootPosition = calculatePosition<DarwinModel>(*sensors, ServoID::L_ANKLE_ROLL)[ServoID::L_ANKLE_ROLL];
-                        Transform3D rFootPosition = calculatePosition<DarwinModel>(*sensors, ServoID::R_ANKLE_ROLL)[ServoID::R_ANKLE_ROLL];
+                        Transform3D lFootPosition = calculatePosition(kinematicsModel,*sensors, ServoID::L_ANKLE_ROLL)[ServoID::L_ANKLE_ROLL];
+                        Transform3D rFootPosition = calculatePosition(kinematicsModel,*sensors, ServoID::R_ANKLE_ROLL)[ServoID::R_ANKLE_ROLL];
                         NUClear::log<NUClear::DEBUG>("Forward Kinematics predicts left foot: \n",lFootPosition);
                         NUClear::log<NUClear::DEBUG>("Forward Kinematics predicts right foot: \n",rFootPosition);
                         std::cout << "Compared to request: \n" << ikRequest << std::endl;
@@ -195,14 +198,14 @@ namespace module {
                         if(lmax_error >= ERROR_THRESHOLD or rmax_error >= ERROR_THRESHOLD){
                             numberOfFails++;
                         }
-                        sensors->orientation = arma::eye(3,3);
+                        sensors->world.setIdentity();
                         emit(std::move(sensors));
                     }
                     std::cout<< "IK Leg NULL Test : "<< numberOfFails << " Total Failures " <<std::endl;
 
                 });
 
-                on<Configuration>("HeadKinematicsNULLTest.yaml").then([this](const Configuration& request) {
+                on<Configuration, With<KinematicsModel>>("HeadKinematicsNULLTest.yaml").then([this](const Configuration& request, const KinematicsModel& kinematicsModel) {
                     int iterations = 1;
                     int numberOfFails = 0;
                     float ERROR_THRESHOLD = request.config["ERROR_THRESHOLD"].as<float>();
@@ -223,9 +226,9 @@ namespace module {
                             cameraVec *= 1/arma::norm(cameraVec,2);
                         }
 
-                        std::vector< std::pair<message::input::ServoID, float> > angles = calculateHeadJoints<DarwinModel>(cameraVec);
+                        std::vector<std::pair<ServoID, float>> angles = calculateCameraLookJoints(kinematicsModel,cameraVec);
                         Sensors sensors;
-                        sensors.servos = std::vector<Sensors::Servo>(20);
+                        sensors.servo = std::vector<Sensors::Servo>(20);
 
                         for (auto& angle : angles) {
                                 ServoID servoID;
@@ -233,10 +236,10 @@ namespace module {
 
                                 std::tie(servoID, position) = angle;
 
-                                sensors.servos[static_cast<int>(servoID)].presentPosition = position;
+                                sensors.servo[servoID].presentPosition = position;
                         }
 
-                        Transform3D fKin = calculatePosition<DarwinModel>(sensors, ServoID::HEAD_PITCH)[ServoID::HEAD_PITCH];
+                        Transform3D fKin = calculatePosition(kinematicsModel, sensors, ServoID::HEAD_PITCH)[ServoID::HEAD_PITCH];
 
                         float max_error = 0;
                         for(int i = 0; i < 3 ; i++){

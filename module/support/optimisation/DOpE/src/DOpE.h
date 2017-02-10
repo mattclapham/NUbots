@@ -24,7 +24,7 @@
 
 #include "message/support/optimisation/DOpE.h"
 #include "utility/math/optimisation/Optimiser.h"
-#include "message/support/optimisation/Episode.pb.h"
+#include "message/support/optimisation/Episode.h"
 
 namespace module {
 namespace support {
@@ -33,6 +33,13 @@ namespace optimisation {
     class DOpE : public NUClear::Reactor {
     private:
         struct Optimisation {
+            Optimisation() : group(""), network(false), batchSize(0), optimiser(), estimateEpisodes(), episodes() {}
+            Optimisation(const std::string& group, bool network, uint size,
+                        std::unique_ptr<utility::math::optimisation::Optimiser>&& opt,
+                        const std::vector<message::support::optimisation::Episode>& estimateEpisodes,
+                        const std::vector<message::support::optimisation::Episode>& episodes)
+                : group(group), network(network), batchSize(size), optimiser(std::move(opt)),
+                  estimateEpisodes(estimateEpisodes), episodes(episodes) {}
             std::string group;
             bool network;
             uint batchSize;

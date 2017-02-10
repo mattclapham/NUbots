@@ -22,12 +22,15 @@
 
 #include <nuclear>
 
-#include "message/input/Sensors.h"
-
 #include "utility/math/matrix/Transform3D.h"
+#include "utility/math/matrix/Rotation3D.h"
 #include "utility/math/filter/UKF.h"
-#include "IMUModel.h"
-#include "utility/motion/RobotModels.h"
+
+#include "MotionModel.h"
+#include "DarwinVirtualLoadSensor.h"
+#include "utility/math/matrix/Rotation3D.h"
+#include "message/motion/KinematicsModels.h"
+
 
 namespace module {
     namespace platform {
@@ -43,35 +46,90 @@ namespace module {
             public:
                 explicit SensorFilter(std::unique_ptr<NUClear::Environment> environment);
 
-                utility::math::filter::UKF<IMUModel> orientationFilter;
+                utility::math::filter::UKF<MotionModel> motionFilter;
 
-                double DEFAULT_NOISE_GAIN;
-                double HIGH_NOISE_THRESHOLD;
-                double HIGH_NOISE_GAIN;
-                double LOW_NOISE_THRESHOLD;
-                int DEBOUNCE_THRESHOLD;
+                struct Config {
+                    Config() : battery(), motionFilter(), buttons() {}
 
-                double SUPPORT_FOOT_FSR_THRESHOLD;
-                int REQUIRED_NUMBER_OF_FSRS;
+                    struct Battery {
+                        Battery() : chargedVoltage(0.0f), flatVoltage(0.0f) {}
+                        float chargedVoltage;
+                        float flatVoltage;
+                    } battery;
 
-                arma::mat33 MEASUREMENT_NOISE_ACCELEROMETER;
-                arma::mat33 MEASUREMENT_NOISE_GYROSCOPE;
-                arma::mat33 MEASUREMENT_NOISE_FOOT_UP;
-                double FOOT_UP_SAFE_ZONE;
+                    struct MotionFilter {
+                        MotionFilter() : velocityDecay(arma::fill::zeros), noise(), initial() {}
 
-                double odometry_covariance_factor = 0.05;
+                        arma::vec3 velocityDecay;
 
-                arma::vec2 integratedOdometry;
+                        struct Noise {
+                            Noise() : measurement(), process() {}
+                            struct Measurement {
+                                Measurement() : accelerometer(arma::fill::eye), accelerometerMagnitude(arma::fill::eye), gyroscope(arma::fill::eye),
+                                                footUpWithZ(arma::fill::eye), flatFootOdometry(arma::fill::eye),
+                                                flatFootOrientation(arma::fill::eye) {}
+                                arma::mat33 accelerometer;
+                                arma::mat33 accelerometerMagnitude;
+                                arma::mat33 gyroscope;
+                                arma::mat44 footUpWithZ;
+                                arma::mat33 flatFootOdometry;
+                                arma::mat44 flatFootOrientation;
+                            } measurement;
+                            struct Process {
+                                Process() : position(arma::fill::ones), velocity(arma::fill::ones),
+                                            rotation(arma::fill::ones), rotationalVelocity(arma::fill::ones) {}
+                                arma::vec3 position;
+                                arma::vec3 velocity;
+                                arma::vec4 rotation;
+                                arma::vec3 rotationalVelocity;
+                            } process;
+                        } noise;
+                        struct Initial {
+                            Initial() : mean(), covariance() {}
+                            struct Mean {
+                                Mean() : position(arma::fill::ones), velocity(arma::fill::ones),
+                                         rotation(arma::fill::ones), rotationalVelocity(arma::fill::ones) {}
+                                arma::vec3 position;
+                                arma::vec3 velocity;
+                                arma::vec4 rotation;
+                                arma::vec3 rotationalVelocity;
+                            } mean;
+                            struct Covariance {
+                                Covariance() : position(arma::fill::ones), velocity(arma::fill::ones),
+                                               rotation(arma::fill::ones), rotationalVelocity(arma::fill::ones) {}
+                                arma::vec3 position;
+                                arma::vec3 velocity;
+                                arma::vec4 rotation;
+                                arma::vec3 rotationalVelocity;
+                            } covariance;
+                        } initial;
+                    } motionFilter;
+
+                    struct Button {
+                        Button() : debounceThreshold(0) {}
+                        int debounceThreshold;
+                    } buttons;
+                } config;
 
             private:
-                utility::math::matrix::Transform3D calculateOdometryMatrix(
-                    const message::input::Sensors& sensors,
-                    const message::input::Sensors& previousSensors,
-                    utility::motion::kinematics::Side side);
-
+                // Current state of the button pushes
                 // used to debounce button presses
                 bool leftDown = false;
                 bool middleDown = false;
+
+                // Our sensor for foot down
+                DarwinVirtualLoadSensor leftFootDown;
+                DarwinVirtualLoadSensor rightFootDown;
+
+                //World to foot in world rotation when the foot landed
+                std::array<arma::vec3, 2> footlanding_rFWw;
+
+                //Foot to world in foot-flat rotation when the foot landed
+                std::array<utility::math::matrix::Rotation3D, 2> footlanding_Rfw;
+
+                //World to foot in foot-flat rotation when the foot landed
+                std::array<utility::math::matrix::Rotation3D, 2> footlanding_Rwf;
+
             };
         }
     }

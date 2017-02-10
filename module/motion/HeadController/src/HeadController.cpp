@@ -19,53 +19,67 @@
 
 #include "HeadController.h"
 
-#include "message/input/ServoID.h"
-#include "message/behaviour/Action.h"
+#include "extension/Configuration.h"
+
 #include "message/behaviour/ServoCommand.h"
 #include "message/input/Sensors.h"
-#include "message/support/Configuration.h"
 #include "message/motion/HeadCommand.h"
+#include "message/motion/KinematicsModels.h"
+
+#include "utility/behaviour/Action.h"
+#include "utility/input/LimbID.h"
+#include "utility/input/ServoID.h"
 #include "utility/math/coordinates.h"
+#include "utility/math/matrix/Transform3D.h"
 #include "utility/motion/InverseKinematics.h"
-#include "utility/motion/RobotModels.h"
-#include "utility/support/yaml_expression.h"
 #include "utility/nubugger/NUhelpers.h"
+#include "utility/support/eigen_armadillo.h"
+#include "utility/support/yaml_expression.h"
 
 
-namespace module {
-    namespace motion {
-
+namespace module 
+{    
+namespace motion 
+{
         using utility::nubugger::graph;
-        using message::input::ServoID;
+        using LimbID  = utility::input::LimbID;
+        using ServoID = utility::input::ServoID;
         using message::input::Sensors;
-        using message::behaviour::RegisterAction;
-        using message::input::LimbID;
-        using message::support::Configuration;
+        using utility::behaviour::RegisterAction;
+        using extension::Configuration;
         using message::behaviour::ServoCommand;
         using message::motion::HeadCommand;
         using utility::math::coordinates::sphericalToCartesian;
         using utility::math::coordinates::cartesianToSpherical;
+        using utility::math::matrix::Transform3D;
+        using utility::motion::kinematics::calculateCameraLookJoints;
         using utility::motion::kinematics::calculateHeadJoints;
-        using utility::motion::kinematics::DarwinModel;
+        using message::motion::KinematicsModel;
         using utility::support::Expression;
 
         //internal only callback messages to start and stop our action
         struct ExecuteHeadController {};
 
-        HeadController::HeadController(std::unique_ptr<NUClear::Environment> environment) : Reactor(std::move(environment)), id(size_t(this) * size_t(this) - size_t(this)) {
+        HeadController::HeadController(std::unique_ptr<NUClear::Environment> environment)
+            : Reactor(std::move(environment))
+            , id(size_t(this) * size_t(this) - size_t(this))
+            , min_yaw(0.0)
+            , max_yaw(0.0)
+            , min_pitch(0.0)
+            , max_pitch(0.0)
+            , head_motor_gain(0.0)
+            , head_motor_torque(0.0)
+            , p_gain(0.0)
+            , updateHandle()
+            , lastTime()
+            , currentAngles(arma::fill::zeros)
+            , goalAngles(arma::fill::zeros) {
 
-            currentAngles = {0,0};//TODO: set this to current motor positions
             //do a little configurating
-            on<Configuration>("HeadController.yaml").then("Head Controller - Config", [this] (const Configuration& config) {
+            on<Configuration>("HeadController.yaml").then("Head Controller - Configure", [this] (const Configuration& config) {
                 //Gains
                 head_motor_gain = config["head_motors"]["gain"].as<double>();
                 head_motor_torque = config["head_motors"]["torque"].as<double>();
-
-                //head limits
-                max_yaw = DarwinModel::Head::MAX_YAW;
-                min_yaw = DarwinModel::Head::MIN_YAW;
-                max_pitch = DarwinModel::Head::MAX_PITCH;
-                min_pitch = DarwinModel::Head::MIN_PITCH;
 
                 emit(std::make_unique<HeadCommand>( HeadCommand {config["initial"]["yaw"].as<float>(),
                                                                  config["initial"]["pitch"].as<float>(), false}));
@@ -83,27 +97,55 @@ namespace module {
                 }
             });
 
-            updateHandle = on<Trigger<Sensors>, Single, Priority::HIGH>().then("Head Controller - Update Head Position",[this] (const Sensors& sensors) {
+            updateHandle = on<Trigger<Sensors>, With<KinematicsModel>, Single, Priority::HIGH>()
+            .then("Head Controller - Update Head Position", [this] (const Sensors& sensors, const KinematicsModel& kinematicsModel) {
+
+                emit(graph("HeadController Goal Angles", goalAngles[0], goalAngles[1]));
                 //P controller
                 currentAngles = p_gain * goalAngles + (1 - p_gain) * currentAngles;
 
                 //Get goal vector from angles
                 //Pitch is positive when the robot is looking down by Right hand rule, so negate the pitch
+                //The goal angles are for the neck directly, so we have to offset the camera declination again
                 arma::vec3 goalHeadUnitVector_world = sphericalToCartesian({1, currentAngles[0], currentAngles[1]});
                 //Convert to robot space
-                arma::vec3 headUnitVector = goalRobotSpace ? goalHeadUnitVector_world : sensors.orientation * goalHeadUnitVector_world;
+                arma::vec3 headUnitVector = goalRobotSpace ? goalHeadUnitVector_world : Transform3D(convert<double, 4, 4>(sensors.world)).rotation() * goalHeadUnitVector_world;
                 //Compute inverse kinematics for head
-                std::vector< std::pair<message::input::ServoID, float> > goalAnglesList = calculateHeadJoints<DarwinModel>(headUnitVector);
+                //!!!!!!!!!!!!!!
+                //!!!!!!!!!!!!!!
+                //!!!!!!!!!!!!!!
+                //!!!!!!!!!!!!!!
+                //TODO::::MAKE THIS NOT FAIL FOR ANGLES OVER 90deg
+                //!!!!!!!!!!!!!!
+                //!!!!!!!!!!!!!!
+                //!!!!!!!!!!!!!!
+                //!!!!!!!!!!!!!!
+                //!!!!!!!!!!!!!!
+                std::vector< std::pair<ServoID, float> > goalAnglesList = calculateHeadJoints(headUnitVector);
                 // arma::vec2 goalAngles = cartesianToSpherical(headUnitVector).rows(1,2);
 
+                //head limits
+                max_yaw = kinematicsModel.head.MAX_YAW;
+                min_yaw = kinematicsModel.head.MIN_YAW;
+                max_pitch = kinematicsModel.head.MAX_PITCH;
+                min_pitch = kinematicsModel.head.MIN_PITCH;
+
                 //Clamp head angles
+                float pitch = 0;
+                float yaw = 0;
                 for(auto& angle : goalAnglesList){
                     if(angle.first == ServoID::HEAD_PITCH){
                         angle.second = std::fmin(std::fmax(angle.second, min_pitch), max_pitch);
+                        pitch = angle.second;
                     } else if(angle.first == ServoID::HEAD_YAW){
                         angle.second = std::fmin(std::fmax(angle.second, min_yaw), max_yaw);
+                        yaw = angle.second;
                     }
                 }
+
+                emit(graph("HeadController Final Angles", yaw, -pitch));
+                // log("HeadController Final Angles", yaw, -pitch);
+
 
                 //Create message
                 auto waypoints = std::make_unique<std::vector<ServoCommand>>();
@@ -130,7 +172,6 @@ namespace module {
                 },
                 [this] (const std::set<ServoID>& ) { } //Servos reached target
             }));
-
         }
 
     }  // motion
