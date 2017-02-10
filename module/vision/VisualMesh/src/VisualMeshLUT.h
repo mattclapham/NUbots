@@ -58,7 +58,6 @@ namespace vision {
             std::vector<Edge> edges;
         };
 
-
         VisualMeshLUT(double minHeight, double maxHeight, int slices = 50, double minAngleJump = -1);
 
         void addShape(const message::vision::MeshObjectRequest& request);
@@ -68,41 +67,58 @@ namespace vision {
         void regenerate();
 
         template <typename TFunc>
-        void lookup(double height, double minPhi, double maxPhi, TFunc&& thetaFunction) {
+        std::vector<std::pair<double, double>> lookup(double height, double minPhi, double maxPhi, TFunc&& thetaFunction) {
             // Get lutset for this height
             int index = int(((height - minHeight) / (maxHeight - minHeight)) * (slices - 1));
             auto& lut = luts[index < 0 ? 0 : index >= slices ? slices - 1 : index];
 
             // Make a row to compare to
-            Row compareRow;
-            compareRow.phis = { minPhi, maxPhi };
+            Row comparisonRow;
+            comparisonRow.phis = { minPhi, maxPhi };
 
             // Do a binary search for the min/max row in this lut
-            auto start = std::lower_bound(lut.rows.begin(), lut.rows.end(), compareRow, [] (const Row& a, const Row& b) {
+            auto start = std::lower_bound(lut.rows.begin(), lut.rows.end(), comparisonRow, [] (const Row& a, const Row& b) {
                 return a.phis[0] < b.phis[0];
             });
 
-            auto end = std::upper_bound(lut.rows.begin(), lut.rows.end(), compareRow, [] (const Row& a, const Row& b) {
+            auto end = std::upper_bound(lut.rows.begin(), lut.rows.end(), comparisonRow, [] (const Row& a, const Row& b) {
                 return a.phis[1] < b.phis[1];
             });
 
             // Calculate the min/max theta for each row in range and the corresponding index
+            std::vector<std::pair<double, double>> output;
+
             for (auto it = start; it != end; ++it) {
                 auto& row = *it;
 
                 // Calculate our min and max theta values for each phi
-                thetaFunction(row.phis[0]);
-                thetaFunction(row.phis[1]);
+                std::vector<std::pair<float, float>> thetas = thetaFunction(row.phis[0]);
+                //thetaFunction(row.phis[1]); //probably have 2 of these for a reason
+
+                float minTheta = thetas[0].first;
+                float maxTheta = thetas[0].second;
+                float phi = row.phis[0];
+                float rowDelta = row.dThetas[0];
 
                 // Work out what index these theta values correspond to
+                float currentTheta = 0;
+                while(currentTheta < maxTheta){
+                    output.push_back(std::make_pair(phi, currentTheta));
+                    currentTheta += rowDelta;
+                }
 
+                currentTheta = 0 - rowDelta;
+                while(currentTheta > minTheta){
+                    output.push_back(std::make_pair(phi, currentTheta));
+                    currentTheta -= rowDelta;
+                }
                 // Pick the smaller subset of these
-
+                
                 // Store this chunk
             }
 
-
-            // Return an array of begin/end pairs for each edge in the LUT
+            // Return an array of points for each sample point in the LUT
+            return output;
         }
 
     private:

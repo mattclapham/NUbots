@@ -33,9 +33,15 @@ namespace vision {
 
     private:
         VisualMeshLUT lut;
+        arma::fvec3 pixelToSpherical(float lambda, arma::fvec2 point);
+        arma::fvec2 sphericalToPixel(float lambda, arma::fvec3 point);
+        arma::fvec3 thetaPhiToCartesian(float theta, float phi);
     public:
         /// @brief Called by the powerplant to build and setup the VisualMesh reactor.
         explicit VisualMesh(std::unique_ptr<NUClear::Environment> environment);
+
+
+
     };
 
 }
