@@ -73,16 +73,16 @@ namespace vision {
             auto& lut = luts[index < 0 ? 0 : index >= slices ? slices - 1 : index];
 
             // Make a row to compare to
-            Row comparisonRow;
-            comparisonRow.phis = { minPhi, maxPhi };
+            LUTSet comparisonRowDeltas;
+            comparisonRowDeltas.rowDeltas = { std::make_pair(minPhi, 0), std::make_pair(maxPhi, 0) };
 
             // Do a binary search for the min/max row in this lut
-            auto start = std::lower_bound(lut.rows.begin(), lut.rows.end(), comparisonRow, [] (const Row& a, const Row& b) {
-                return a.phis[0] < b.phis[0];
+            auto start = std::lower_bound(lut.rowDeltas.begin(), lut.rowDeltas.end(), comparisonRowDeltas, [] (const std::pair<double, double>& a, const std::pair<double, double>& b) {
+                return a.rowDeltas[0].first < b.rowDeltas[0].first;
             });
 
-            auto end = std::upper_bound(lut.rows.begin(), lut.rows.end(), comparisonRow, [] (const Row& a, const Row& b) {
-                return a.phis[1] < b.phis[1];
+            auto end = std::upper_bound(lut.rowDeltas.begin(), lut.rowDeltas.end(), comparisonRowDeltas, [] (const std::pair<double, double>& a, const Rstd::pair<double, double>& b) {
+                return a.rowDeltas[1].first < b.rowDeltas[1].first;
             });
 
             // Calculate the min/max theta for each row in range and the corresponding index
@@ -92,8 +92,7 @@ namespace vision {
                 auto& row = *it;
 
                 // Calculate our min and max theta values for each phi
-                std::vector<std::pair<float, float>> thetas = thetaFunction(row.phis[0]);
-                //thetaFunction(row.phis[1]); //probably have 2 of these for a reason
+                std::vector<std::pair<float, float>> thetas = thetaFunction(row.rowDeltas.first);
 
                 float minTheta = thetas[0].first;
                 float maxTheta = thetas[0].second;
@@ -111,12 +110,8 @@ namespace vision {
                 while(currentTheta > minTheta){
                     output.push_back(std::make_pair(phi, currentTheta));
                     currentTheta -= rowDelta;
-                }
-                // Pick the smaller subset of these
-                
-                // Store this chunk
+                }   
             }
-
             // Return an array of points for each sample point in the LUT
             return output;
         }

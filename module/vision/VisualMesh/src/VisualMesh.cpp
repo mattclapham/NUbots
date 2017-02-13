@@ -230,7 +230,7 @@ namespace vision {
 
                 arma::fvec3 cartesianPoint = thetaPhiToCartesian(theta, phi);
                 arma::fvec2 imagePoint = sphericalToPixel(lambda, cartesianPoint);
-                arma::fvec2 offsetPoint = arma::fvec2({(imagePoint[0]-imageCenter[0]-cx), (imagePoint[1] - imageCenter[0] - cy)});
+                arma::fvec2 offsetPoint = arma::fvec2({(imagePoint[0]-imageCenter[0]-cx), (imagePoint[1] - imageCenter[1] - cy)});
 
 
                 camPoints.push_back(offsetPoint);
