@@ -36,6 +36,8 @@ namespace vision {
 
 
         struct Row {
+            Row() : begin(), end(), phis(), dThetas() {}
+            Row(int begin, int end, arma::vec2 phis, arma::vec3 dThetas) : begin(begin), end(end), phis(phis), dThetas(dThetas) {}
             int begin;
             int end;
             arma::vec2 phis;
@@ -43,6 +45,8 @@ namespace vision {
         };
 
         struct Edge {
+            Edge() : p1(), p2(), connections() {}
+            Edge(arma::vec3 p1, arma::vec3 p2, std::array<int,4> connections) : p1(p1), p2(p2), connections(connections) {}
             /// The upper right point in this edge
             arma::vec3 p1;
             /// The lower left point in this edge
@@ -53,6 +57,9 @@ namespace vision {
         };
 
         struct LUTSet {
+            LUTSet() : rowDeltas(), rows(), edges() {}
+            LUTSet(std::vector<std::pair<double, double>> rowDeltas, std::vector<Row> rows, std::vector<Edge> edges) : rowDeltas(rowDeltas), rows(rows), edges(edges) {}
+
             std::vector<std::pair<double, double>> rowDeltas;
             std::vector<Row> rows;
             std::vector<Edge> edges;
@@ -69,7 +76,7 @@ namespace vision {
         template <typename TFunc>
         std::vector<std::pair<double, double>> lookup(double height, double minPhi, double maxPhi, TFunc&& thetaFunction) {
             // Get lutset for this height
-            int index = int(((height - minHeight) / (maxHeight - minHeight)) * (slices - 1));
+            uint index = uint(((height - minHeight) / (maxHeight - minHeight)) * (slices - 1)); //will hopefully never be negative
             auto& lut = luts[index < 0 ? 0 : index >= slices ? slices - 1 : index];
 
             // Make a row to compare to
@@ -77,12 +84,12 @@ namespace vision {
             comparisonRowDeltas.rowDeltas = { std::make_pair(minPhi, 0), std::make_pair(maxPhi, 0) };
 
             // Do a binary search for the min/max row in this lut
-            auto start = std::lower_bound(lut.rowDeltas.begin(), lut.rowDeltas.end(), comparisonRowDeltas, [] (const std::pair<double, double>& a, const std::pair<double, double>& b) {
-                return a.rowDeltas[0].first < b.rowDeltas[0].first;
+            auto start = std::lower_bound(lut.rowDeltas.begin(), lut.rowDeltas.end(), comparisonRowDeltas.rowDeltas[0], [] (const std::pair<double,double>& a, const std::pair<double,double>& b) {
+                return a.first < b.first;
             });
 
-            auto end = std::upper_bound(lut.rowDeltas.begin(), lut.rowDeltas.end(), comparisonRowDeltas, [] (const std::pair<double, double>& a, const Rstd::pair<double, double>& b) {
-                return a.rowDeltas[1].first < b.rowDeltas[1].first;
+            auto end = std::upper_bound(lut.rowDeltas.begin(), lut.rowDeltas.end(), comparisonRowDeltas.rowDeltas[1], [] (const std::pair<double,double>& a, const std::pair<double,double>& b) {
+                return a.first < b.first;
             });
 
             // Calculate the min/max theta for each row in range and the corresponding index
@@ -92,12 +99,12 @@ namespace vision {
                 auto& row = *it;
 
                 // Calculate our min and max theta values for each phi
-                std::vector<std::pair<float, float>> thetas = thetaFunction(row.rowDeltas.first);
+                std::vector<std::pair<float, float>> thetas = thetaFunction(row.first);
 
                 float minTheta = thetas[0].first;
                 float maxTheta = thetas[0].second;
-                float phi = row.phis[0];
-                float rowDelta = row.dThetas[0];
+                float phi = row.first;
+                float rowDelta = row.second;
 
                 // Work out what index these theta values correspond to
                 float currentTheta = 0;

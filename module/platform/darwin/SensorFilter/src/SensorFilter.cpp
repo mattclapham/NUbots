@@ -638,7 +638,8 @@ namespace module {
                     /************************************************
                      *                  CENTRE OF PRESSURE          *
                      ************************************************/
-                    sensors->centreOfPressure = convert<double, 3>(utility::motion::kinematics::calculateCentreOfPressure(kinematicsModel, *sensors));
+                    arma::vec3 cop = utility::motion::kinematics::calculateCentreOfPressure(kinematicsModel, *sensors);
+                    sensors->centreOfPressure = convert<double, 3>(cop);
 
                     emit(std::move(sensors));                  
                 });

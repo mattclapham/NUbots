@@ -22,15 +22,17 @@
 #include "message/input/CameraParameters.h"
 #include "message/input/Sensors.h"
 #include "message/vision/MeshObjectRequest.h"
-#include "message/support/Configuration.h"
+#include "extension/Configuration.h"
 #include "message/motion/ServoTarget.h"
 
 #include "utility/math/matrix/Rotation3D.h"
+#include "utility/math/matrix/Transform3D.h"
 #include "utility/math/vision.h"
+#include "utility/support/eigen_armadillo.h"
 #include "utility/support/yaml_armadillo.h"
 #include "utility/nubugger/NUhelpers.h"
 
-#include "utility/motion/RobotModels.h"
+//#include "utility/motion/RobotModels.h"
 
 namespace module {
 namespace vision {
@@ -39,12 +41,13 @@ namespace vision {
     using message::input::CameraParameters;
     using message::input::Sensors;
     using message::vision::MeshObjectRequest;
-    using message::support::Configuration;
+    using extension::Configuration;
 
-    using utility::motion::kinematics::DarwinModel;
+    //using utility::motion::kinematics::DarwinModel;
     using message::motion::ServoTarget;
 
     using utility::math::matrix::Rotation3D;
+    using utility::math::matrix::Transform3D;
     using utility::nubugger::graph;
     using utility::nubugger::drawVisionLines;
 
@@ -137,12 +140,12 @@ namespace vision {
     : Reactor(std::move(environment))
     , lut(0.1, 0.5) { // TODO make this based of the kinematics
 
-        on<Configuration>("VisualMesh.yaml").then([this] (const Configuration& config) {
+        on<Configuration>("VisualMesh.yaml").then([this] (const Configuration& /*config*/) {
             // Use configuration here from file VisualMesh.yaml
         });
 
         auto sphere = std::make_unique<MeshObjectRequest>();
-        sphere->type = MeshObjectRequest::SPHERE;
+        sphere->type = MeshObjectRequest::Type::SPHERE;
         sphere->radius = 0.05;
         sphere->height = 0;
         sphere->intersections = 2;
@@ -150,7 +153,7 @@ namespace vision {
         sphere->hardLimit = false;
 
         auto cylinder = std::make_unique<MeshObjectRequest>();
-        cylinder->type = MeshObjectRequest::CYLINDER;
+        cylinder->type = MeshObjectRequest::Type::CYLINDER;
         cylinder->radius = 0.05;
         cylinder->height = 1.15;
         cylinder->intersections = 2;
@@ -158,7 +161,7 @@ namespace vision {
         cylinder->hardLimit = false;
 
         auto circle = std::make_unique<MeshObjectRequest>();
-        circle->type = MeshObjectRequest::CIRCLE;
+        circle->type = MeshObjectRequest::Type::CIRCLE;
         circle->radius = 0.025;
         circle->height = 0;
         circle->intersections = 1;
@@ -181,12 +184,12 @@ namespace vision {
             lut.setMinimumJump(minimumAngleJump);
         });
 
-        on<Trigger<Image>, With<Sensors>, With<CameraParameters>, Single>().then([this] (const Image&, const Sensors& sensors, const CameraParameters& params) {
-
+        on<Trigger<Image>, With<Sensors>, With<CameraParameters>, Single>().then([this] (const Image&, const Sensors& sensors, const CameraParameters& /*params*/) {
+            NUClear::log(__LINE__);
             // get field of view 
             float fovX = M_PI;//params.FOV[0];
             float fovY = M_PI;//params.FOV[1];
-            float focalLengthPixels = params.focalLengthPixels;
+            //float focalLengthPixels = params.focalLengthPixels;
             float cx = 0.0;//offset amounts
             float cy = 0.0;
             float lambda = M_PI/1000;
@@ -194,7 +197,7 @@ namespace vision {
             // Camera height is z component of the transformation matrix
             float cameraHeight = sensors.orientationCamToGround(2, 3);
 
-            arma::vec3 rotatedOriginVector = sensors.orientationCamToGround.transformVector(arma::vec3({1,0,0})); //mulitply the LOS by the translation matrix
+            arma::vec3 rotatedOriginVector = Transform3D(convert<double, 4, 4>(sensors.orientationCamToGround)).transformVector(arma::vec3({1,0,0})); //mulitply the LOS by the translation matrix
             arma::fvec3 rotatedOrigin = arma::conv_to<arma::fvec>::from(rotatedOriginVector);
 
             float x = rotatedOrigin[0];
@@ -202,7 +205,7 @@ namespace vision {
             float z = rotatedOrigin[2];
 
             float centerPhi = std::acos(z)/sqrt(x*x + y*y + z*z);
-            float centerTheta = std::atan(y/x);
+            //float centerTheta = std::atan(y/x);
             float minPhi = centerPhi - (fovY/2);
             float maxPhi = centerPhi + (fovY/2);
 
@@ -254,7 +257,7 @@ namespace vision {
 
                 helperPoints.push_back(std::make_pair(screenPoints.back(), screenPoints.back() + arma::ivec2({1,1}))); 
             }
-
+            NUClear::log(__LINE__);
              emit(drawVisionLines(std::move(helperPoints)));
         });
     }

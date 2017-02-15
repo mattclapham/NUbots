@@ -36,19 +36,20 @@ namespace vision {
     : slices(slices)
     , minHeight(minHeight)
     , maxHeight(maxHeight)
-    , luts(slices)
-    , minAngleJump(minAngleJump) {}
+    , minAngleJump(minAngleJump)   
+    , requests()
+    , luts(slices) {}
 
     double deltaPhi(const message::vision::MeshObjectRequest& request, double phi, double height) {
 
-        switch(request.type) {
-            case MeshObjectRequest::CIRCLE:
+        switch(request.type.value) {
+            case MeshObjectRequest::Type::CIRCLE:
                 return Circle::deltaPhi(request, phi, height);
 
-            case MeshObjectRequest::SPHERE:
+            case MeshObjectRequest::Type::SPHERE:
                 return Sphere::deltaPhi(request, phi, height);
 
-            case MeshObjectRequest::CYLINDER:
+            case MeshObjectRequest::Type::CYLINDER:
                 return Cylinder::deltaPhi(request, phi, height);
 
             default:
@@ -57,14 +58,14 @@ namespace vision {
     }
 
     double deltaTheta(const message::vision::MeshObjectRequest& request, double phi, double height) {
-        switch(request.type) {
-            case MeshObjectRequest::CIRCLE:
+        switch(request.type.value) {
+            case MeshObjectRequest::Type::CIRCLE:
                 return Circle::deltaTheta(request, phi, height);
 
-            case MeshObjectRequest::SPHERE:
+            case MeshObjectRequest::Type::SPHERE:
                 return Sphere::deltaTheta(request, phi, height);
 
-            case MeshObjectRequest::CYLINDER:
+            case MeshObjectRequest::Type::CYLINDER:
                 return Cylinder::deltaTheta(request, phi, height);
 
             default:
@@ -89,7 +90,7 @@ namespace vision {
             auto& lut = newLUTs[i];
             auto& rowDeltas = lut.rowDeltas;
             auto& rows = lut.rows;
-            auto& edges = lut.edges;
+            //auto& edges = lut.edges;
 
             // Calculate our camera height
             double height = minHeight + double(i) * ((maxHeight - minHeight) / (double(slices) - 1));
@@ -219,7 +220,7 @@ namespace vision {
                 // Relative: (r prefix) is the offset from the current index to the target
 
                 // Loop through the horizontal lines
-                for (int i = 0; i < rows.size(); i += 2) {
+                for (uint i = 0; i < rows.size(); i += 2) {
 
                     // Row's half horizontal size
                     int halfSize = int(M_PI / rows[i].dThetas[0]);
@@ -249,7 +250,7 @@ namespace vision {
                 }
 
                 // Loop through the diagonal lines
-                for (int i = 1; i < rows.size(); i += 2) {
+                for (uint i = 1; i < rows.size(); i += 2) {
 
                     // Get our global indicies for row starts
                     const int& gRowAbove = rows[i - 1].begin;
