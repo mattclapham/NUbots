@@ -17,7 +17,7 @@ FOREACH(robot 0 1 2 3 4 5 6 7)
             ADD_CUSTOM_TARGET("d${robot}${ethernet}${config}"
                 USES_TERMINAL
                 COMMAND ${PYTHON_EXECUTABLE}
-                "${CMAKE_SOURCE_DIR}/cmake/scripts/send.py" "--robot_ip=${address}" "--config=${config}" "--username=darwin"
+                "${CMAKE_SOURCE_DIR}/cmake/scripts/send.py" "--robot_ip=${address}" "--config=${config}" "--username=nubots"
                 DEPENDS ${NUCLEAR_ROLES} "${CMAKE_SOURCE_DIR}/cmake/scripts/send.py")
 
             # Move our installer to an IDE group
