@@ -9,9 +9,10 @@ NUCLEAR_ROLE(
     support::configuration::GlobalConfig
     platform::darwin::HardwareIO
     platform::darwin::SensorFilter
+    vision::VisualMesh
     input::Camera
     support::NUbugger
-    vision::VisualMesh
+    
     
     support::configuration::SoccerConfig
 )

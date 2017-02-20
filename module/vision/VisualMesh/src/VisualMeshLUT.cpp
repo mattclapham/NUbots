@@ -77,6 +77,7 @@ namespace vision {
 
         // We need a minimum jump set, otherwise ignore
         if (minAngleJump < 0) {
+            std::cout << "NOT RUNNING REGENERATE!!!" << std::endl;
             return;
         }
 
@@ -119,6 +120,7 @@ namespace vision {
                     // Add the value if we didn't jump past the horizon
                     if(phi + minPhiJump < M_PI_2) {
                         rowDeltas.push_back(std::make_pair(phi, minThetaJump));
+                        //std::cout << "just pushed rowDelta" << std::endl;
                     }
                     phi += minPhiJump;
                 }
@@ -146,6 +148,7 @@ namespace vision {
                     // Add the value if we didn't jump past the horizon
                     if(phi - minPhiJump > M_PI_2) {
                         rowDeltas.push_back(std::make_pair(phi, minThetaJump));
+                        //std::cout << "just pushed ANOTHER rowDelta" << std::endl;
                     }
                     phi -= minPhiJump;
                 }
@@ -155,11 +158,15 @@ namespace vision {
             }
 
             /*
-                CALCULATE THE ROW LUT FOR THE EDGE GRAPH
+                CALCULATE THE ROW LUT FOR THE EDGE GRAPH   
              */
-            /* Scope for row calculation */ {
+
+            /* Scope for row calculation */ 
+            if(false){
 
                 // We will need *2-1 the number of elements for the rows (one additional for each pair)
+                std::cout << "rows size: " << rows.size() << "rowDeltas size: " << rowDeltas.size() << std::endl;
+
                 rows.reserve(rowDeltas.size() * 2 - 1);
 
                 // Build the rest of our rows starting after the first row
@@ -208,7 +215,7 @@ namespace vision {
 
             }
 
-            /* Scope for the edge graph calculation */ {
+            /* Scope for the edge graph calculation */ if(false){
 
                 // Allocate enough storage space to store all our edges
                 std::vector<Edge> edges(rows.back().end);
@@ -317,14 +324,17 @@ namespace vision {
                 }
             }
         }
+        luts = std::move(newLUTs);
     }
 
     void VisualMeshLUT::setMinimumJump(const double& jump) {
+        std::cout << "jump: " << jump << std::endl;
         minAngleJump = jump;
         regenerate();
     }
 
     void VisualMeshLUT::addShape(const MeshObjectRequest& request) {
+        std::cout << "adding a shape" << std::endl;
 
         // Add the request to our list
         requests.push_back(request);

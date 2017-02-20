@@ -78,10 +78,24 @@ namespace vision {
             // Get lutset for this height
             uint index = uint(((height - minHeight) / (maxHeight - minHeight)) * (slices - 1)); //will hopefully never be negative
             auto& lut = luts[index < 0 ? 0 : index >= slices ? slices - 1 : index];
+            int total = 0;
+            for(LUTSet l : luts){
+                total+= l.rowDeltas.size();
+            }
 
+            //std::cout << "luts row deltas: " << total << std::endl;
+            //std::cout << "lut row deltas after index slicing: " << lut.rowDeltas.size() << std::endl;         
             // Make a row to compare to
             LUTSet comparisonRowDeltas;
             comparisonRowDeltas.rowDeltas = { std::make_pair(minPhi, 0), std::make_pair(maxPhi, 0) };
+
+            //std::cout << "Min Phi" << minPhi << std::endl;
+            //std::cout << "Max Phi" << maxPhi << std::endl;
+
+
+            // for (auto& r : lut.rowDeltas) {
+            //     std::cout << "rowDelta first: " << r.first << std::endl;
+            // }
 
             // Do a binary search for the min/max row in this lut
             auto start = std::lower_bound(lut.rowDeltas.begin(), lut.rowDeltas.end(), comparisonRowDeltas.rowDeltas[0], [] (const std::pair<double,double>& a, const std::pair<double,double>& b) {
@@ -94,32 +108,34 @@ namespace vision {
 
             // Calculate the min/max theta for each row in range and the corresponding index
             std::vector<std::pair<double, double>> output;
-
+            //NUClear::log(__LINE__);
             for (auto it = start; it != end; ++it) {
                 auto& row = *it;
-
+                //NUClear::log(__LINE__);
                 // Calculate our min and max theta values for each phi
                 std::vector<std::pair<float, float>> thetas = thetaFunction(row.first);
-
+                //NUClear::log(__LINE__);
                 float minTheta = thetas[0].first;
                 float maxTheta = thetas[0].second;
                 float phi = row.first;
                 float rowDelta = row.second;
-
+                //NUClear::log(__LINE__);
                 // Work out what index these theta values correspond to
                 float currentTheta = 0;
                 while(currentTheta < maxTheta){
                     output.push_back(std::make_pair(phi, currentTheta));
                     currentTheta += rowDelta;
                 }
-
+                //NUClear::log(__LINE__);
                 currentTheta = 0 - rowDelta;
                 while(currentTheta > minTheta){
                     output.push_back(std::make_pair(phi, currentTheta));
                     currentTheta -= rowDelta;
-                }   
+                } 
+                //NUClear::log(__LINE__);  
             }
             // Return an array of points for each sample point in the LUT
+            NUClear::log("lookup output size: ", output.size());
             return output;
         }
 
