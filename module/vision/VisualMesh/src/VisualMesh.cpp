@@ -92,40 +92,40 @@ namespace vision {
 
     std::vector<std::pair<float, float>> thetaLimits(float phi, arma::fvec3 camera, float fovX) {
         arma::fmat::fixed<8,3> possibleVectors; //there are 8 resulting vectors
-        
+        //std::cout << "camera: " << camera[0] << " " << camera[1] << " " << camera[2] << std::endl;
+        //std::cout <<"fovX: " << fovX << std::endl;
         float lambda = std::sin((M_PI-fovX)/2);
-        NUClear::log("Lambda: ",lambda);
-        float Z = 1/(std::sqrt(pow(std::cos(phi),2)+1)); //plus or minus
-        NUClear::log("Z = ",Z);
+        //NUClear::log("Lambda: ",lambda);
+        //z component of the vectors
+        float Z = 1/(std::sqrt((std::tan(phi)*std::tan(phi))+1)); //plus or minus
+        //NUClear::log("Z = ",Z);
         for (int i = 0; i<8; i++){//build out z component of the vectors
             possibleVectors(i,2)=( i < 4 ? Z : -Z);
         }
         
-        float B = 1-pow(Z,2);
-        NUClear::log("B = ", B);
+        float B = 1-(Z*Z);
+        //NUClear::log("B = ", B);
         arma::fvec2 A = {(lambda - (camera[2]*Z))/camera[0], (lambda - (camera[2]*(-Z)))/camera[0]};
-        NUClear::log("A = ", A);
+        //NUClear::log("A = ", A);
         
         for (int i = 0; i<=1; i++){ //determine the y components
             float Y = (std::sqrt(4*(B-(A[i]*A[i]))))/2;
-            NUClear::log("Y = ", Y);
+            //NUClear::log("Y = ", Y);
             for (int j = 0; j < 4; j++){
                 possibleVectors(j+i*4,1) = j < 2 ? Y : -Y;
             }
         }
         for (int i = 0; i<8; i++){ //determine the x components
-            possibleVectors(i,0) = i%2==0 ? std::sqrt(B-pow(possibleVectors(i,1),2)) :  -(std::sqrt(B-pow(possibleVectors(i,1),2)));
+            possibleVectors(i,0) = i%2==0 ? std::sqrt(B-(possibleVectors(i,1)*possibleVectors(i,1))) :  -(std::sqrt(B-(possibleVectors(i,1)*possibleVectors(i,1))));
         } 
 
-        for (int i = 0; i<8; i++){ //print the fmat
-            std::cout << possibleVectors(i,0) << " " << possibleVectors(i,1) << " " << possibleVectors(i,2) <<std::endl;
-        }
+        //for (int i = 0; i<8; i++){ //print the fmat
+        //    std::cout << possibleVectors(i,0) << " " << possibleVectors(i,1) << " " << possibleVectors(i,2) <<std::endl;
+        //}
         //vector must be infront of the plane
         //phi must be almost equal
 
         //dot of camera and camera vector needs to be greater than sin((pi-fov)/2) -- lambda
-        //std::cout << "camera phi: " <<phi << std::endl;
-        //NUClear::log("camera vector: ", camera);
         float cosFOV = std::cos(fovX/2);
         std::list<float> thetas;
         for (int i = 0; i < 8; i++){
@@ -134,22 +134,23 @@ namespace vision {
             float delta = (std::numeric_limits<float>::epsilon() * 10)*phi;
             float dot = arma::dot(camera, v);
 
-            //NUClear::log("current vector: ");
-            //NUClear::log(v);
-            std::cout<< " vector " << i <<": vector phi: " << vectorPhi<< " phi: " << phi << " dot: " << dot << std::endl;
-            std::cout <<(std::fabs(vectorPhi-phi)<delta) << (dot<cosFOV) << std::endl;
+            //std::cout<< " vector " << i <<": vector phi: " << vectorPhi<< " phi: " << phi << " dot: " << dot << std::endl;
+            //std::cout <<(std::fabs(vectorPhi-phi)<delta) << (dot>cosFOV) << std::endl;
 
-            if(std::fabs(vectorPhi-phi)<delta && dot<cosFOV){
-            //if(dot<cosFOV){
+            if(std::fabs(vectorPhi-phi)<delta && dot+0.1>cosFOV){
+            //if(std::fabs(vectorPhi-phi)<delta && dot>lambda){
                 thetas.push_back(std::atan(v[1]/v[0]));
-                //NUClear::log("THETA!");
             }
         }
         
-        if(thetas.size() < 2 ){
-            //NUClear::log("not enough thetas!");
-            //break????
-        }
+        // if(thetas.size() < 2 ){
+        //     NUClear::log("not enough thetas!");
+        //     //break????
+        // }else if(thetas.size()>2){
+        //     NUClear::log("too many thetas!"); 
+        // }else{
+        //     NUClear::log("just enough!");
+        // }
         std::vector<std::pair<float, float>> output;
         
         //std::cout << "thetas left: " << thetas.size() << std::endl;
@@ -238,7 +239,7 @@ namespace vision {
             //float centerTheta = std::atan(y/x);
             float minPhi = centerPhi - (fovY/2);
             float maxPhi = centerPhi + (fovY/2);
-            std::cout << "minPhi: " << minPhi << " maxPhi: " << maxPhi << std::endl;
+            //std::cout << "minPhi: " << minPhi << " maxPhi: " << maxPhi << std::endl;
 
             /******************************
              * Get our edges from our LUT *
@@ -279,13 +280,14 @@ namespace vision {
 
              screenPoints.reserve(camPoints.size());
              //NUClear::log(camPoints.size());
+             //NUClear::log("screen points");
              for(auto& point : camPoints) {
 
                 //not sure what this line does.. dont think i need it
                 //arma::fvec2 floatPixel = screenCentreOffset - arma::fvec2({(focalLengthPixels * point[1] / point[0]), (focalLengthPixels * point[2] / point[0])});
 
                 screenPoints.push_back(arma::ivec2({lround(point[0]), lround(point[1])}));
-                NUClear::log(lround(point[0]),lround(point[1]));
+                //std::cout << lround(point[0]) << " " << lround(point[1]) << std::endl;
 
                 helperPoints.push_back(std::make_pair(screenPoints.back(), screenPoints.back() + arma::ivec2({1,1}))); 
             }
