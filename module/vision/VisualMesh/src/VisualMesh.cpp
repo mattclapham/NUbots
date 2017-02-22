@@ -91,8 +91,8 @@ namespace vision {
 
 
     std::vector<std::pair<float, float>> thetaLimits(float phi, arma::fvec3 camera, float fovX) {
-        arma::fmat::fixed<8,3> possibleVectors; //because there are 8 resulting vectors
-        //NUClear::log(__LINE__);
+        arma::fmat::fixed<8,3> possibleVectors; //there are 8 resulting vectors
+        
         float lambda = std::sin((M_PI-fovX)/2);
         NUClear::log("Lambda: ",lambda);
         float Z = 1/(std::sqrt(pow(std::cos(phi),2)+1)); //plus or minus
@@ -100,31 +100,32 @@ namespace vision {
         for (int i = 0; i<8; i++){//build out z component of the vectors
             possibleVectors(i,2)=( i < 4 ? Z : -Z);
         }
-        //NUClear::log(__LINE__);
+        
         float B = 1-pow(Z,2);
         NUClear::log("B = ", B);
         arma::fvec2 A = {(lambda - (camera[2]*Z))/camera[0], (lambda - (camera[2]*(-Z)))/camera[0]};
         NUClear::log("A = ", A);
-        //NUClear::log(__LINE__);
+        
         for (int i = 0; i<=1; i++){ //determine the y components
             float Y = (std::sqrt(4*(B-(A[i]*A[i]))))/2;
             NUClear::log("Y = ", Y);
             for (int j = 0; j < 4; j++){
-                possibleVectors(j+i*4,1) = i < 2 ? Y : -Y;
+                possibleVectors(j+i*4,1) = j < 2 ? Y : -Y;
             }
         }
-        //NUClear::log(__LINE__);
         for (int i = 0; i<8; i++){ //determine the x components
             possibleVectors(i,0) = i%2==0 ? std::sqrt(B-pow(possibleVectors(i,1),2)) :  -(std::sqrt(B-pow(possibleVectors(i,1),2)));
         } 
-        //NUClear::log(__LINE__);
 
+        for (int i = 0; i<8; i++){ //print the fmat
+            std::cout << possibleVectors(i,0) << " " << possibleVectors(i,1) << " " << possibleVectors(i,2) <<std::endl;
+        }
         //vector must be infront of the plane
         //phi must be almost equal
 
         //dot of camera and camera vector needs to be greater than sin((pi-fov)/2) -- lambda
-        std::cout << "camera phi: " <<phi << std::endl;
-        NUClear::log("camera vector: ", camera);
+        //std::cout << "camera phi: " <<phi << std::endl;
+        //NUClear::log("camera vector: ", camera);
         float cosFOV = std::cos(fovX/2);
         std::list<float> thetas;
         for (int i = 0; i < 8; i++){
@@ -133,27 +134,29 @@ namespace vision {
             float delta = (std::numeric_limits<float>::epsilon() * 10)*phi;
             float dot = arma::dot(camera, v);
 
-            NUClear::log("current vector: ");
-            NUClear::log(v);
-            std::cout<< " vector " << i <<"vector phi: " << vectorPhi<< " phi: " << phi << "dot: " << dot << std::endl;
+            //NUClear::log("current vector: ");
+            //NUClear::log(v);
+            std::cout<< " vector " << i <<": vector phi: " << vectorPhi<< " phi: " << phi << " dot: " << dot << std::endl;
             std::cout <<(std::fabs(vectorPhi-phi)<delta) << (dot<cosFOV) << std::endl;
+
             if(std::fabs(vectorPhi-phi)<delta && dot<cosFOV){
+            //if(dot<cosFOV){
                 thetas.push_back(std::atan(v[1]/v[0]));
-                NUClear::log("THETA!");
+                //NUClear::log("THETA!");
             }
         }
-        //NUClear::log(__LINE__);
+        
         if(thetas.size() < 2 ){
-            NUClear::log("not enough thetas!");
+            //NUClear::log("not enough thetas!");
             //break????
         }
         std::vector<std::pair<float, float>> output;
         
-        std::cout << "thetas left: " << thetas.size() << std::endl;
-         std::cout << thetas.front() << " ----- " << thetas.back() << std::endl;
-        //NUClear::log(__LINE__);
+        //std::cout << "thetas left: " << thetas.size() << std::endl;
+        //std::cout << thetas.front() << " ----- " << thetas.back() << std::endl;
+        
         output.push_back(std::make_pair(thetas.front(), thetas.back()));
-        //NUClear::log(__LINE__); 
+         
         return output;
     }
 
@@ -217,9 +220,14 @@ namespace vision {
             // Camera height is z component of the transformation matrix
             float cameraHeight = sensors.orientationCamToGround(2, 3);
 
-            arma::vec3 rotatedOriginVector = Transform3D(convert<double, 4, 4>(sensors.orientationCamToGround)).x(); //mulitply the LOS by the translation matrix
-            //arma::vec3 rotatedOriginVector = sensors.orientationCamToGround.x();
+            Transform3D camMatrix = Transform3D(convert<double, 4, 4>(sensors.orientationCamToGround));
+
+            Rotation3D camToGround = Rotation3D::createRotationZ(-Rotation3D(camMatrix.rotation()).yaw()) * camMatrix.rotation();
+
+            arma::vec3 rotatedOriginVector = camToGround.x(); //mulitply the LOS by the translation matrix
+
             arma::fvec3 rotatedOrigin = arma::conv_to<arma::fvec>::from(rotatedOriginVector);
+
 
 
             float x = rotatedOrigin[0];
