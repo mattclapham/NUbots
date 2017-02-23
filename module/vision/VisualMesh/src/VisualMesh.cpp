@@ -82,8 +82,8 @@ namespace vision {
     arma::fvec3 VisualMesh::thetaPhiToCartesian(float theta, float phi){
         float r = 1.0; 
 
-        float x = r * std::sin(theta) * std::cos(phi);
-        float y = r * std::sin(theta) * std::sin(phi);
+        float x = r * std::sin(phi) * std::cos(theta);
+        float y = r * std::sin(phi) * std::sin(theta);
         float z = r * std::cos(theta);
 
         return arma::fvec3({x, y, z});
@@ -143,14 +143,6 @@ namespace vision {
             }
         }
         
-        // if(thetas.size() < 2 ){
-        //     NUClear::log("not enough thetas!");
-        //     //break????
-        // }else if(thetas.size()>2){
-        //     NUClear::log("too many thetas!"); 
-        // }else{
-        //     NUClear::log("just enough!");
-        // }
         std::vector<std::pair<float, float>> output;
         
         //std::cout << "thetas left: " << thetas.size() << std::endl;
@@ -266,7 +258,6 @@ namespace vision {
                 arma::fvec2 imagePoint = sphericalToPixel(lambda, cartesianPoint);
                 arma::fvec2 offsetPoint = arma::fvec2({(imagePoint[0]-imageCenter[0]-cx), (imagePoint[1] - imageCenter[1] - cy)});
 
-
                 camPoints.push_back(offsetPoint);
 
              }
@@ -282,9 +273,6 @@ namespace vision {
              //NUClear::log(camPoints.size());
              //NUClear::log("screen points");
              for(auto& point : camPoints) {
-
-                //not sure what this line does.. dont think i need it
-                //arma::fvec2 floatPixel = screenCentreOffset - arma::fvec2({(focalLengthPixels * point[1] / point[0]), (focalLengthPixels * point[2] / point[0])});
 
                 screenPoints.push_back(arma::ivec2({lround(point[0]), lround(point[1])}));
                 //std::cout << lround(point[0]) << " " << lround(point[1]) << std::endl;
