@@ -65,7 +65,7 @@ namespace vision {
         return arma::fvec3({sx, sy, sz});
     }
 
-    arma::fvec2 VisualMesh::sphericalToPixel(float lambda, arma::fvec3 point){
+    arma::fvec2 VisualMesh::projectToSpherical(float lambda, arma::fvec3 point){
         
         float r = 1.0/lambda * std::acos(-point[2]);
         if(r == 0){
@@ -79,16 +79,14 @@ namespace vision {
         return arma::fvec2({px, py});
     }
 
-    arma::fvec3 VisualMesh::thetaPhiToCartesian(float theta, float phi){
-        float r = 1.0; 
+    arma::fvec3 VisualMesh::thetaPhiToCartesian(float theta, float phi){ 
 
-        float x = r * std::sin(phi) * std::cos(theta);
-        float y = r * std::sin(phi) * std::sin(theta);
-        float z = r * std::cos(theta);
+        float x = std::sin(phi) * std::cos(theta);
+        float y = std::sin(phi) * std::sin(theta);
+        float z = std::cos(theta);
 
         return arma::fvec3({x, y, z});
     }
-
 
     std::vector<std::pair<float, float>> thetaLimits(float phi, arma::fvec3 camera, float fovX) {
         arma::fmat::fixed<8,3> possibleVectors; //there are 8 resulting vectors
@@ -206,26 +204,27 @@ namespace vision {
             float fovX = 2.65290;//params.FOV[0];
             float fovY = 2.65290;//params.FOV[1];
             //float focalLengthPixels = params.focalLengthPixels;
-            float cx = 0.0;//offset amounts
-            float cy = 0.0;
+            //float cx = 0.0;//offset amounts
+            //float cy = 0.0;
             float lambda = M_PI/1000;
 
             // Camera height is z component of the transformation matrix
             float cameraHeight = sensors.orientationCamToGround(2, 3);
 
             Transform3D camMatrix = Transform3D(convert<double, 4, 4>(sensors.orientationCamToGround));
-
-            Rotation3D camToGround = Rotation3D::createRotationZ(-Rotation3D(camMatrix.rotation()).yaw()) * camMatrix.rotation();
-
-            arma::vec3 rotatedOriginVector = camToGround.x(); //mulitply the LOS by the translation matrix
-
-            arma::fvec3 rotatedOrigin = arma::conv_to<arma::fvec>::from(rotatedOriginVector);
+            arma::mat33 camToGround = Rotation3D::createRotationZ(-Rotation3D(camMatrix.rotation()).yaw()) * camMatrix.rotation(); //remove the yaw
+            arma::fmat33 camSpace = arma::conv_to<arma::fmat>::from(camToGround);
 
 
+            arma::fvec3 rotatedOriginVector = camSpace.submat(0,0,2,0); //mulitply the LOS by the translation matrix
 
-            float x = rotatedOrigin[0];
-            float y = rotatedOrigin[1];
-            float z = rotatedOrigin[2];
+            //arma::fvec3 rotatedOrigin = arma::conv_to<arma::fvec>::from(rotatedOriginVector);
+
+
+
+            float x = rotatedOriginVector[0];
+            float y = rotatedOriginVector[1];
+            float z = rotatedOriginVector[2];
 
             float centerPhi = std::acos(z)/sqrt(x*x + y*y + z*z);
             //float centerTheta = std::atan(y/x);
@@ -237,30 +236,36 @@ namespace vision {
              * Get our edges from our LUT *
              ******************************/
             std::vector<std::pair<double, double>> lineProjections = lut.lookup(cameraHeight, minPhi, maxPhi
-                , std::bind(thetaLimits, std::placeholders::_1, std::cref(rotatedOrigin), std::cref(fovX))); 
+                , std::bind(thetaLimits, std::placeholders::_1, std::cref(rotatedOriginVector), std::cref(fovX))); 
 
              /*************************************************************
               * Get our lookup table and loop through our phi/theta pairs *
               *************************************************************/
              std::vector<arma::fvec2> camPoints;
-             arma::fvec2 imageCenter = sphericalToPixel(lambda, rotatedOrigin);
-             //do i want to be applying offsets to center point???????????????????
-             //imageCenter = ({imageCenter[0]-cx, imageCenter[1]-cy});
+             arma::fvec2 imageCenter = projectToSpherical(lambda, rotatedOriginVector);;
+             std::cout << "START" << std::endl;
 
              for(auto& projection : lineProjections) {
 
                 const float phi = projection.first;
                 const float theta = projection.second;
 
-                
 
-                arma::fvec3 cartesianPoint = thetaPhiToCartesian(theta, phi);
-                arma::fvec2 imagePoint = sphericalToPixel(lambda, cartesianPoint);
-                arma::fvec2 offsetPoint = arma::fvec2({(imagePoint[0]-imageCenter[0]-cx), (imagePoint[1] - imageCenter[1] - cy)});
+                arma::fvec3 cartesianVector = thetaPhiToCartesian(theta, phi); //convert to unit vector on world space
+
+                arma::fvec3 cameraSpaceVector = camSpace * cartesianVector; //convert to camera space
+
+                arma::fvec2 imagePoint = projectToSpherical(lambda, cameraSpaceVector); //converto to pixel 
+
+                arma::fvec2 offsetPoint = arma::fvec2({(imagePoint[0]+imageCenter[0]), (imagePoint[1] + imageCenter[1])}); //change points so top left is 0,0
+                //TODO: Apply offsets
+
+                //std::cout <<"phi: " <<phi << " theta: " << theta << " cartesianPoint: " << cartesianPoint << "imagePoint: " << imagePoint << "offsetPoint: " << offsetPoint << std::endl;
 
                 camPoints.push_back(offsetPoint);
 
              }
+             std::cout << "END" << std::endl;
 
              /***********************************************
               * Project our phi/theta pairs onto the screen *
@@ -270,12 +275,11 @@ namespace vision {
 
 
              screenPoints.reserve(camPoints.size());
-             //NUClear::log(camPoints.size());
-             //NUClear::log("screen points");
+             NUClear::log(camPoints.size());
+             NUClear::log("screen points");
              for(auto& point : camPoints) {
 
                 screenPoints.push_back(arma::ivec2({lround(point[0]), lround(point[1])}));
-                //std::cout << lround(point[0]) << " " << lround(point[1]) << std::endl;
 
                 helperPoints.push_back(std::make_pair(screenPoints.back(), screenPoints.back() + arma::ivec2({1,1}))); 
             }

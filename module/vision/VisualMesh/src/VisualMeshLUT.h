@@ -108,31 +108,32 @@ namespace vision {
 
             // Calculate the min/max theta for each row in range and the corresponding index
             std::vector<std::pair<double, double>> output;
-            //NUClear::log(__LINE__);
+            //std::cout << "start: " << start << " end: " << end << std::endl;
             for (auto it = start; it != end; ++it) {
                 auto& row = *it;
-                //NUClear::log(__LINE__);
                 // Calculate our min and max theta values for each phi
                 std::vector<std::pair<float, float>> thetas = thetaFunction(row.first);
-                //NUClear::log(__LINE__);
                 float minTheta = thetas[0].first;
                 float maxTheta = thetas[0].second;
+                if(minTheta > maxTheta){ //can do this better
+                    float temp = maxTheta;
+                    maxTheta = minTheta;
+                    minTheta = temp;
+                }
+
                 float phi = row.first;
                 float rowDelta = row.second;
-                //NUClear::log(__LINE__);
                 // Work out what index these theta values correspond to
                 float currentTheta = 0;
                 while(currentTheta < maxTheta){
                     output.push_back(std::make_pair(phi, currentTheta));
                     currentTheta += rowDelta;
                 }
-                //NUClear::log(__LINE__);
                 currentTheta = 0 - rowDelta;
                 while(currentTheta > minTheta){
                     output.push_back(std::make_pair(phi, currentTheta));
                     currentTheta -= rowDelta;
                 } 
-                //NUClear::log(__LINE__);  
             }
             // Return an array of points for each sample point in the LUT
             NUClear::log("lookup output size: ", output.size());
