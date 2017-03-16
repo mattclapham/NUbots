@@ -17,11 +17,9 @@ FOREACH(host_pair ${KNOWN_HOSTS})
     LIST(GET host_pair 0 host)
     LIST(GET host_pair 1 alias)
 
-    IF ("${host}" MATCHES "i[0-9]+")
-        SET(user "nubots")
-    ELSE()
-        SET(user "darwin")
-    ENDIF()
+    
+    SET(user "nubots")
+    
 
     FOREACH(config "" n u o i p)
         FOREACH(scripts "" n u o i p)
