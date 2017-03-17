@@ -23,6 +23,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <nuclear>
 
 #include "extension/Configuration.h"
 
@@ -84,8 +85,9 @@ namespace module
             /// @brief Whether the camera is currently in streaming mode
             bool streaming;
 
-            /// @brief The ID of this camera.
-            int cameraID;
+            NUClear::threading::ReactionHandle cameraHandle;
+
+            NUClear::threading::ReactionHandle settingsHandle;
 
             /// @brief Configuration information for this camera.
             ::extension::Configuration config;
@@ -103,7 +105,7 @@ namespace module
              *
              * @param device the path to the video device to use (e.g. /dev/video0)
              */
-            V4L2Camera(const ::extension::Configuration& config, const std::string& deviceID, int cameraID) 
+            V4L2Camera(const ::extension::Configuration& config, const std::string& deviceID) 
                 : buffers()
                 , fd(-1)
                 , width(0)
@@ -113,7 +115,8 @@ namespace module
                 , format("")
                 , fourcc(FOURCC::UNKNOWN)
                 , streaming(false)
-                , cameraID(cameraID)
+                , cameraHandle()
+                , settingsHandle()
                 , config(config) {}
 
             /**
@@ -142,6 +145,22 @@ namespace module
              * @brief Returns a map of all configurable settings
              */
             std::map<std::string, unsigned int>& getSettings() { return settings; }
+
+            NUClear::threading::ReactionHandle& getCameraHandle(){
+                return cameraHandle;
+            }
+
+            NUClear::threading::ReactionHandle& getSettingsHandle(){
+                return settingsHandle;
+            }   
+
+            void setCameraHandle(NUClear::threading::ReactionHandle camH){
+                cameraHandle = camH;
+            }
+
+            void setSettingsHandle(NUClear::threading::ReactionHandle setH){
+                settingsHandle = setH;
+            }         
 
             /**
              * @brief Returns the horizontal resolution the camera is currently set to

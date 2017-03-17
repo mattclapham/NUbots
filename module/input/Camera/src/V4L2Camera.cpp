@@ -15,7 +15,7 @@ namespace module
 		V4L2Camera Camera::initiateV4L2Camera(const Configuration& config)
 		{
 			// This trigger gets us as close as we can to the frame rate as possible (as high resolution as we can)
-            V4L2FrameRateHandle = on<Every<V4L2Camera::FRAMERATE, Per<std::chrono::seconds>>, Single>().then("Read V4L2Camera", [this] {
+            /*V4L2FrameRateHandle = on<Every<V4L2Camera::FRAMERATE, Per<std::chrono::seconds>>, Single>().then("Read V4L2Camera", [this] {
 
 				for (auto& camera : V4L2Cameras)
 				{
@@ -25,9 +25,47 @@ namespace module
 	                    emit(std::make_unique<Image>(camera.second.getImage()));
 	                }
 				}
+            });*/
+
+            std::string deviceID = config["deviceID"];
+            V4L2Camera camera = V4L2Camera(config, deviceID);
+            //Get rid of int deviceID in V4L2Camera.h 
+
+            auto camHandle = on<IO>(camera.fd, IO::READ | IO::CLOSE).then("Read V4L2Camera", [this, deviceID] (const IO::Event& e) {
+                auto cam = this->V4L2Cameras.find(deviceID);
+                // We have no idea who this camera is something messed up is happening
+                if (cam == this->V4L2Cameras.end()) {
+                    log<NUClear::ERROR>(deviceID, "Is still bound but was already deleted!");
+                }
+                else {
+
+                    // The camera closed
+                    if (e.event & IO::CLOSE || (fcntl(e.fd, F_GETFD) != -1 && errno != EBADFD)) {
+
+                        // The camera is dead!
+                        if (camera.fd != -1) {
+                            camera.cameraHandle.unbind();
+                            // Reopen camera
+                            camera.fd = open(camera.deviceID.c_str(), O_RDWR);
+                            //rebind the handle;
+                            // Try to reopen the camera and reopen this handle
+                        }
+                        else {
+                            camera.cameraHandle.unbind();
+                            //toggle gpio
+                            // Toggle gpio and close this handle
+                        }
+                    }
+                    else {
+                        // The camera is not dead!
+                        if (cam.second.isStreaming()) {
+                            emit(std::make_unique<Image>(cam.second.getImage()));
+                        }
+                    }
+                }
             });
 
-            V4L2SettingsHandle = on<Every<1, std::chrono::seconds>>().then("V4L2 Camera Setting Applicator", [this] {
+            auto setHandle = on<Every<1, std::chrono::seconds>>().then("V4L2 Camera Setting Applicator", [this] {
 
 				for (auto& camera : V4L2Cameras)
 				{
@@ -50,6 +88,9 @@ namespace module
 	                }
 				}
             }); 
+
+            camera.setSettingsHandle(setHandle);
+            camera.setCameraHandle(camHandle);
 
 			auto cameraParameters = std::make_unique<CameraParameters>();
             double tanHalfFOV[2], imageCentre[2];
@@ -79,7 +120,7 @@ namespace module
 
                 log("Initialising driver for camera", deviceID);
 
-                V4L2Camera camera(config, deviceID, cameraCount);
+                //V4L2Camera camera(config, deviceID);
 
                 camera.resetCamera(deviceID, format, fourcc, width, height);
 
@@ -105,8 +146,8 @@ namespace module
 
                 log("Camera", deviceID, "is now streaming.");
 
-                V4L2SettingsHandle.enable();
-                V4L2FrameRateHandle.enable();
+                camera->settingsHandle.enable();
+                camera->cameraHandle.enable();
 
                 return(std::move(camera));
             }
@@ -123,10 +164,10 @@ namespace module
 			for (auto& camera : V4L2Cameras)
 			{
 				camera.second.closeCamera();
+                camera.second.settingsHandle.disable();
+                camera.second.cameraHandle.disable();
 			}
-
-            V4L2SettingsHandle.disable();
-            V4L2FrameRateHandle.disable();
+            
             V4L2Cameras.clear();
 		}
 
@@ -180,7 +221,6 @@ namespace module
             image.serialNumber = deviceID;
             image.timestamp    = timestamp;
             image.data         = std::move(data);
-            image.camera_id    = cameraID;
             return image;
         }
 
