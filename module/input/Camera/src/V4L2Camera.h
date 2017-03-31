@@ -63,9 +63,6 @@ namespace module
             /// @brief Our two arrays of data that will be populated
             std::array<std::vector<uint8_t>, NUM_BUFFERS> buffers;
 
-            /// @brief this file descriptor points to the camera object
-            int fd;
-
             /// @brief the width of the image being retrieved from the camera
             size_t width;
 
@@ -93,6 +90,8 @@ namespace module
             ::extension::Configuration config;
 
         public:
+            /// @brief this file descriptor points to the camera object
+            int fd;
 
             /// @brief this enum holds important constants (we are c++ we don't use defines for this kind of thing)
             enum {
@@ -107,7 +106,6 @@ namespace module
              */
             V4L2Camera(const ::extension::Configuration& config, const std::string& deviceID) 
                 : buffers()
-                , fd(-1)
                 , width(0)
                 , height(0)
                 , settings()
@@ -117,7 +115,8 @@ namespace module
                 , streaming(false)
                 , cameraHandle()
                 , settingsHandle()
-                , config(config) {}
+                , config(config) 
+                , fd(-1) {}
 
             /**
              * @brief Gets a pointer to the latest image from the camera so that it can be sent out to the rest of the system

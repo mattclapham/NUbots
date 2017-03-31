@@ -1,16 +1,21 @@
 #include "Camera.h"
 #include "V4L2Camera.h"
 
+#include "extension/FileWatch.h"
+
 namespace module
 {
 	namespace input
 	{
 		using extension::Configuration;
+        using extension::FileWatch;
 
         using message::input::CameraParameters;
         using message::input::Image;
 
         using FOURCC = utility::vision::FOURCC;
+
+        struct ToggleGPIO {};
 
 		V4L2Camera Camera::initiateV4L2Camera(const Configuration& config)
 		{
@@ -31,39 +36,6 @@ namespace module
             V4L2Camera camera = V4L2Camera(config, deviceID);
             //Get rid of int deviceID in V4L2Camera.h 
 
-            auto camHandle = on<IO>(camera.fd, IO::READ | IO::CLOSE).then("Read V4L2Camera", [this, deviceID] (const IO::Event& e) {
-                auto cam = this->V4L2Cameras.find(deviceID);
-                // We have no idea who this camera is something messed up is happening
-                if (cam == this->V4L2Cameras.end()) {
-                    log<NUClear::ERROR>(deviceID, "Is still bound but was already deleted!");
-                }
-                else {
-
-                    // The camera closed
-                    if (e.event & IO::CLOSE || (fcntl(e.fd, F_GETFD) != -1 && errno != EBADFD)) {
-
-                        // The camera is dead!
-                        if (camera.fd != -1) {
-                            camera.cameraHandle.unbind();
-                            // Reopen camera
-                            camera.fd = open(camera.deviceID.c_str(), O_RDWR);
-                            //rebind the handle;
-                            // Try to reopen the camera and reopen this handle
-                        }
-                        else {
-                            camera.cameraHandle.unbind();
-                            //toggle gpio
-                            // Toggle gpio and close this handle
-                        }
-                    }
-                    else {
-                        // The camera is not dead!
-                        if (cam.second.isStreaming()) {
-                            emit(std::make_unique<Image>(cam.second.getImage()));
-                        }
-                    }
-                }
-            });
 
             auto setHandle = on<Every<1, std::chrono::seconds>>().then("V4L2 Camera Setting Applicator", [this] {
 
@@ -90,7 +62,60 @@ namespace module
             }); 
 
             camera.setSettingsHandle(setHandle);
-            camera.setCameraHandle(camHandle);
+
+            on<Trigger<ToggleGPIO>>().then([&] {
+                // Toggle GPIO pin.
+            });
+
+            constexpr auto devFlags = FileWatch::CREATED | 
+                                      FileWatch::UPDATED | 
+                                      FileWatch::REMOVED | 
+                                      FileWatch::RENAMED | 
+                                      FileWatch::MOVED_FROM | 
+                                      FileWatch::MOVED_TO;
+
+            on<FileWatch>("/dev/", devFlags).then([&] (const FileWatch& watch) {
+                if (watch.path.compare("/dev/CAM")) {
+                    if (watch.events & (FileWatch::CREATED | FileWatch::UPDATED | FileWatch::MOVED_TO)) {
+                        // Unbind camera.
+                        camera.getCameraHandle().unbind();
+
+                        // Reopen camera
+                        camera.fd = open(camera.deviceID.c_str(), O_RDWR);
+
+                        // Bind camHandle to new fd and enable reaction
+                        camera.getCameraHandle() = on<IO>(camera.fd, IO::READ | IO::CLOSE).then("Read V4L2Camera", [&] (const IO::Event& e) {
+                            auto cam = this->V4L2Cameras.find(deviceID);
+                            // We have no idea who this camera is something messed up is happening
+                            if (cam == this->V4L2Cameras.end()) {
+                                log<NUClear::ERROR>(deviceID, "Is still bound but was already deleted!");
+                            }
+                            else {
+
+                                // The camera closed
+                                if (e.events & IO::CLOSE || (fcntl(e.fd, F_GETFD) != -1 && errno != EBADFD)) {
+                                    camera.getCameraHandle().disable();
+                                    camera.getCameraHandle().unbind();
+                                    emit(std::make_unique<ToggleGPIO>(ToggleGPIO()));
+                                }
+                                else {
+                                    // The camera is not dead!
+                                    if (cam.second.isStreaming()) {
+                                        emit(std::make_unique<Image>(cam.second.getImage()));
+                                    }
+                                }
+                            }
+                        });
+                    }
+
+                    if (watch.events & (FileWatch::REMOVED | FileWatch::RENAMED | FileWatch::MOVED_FROM)) {
+                        // Unbind and disable camHandle
+                        camera.getCameraHandle().disable();
+                        camera.getCameraHandle().unbind();
+                        emit(std::make_unique<ToggleGPIO>(ToggleGPIO()));
+                    }
+                }
+            });
 
 			auto cameraParameters = std::make_unique<CameraParameters>();
             double tanHalfFOV[2], imageCentre[2];
