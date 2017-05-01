@@ -17,54 +17,59 @@ namespace module
 
         struct ToggleGPIO {};
 
-		V4L2Camera Camera::initiateV4L2Camera(const Configuration& config)
-		{
-			// This trigger gets us as close as we can to the frame rate as possible (as high resolution as we can)
-            /*V4L2FrameRateHandle = on<Every<V4L2Camera::FRAMERATE, Per<std::chrono::seconds>>, Single>().then("Read V4L2Camera", [this] {
+        V4L2Camera Camera::initiateV4L2Camera(const Configuration& config)
+        {
+            // This trigger gets us as close as we can to the frame rate as possible (as high resolution as we can)
+            V4L2FrameRateHandle = on<Every<V4L2Camera::FRAMERATE, Per<std::chrono::seconds>>, Single>().then("Read V4L2Camera", [this] {
 
-				for (auto& camera : V4L2Cameras)
-				{
-	                // If the camera is ready, get an image and emit it
-	                if (camera.second.isStreaming())
-	                {
-	                    emit(std::make_unique<Image>(camera.second.getImage()));
-	                }
-				}
-            });*/
+                for (auto& camera : V4L2Cameras)
+                {
+                    // If the camera is ready, get an image and emit it
+                    if (camera.second.isStreaming())
+                    {
+                        emit(std::make_unique<Image>(camera.second.getImage()));
+                    }
+                }
+            });
 
             std::string deviceID = config["deviceID"];
             V4L2Camera camera = V4L2Camera(config, deviceID);
-            //Get rid of int deviceID in V4L2Camera.h 
-
 
             auto setHandle = on<Every<1, std::chrono::seconds>>().then("V4L2 Camera Setting Applicator", [this] {
 
-				for (auto& camera : V4L2Cameras)
-				{
-		            if (camera.second.isStreaming())
-		            {
-	                    // Set all other camera settings
-	                    for (auto& setting : camera.second.getConfig().config)
-	                    {
-	                        auto& settings = camera.second.getSettings();
-	                        auto it = settings.find(setting.first.as<std::string>());
+                for (auto& camera : V4L2Cameras)
+                {
+                    if (camera.second.isStreaming())
+                    {
+                        // Set all other camera settings
+                        for (auto& setting : camera.second.getConfig().config)
+                        {
+                            auto& settings = camera.second.getSettings();
+                            auto it = settings.find(setting.first.as<std::string>());
 
-	                        if (it != settings.end())
-	                        {
-	                            if (camera.second.setSetting(it->second, setting.second.as<int>()) == false)
-	                            {
-	                                log<NUClear::DEBUG>("Failed to set", it->first, "on camera", camera.first);
-	                            }
-	                        }
-	                    }
-	                }
-				}
+                            if (it != settings.end())
+                            {
+                                if (camera.second.setSetting(it->second, setting.second.as<int>()) == false)
+                                {
+                                    log<NUClear::DEBUG>("Failed to set", it->first, "on camera", camera.first);
+                                }
+                            }
+                        }
+                    }
+                }
             }); 
 
             camera.setSettingsHandle(setHandle);
 
             on<Trigger<ToggleGPIO>>().then([&] {
-                // Toggle GPIO pin.
+                    log("Toggling GPIO");
+                    std::ofstream gpio;
+                    gpio.open ("/sys/class/gpio/gpio8/value");
+                    gpio << "0";
+                    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+                    gpio << "1";
+                    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                    gpio.close();
             });
 
             constexpr auto devFlags = FileWatch::CREATED | 
@@ -77,47 +82,49 @@ namespace module
             on<FileWatch>("/dev/", devFlags).then([&] (const FileWatch& watch) {
                 if (watch.path.compare("/dev/CAM")) {
                     if (watch.events & (FileWatch::CREATED | FileWatch::UPDATED | FileWatch::MOVED_TO)) {
+                        log("Camerea Device Found");
                         // Unbind camera.
-                        camera.getCameraHandle().unbind();
+                        camera.unbindCameraHandle();
 
                         // Reopen camera
-                        camera.fd = open(camera.deviceID.c_str(), O_RDWR);
+                        camera.resetCamera();
 
                         // Bind camHandle to new fd and enable reaction
-                        camera.getCameraHandle() = on<IO>(camera.fd, IO::READ | IO::CLOSE).then("Read V4L2Camera", [&] (const IO::Event& e) {
-                            auto cam = this->V4L2Cameras.find(deviceID);
+                        auto camHandle = on<IO>(camera.getFile(), IO::READ | IO::CLOSE).then("Read V4L2Camera", [&] (const IO::Event& e) {
+                            log("IO Image");
+                            auto cam = V4L2Cameras.find(deviceID);
                             // We have no idea who this camera is something messed up is happening
-                            if (cam == this->V4L2Cameras.end()) {
+                            if (cam == V4L2Cameras.end()) {
                                 log<NUClear::ERROR>(deviceID, "Is still bound but was already deleted!");
                             }
                             else {
-
                                 // The camera closed
                                 if (e.events & IO::CLOSE || (fcntl(e.fd, F_GETFD) != -1 && errno != EBADFD)) {
-                                    camera.getCameraHandle().disable();
-                                    camera.getCameraHandle().unbind();
+                                    camera.unbindCameraHandle();
                                     emit(std::make_unique<ToggleGPIO>(ToggleGPIO()));
                                 }
                                 else {
                                     // The camera is not dead!
-                                    if (cam.second.isStreaming()) {
-                                        emit(std::make_unique<Image>(cam.second.getImage()));
+                                    if (cam->second.isStreaming()) {
+                                        emit(std::make_unique<Image>(cam->second.getImage()));
                                     }
                                 }
                             }
                         });
+
+                        camera.setCameraHandle(camHandle);
                     }
 
                     if (watch.events & (FileWatch::REMOVED | FileWatch::RENAMED | FileWatch::MOVED_FROM)) {
                         // Unbind and disable camHandle
-                        camera.getCameraHandle().disable();
-                        camera.getCameraHandle().unbind();
-                        emit(std::make_unique<ToggleGPIO>(ToggleGPIO()));
+                        log("Camerea Device Lost");
+                        camera.unbindCameraHandle();
+                        emit(std::make_unique<ToggleGPIO>());
                     }
                 }
             });
 
-			auto cameraParameters = std::make_unique<CameraParameters>();
+            auto cameraParameters = std::make_unique<CameraParameters>();
             double tanHalfFOV[2], imageCentre[2];
 
             cameraParameters->imageSizePixels << config["imageWidth"].as<uint>(), config["imageHeight"].as<uint>();
@@ -171,8 +178,7 @@ namespace module
 
                 log("Camera", deviceID, "is now streaming.");
 
-                camera->settingsHandle.enable();
-                camera->cameraHandle.enable();
+                camera.enableHandles();
 
                 return(std::move(camera));
             }
@@ -184,21 +190,9 @@ namespace module
             }
         }
 
-        void Camera::ShutdownV4L2Camera()
-		{
-			for (auto& camera : V4L2Cameras)
-			{
-				camera.second.closeCamera();
-                camera.second.settingsHandle.disable();
-                camera.second.cameraHandle.disable();
-			}
-            
-            V4L2Cameras.clear();
-		}
-
         message::input::Image V4L2Camera::getImage() 
         {
-            if (!this->streaming) 
+            if (!streaming) 
             {
                 throw std::runtime_error("The camera is currently not streaming");
             }
@@ -209,14 +203,14 @@ namespace module
             current.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
             current.memory = V4L2_MEMORY_USERPTR;
 
-            if (ioctl(this->fd, VIDIOC_DQBUF, &current) == -1)
+            if (ioctl(fd, VIDIOC_DQBUF, &current) == -1)
             {
                 throw std::system_error(errno, std::system_category(), "There was an error while de-queuing a buffer");
             }
 
             // Extract our data and create a new fresh buffer
-            std::vector<uint8_t> data(this->buffers[current.index].size());
-            std::swap(data, this->buffers[current.index]);
+            std::vector<uint8_t> data(buffers[current.index].size());
+            std::swap(data, buffers[current.index]);
             data.resize(current.bytesused);
 
             // Calculate the timestamp in terms of NUClear clock
@@ -234,7 +228,7 @@ namespace module
             requeue.m.userptr = reinterpret_cast<unsigned long int>(buffers[current.index].data());
             requeue.length = buffers[current.index].capacity();
 
-            if (ioctl(this->fd, VIDIOC_QBUF, &requeue) == -1)
+            if (ioctl(fd, VIDIOC_QBUF, &requeue) == -1)
             {
                 throw std::system_error(errno, std::system_category(), "There was an error while re-queuing a buffer");
             };
@@ -252,20 +246,20 @@ namespace module
         void V4L2Camera::resetCamera(const std::string& device, const std::string& fmt, const FOURCC& cc, size_t w, size_t h)
         {
             // if the camera device is already open, close it
-            this->closeCamera();
+            closeCamera();
 
             // Store our new state
-            this->deviceID = device;
-            this->format   = fmt;
-            this->fourcc   = cc;
-            this->width    = w;
-            this->height   = h;
+            deviceID = device;
+            format   = fmt;
+            fourcc   = cc;
+            width    = w;
+            height   = h;
 
             // Open the camera device
-            this->fd = open(deviceID.c_str(), O_RDWR);
+            fd = open(deviceID.c_str(), O_RDWR);
 
             // Check if we managed to open our file descriptor
-            if (this->fd < 0)
+            if (fd < 0)
             {
                 throw std::runtime_error(std::string("We were unable to access the camera device on ") + deviceID);
             }
@@ -325,7 +319,7 @@ namespace module
             rb.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
             rb.memory = V4L2_MEMORY_USERPTR;
 
-            if (ioctl(this->fd, VIDIOC_REQBUFS, &rb) == -1)
+            if (ioctl(fd, VIDIOC_REQBUFS, &rb) == -1)
             {
                 throw std::system_error(errno, std::system_category(), "There was an error configuring user buffers");
             }
@@ -350,52 +344,57 @@ namespace module
             settings.insert(std::make_pair("sharpness",                  V4L2_CID_SHARPNESS));
         }
 
+        void V4L2Camera::resetCamera()
+        {
+            resetCamera(deviceID,format,fourcc,width,height);
+        }
+
         void V4L2Camera::startStreaming()
         {
-           if (!this->streaming)
+           if (!streaming)
            {
                 // Start streaming data
                 int command = V4L2_BUF_TYPE_VIDEO_CAPTURE;
 
-                if (ioctl(this->fd, VIDIOC_STREAMON, &command) == -1)
+                if (ioctl(fd, VIDIOC_STREAMON, &command) == -1)
                 {
                     throw std::system_error(errno, std::system_category(), "Unable to start camera streaming");
                 }
 
                 // Calculate how big our buffers must be
-                size_t bufferlength = this->width * this->height * 2;
+                size_t bufferlength = width * height * 2;
 
                 // Enqueue 2 buffers
                 for(uint i = 0; i < NUM_BUFFERS; ++i)
                 {
-                    this->buffers[i].resize(bufferlength);
+                    buffers[i].resize(bufferlength);
 
                     v4l2_buffer buff;
                     memset(&buff, 0, sizeof(buff));
                     buff.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
                     buff.memory = V4L2_MEMORY_USERPTR;
                     buff.index = i;
-                    buff.m.userptr = reinterpret_cast<unsigned long int>(this->buffers[i].data());
-                    buff.length = this->buffers[i].capacity();
+                    buff.m.userptr = reinterpret_cast<unsigned long int>(buffers[i].data());
+                    buff.length = buffers[i].capacity();
 
-                    if (ioctl(this->fd, VIDIOC_QBUF, &buff) == -1)
+                    if (ioctl(fd, VIDIOC_QBUF, &buff) == -1)
                     {
                         throw std::system_error(errno, std::system_category(), "Unable to queue buffers");
                     }
                 }
 
-                this->streaming = true;
+                streaming = true;
             }                
         }
 
         void V4L2Camera::stopStreaming()
         {
-            if (this->streaming)
+            if (streaming)
             {
                 // Dequeue all buffers
                 for(bool done = false; !done;)
                 {
-                    if(ioctl(this->fd, VIDIOC_DQBUF) == -1)
+                    if(ioctl(fd, VIDIOC_DQBUF) == -1)
                     {
                         done = true;
                     }
@@ -404,18 +403,18 @@ namespace module
                 // Stop streaming data
                 int command = V4L2_BUF_TYPE_VIDEO_CAPTURE;
 
-                if (ioctl(this->fd, VIDIOC_STREAMOFF, &command) == -1)
+                if (ioctl(fd, VIDIOC_STREAMOFF, &command) == -1)
                 {
                     throw std::system_error(errno, std::system_category(), "Unable to stop camera streaming");
                 }
 
-                this->streaming = false;
+                streaming = false;
             }                
         }
 
         void V4L2Camera::setConfig(const ::extension::Configuration& _config)
         {
-            this->config = _config;
+            config = _config;
 
             int w  = config["imageWidth"].as<uint>();
             int h  = config["imageHeight"].as<uint>();
@@ -423,12 +422,12 @@ namespace module
             std::string fmt = config["imageFormat"].as<std::string>();
             FOURCC cc = utility::vision::getFourCCFromDescription(format);
 
-            if (this->width    != static_cast<size_t>(w) ||
-                this->height   != static_cast<size_t>(h) ||
-                this->format   != fmt ||
-                this->deviceID != ID)
+            if (width    != static_cast<size_t>(w) ||
+                height   != static_cast<size_t>(h) ||
+                format   != fmt ||
+                deviceID != ID)
             {
-                this->resetCamera(ID, fmt, cc, w, h);
+                resetCamera(ID, fmt, cc, w, h);
             }                
         }
 
@@ -438,7 +437,7 @@ namespace module
             struct v4l2_queryctrl queryctrl;
             queryctrl.id = id;
 
-            if (ioctl(this->fd, VIDIOC_QUERYCTRL, &queryctrl) == -1) 
+            if (ioctl(fd, VIDIOC_QUERYCTRL, &queryctrl) == -1) 
             {
                 throw std::system_error(errno, std::system_category(), "There was an error while attempting to get the status of this camera value");
             }
@@ -457,7 +456,7 @@ namespace module
             struct v4l2_control control_s;
             control_s.id = id;
 
-            if (ioctl(this->fd, VIDIOC_G_CTRL, &control_s) < 0)
+            if (ioctl(fd, VIDIOC_G_CTRL, &control_s) < 0)
             {
                 throw std::system_error(errno, std::system_category(), "There was an error while trying to get the current value");
             }
@@ -471,7 +470,7 @@ namespace module
             struct v4l2_queryctrl queryctrl;
             queryctrl.id = id;
 
-            if (ioctl(this->fd, VIDIOC_QUERYCTRL, &queryctrl) < 0)
+            if (ioctl(fd, VIDIOC_QUERYCTRL, &queryctrl) < 0)
             {
                 return false;
             }
@@ -502,7 +501,7 @@ namespace module
             control_s.id = id;
             control_s.value = value;
 
-            if (ioctl(this->fd, VIDIOC_S_CTRL, &control_s) < 0)
+            if (ioctl(fd, VIDIOC_S_CTRL, &control_s) < 0)
             {
                 return false;
             }

@@ -141,12 +141,35 @@ namespace module
             void resetCamera(const std::string& device, const std::string& fmt, const FOURCC& cc, size_t w, size_t h);
 
             /**
+             * @brief Sets up the camera with previously set values
+             */
+            void resetCamera();
+
+            /**
              * @brief Returns a map of all configurable settings
              */
             std::map<std::string, unsigned int>& getSettings() { return settings; }
 
-            NUClear::threading::ReactionHandle& getCameraHandle(){
+            NUClear::threading::ReactionHandle& setCameraHandle(){
                 return cameraHandle;
+            }
+
+            void unbindCameraHandle()
+            {
+                cameraHandle.disable();
+                cameraHandle.unbind();
+            }
+
+            void enableHandles()
+            {
+                settingsHandle.enable();
+                cameraHandle.enable();
+            }
+
+            void disableHandles()
+            {
+                settingsHandle.disable();
+                cameraHandle.disable();
             }
 
             NUClear::threading::ReactionHandle& getSettingsHandle(){
@@ -180,6 +203,8 @@ namespace module
              * @brief returns the format that the camera is currently reading (YUYV or MJPG)
              */
             const std::string& getFormat() const { return format; }
+
+            int getFile() { return fd; }
 
             /**
              * @brief This method is to be called when shutting down the system. It does cleanup on the cameras resources
