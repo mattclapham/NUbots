@@ -209,15 +209,7 @@ namespace module
             /**
              * @brief This method is to be called when shutting down the system. It does cleanup on the cameras resources
              */
-            void closeCamera()
-            {
-                if (fd != -1)
-                {
-                    stopStreaming();
-                    close(fd);
-                    fd = -1;
-                }                
-            }
+            void closeCamera();
 
             /**
              * @brief Starts the camera streaming video

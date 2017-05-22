@@ -24,10 +24,24 @@ namespace module
 
                 for (auto& camera : V4L2Cameras)
                 {
-                    // If the camera is ready, get an image and emit it
-                    if (camera.second.isStreaming())
+                    try{
+                        // If the camera is ready, get an image and emit it
+                        if (camera.second.isStreaming())
+                        {
+                            emit(std::make_unique<Image>(camera.second.getImage()));
+                        }
+                    }
+                    catch (std::system_error& e)
                     {
-                        emit(std::make_unique<Image>(camera.second.getImage()));
+                        log<NUClear::ERROR>(e.what());
+                        log("Resetting Camera");
+                        V4L2FrameRateHandle.disable();
+                        V4L2SettingsHandle.disable();
+                        camera.second.resetCamera();
+                        camera.second.startStreaming();
+                        V4L2SettingsHandle.enable();
+                        V4L2FrameRateHandle.enable();
+                        log("Camera Reset");
                     }
                 }
             });
@@ -35,31 +49,45 @@ namespace module
             std::string deviceID = config["deviceID"];
             V4L2Camera camera = V4L2Camera(config, deviceID);
 
-            auto setHandle = on<Every<1, std::chrono::seconds>>().then("V4L2 Camera Setting Applicator", [this] {
+            V4L2SettingsHandle = on<Every<1, std::chrono::seconds>>().then("V4L2 Camera Setting Applicator", [this] {
 
                 for (auto& camera : V4L2Cameras)
                 {
-                    if (camera.second.isStreaming())
-                    {
-                        // Set all other camera settings
-                        for (auto& setting : camera.second.getConfig().config)
+                    try { 
+                        if (camera.second.isStreaming())
                         {
-                            auto& settings = camera.second.getSettings();
-                            auto it = settings.find(setting.first.as<std::string>());
-
-                            if (it != settings.end())
+                            // Set all other camera settings
+                            for (auto& setting : camera.second.getConfig().config)
                             {
-                                if (camera.second.setSetting(it->second, setting.second.as<int>()) == false)
+                                auto& settings = camera.second.getSettings();
+                                auto it = settings.find(setting.first.as<std::string>());
+
+                                if (it != settings.end())
                                 {
-                                    log<NUClear::DEBUG>("Failed to set", it->first, "on camera", camera.first);
+                                    if (camera.second.setSetting(it->second, setting.second.as<int>()) == false)
+                                    {
+                                        log<NUClear::DEBUG>("Failed to set", it->first, "on camera", camera.first);
+                                    }
                                 }
                             }
                         }
                     }
+                    catch (std::system_error& e)
+                    {
+                        log<NUClear::ERROR>(e.what());
+                        log("Resetting Camera");
+                        V4L2FrameRateHandle.disable();
+                        V4L2SettingsHandle.disable();
+                        camera.second.resetCamera();
+                        camera.second.startStreaming();
+                        V4L2SettingsHandle.enable();
+                        V4L2FrameRateHandle.enable();
+                        log("Camera Reset");
+                    }
                 }
             }); 
 
-            camera.setSettingsHandle(setHandle);
+            camera.setSettingsHandle(V4L2SettingsHandle);
 
             on<Trigger<ToggleGPIO>>().then([&] {
                     log("Toggling GPIO");
@@ -72,7 +100,7 @@ namespace module
                     gpio.close();
             });
 
-            constexpr auto devFlags = FileWatch::CREATED | 
+            /*constexpr auto devFlags = FileWatch::CREATED | 
                                       FileWatch::UPDATED | 
                                       FileWatch::REMOVED | 
                                       FileWatch::RENAMED | 
@@ -122,7 +150,7 @@ namespace module
                         emit(std::make_unique<ToggleGPIO>());
                     }
                 }
-            });
+            });*/
 
             auto cameraParameters = std::make_unique<CameraParameters>();
             double tanHalfFOV[2], imageCentre[2];
@@ -259,6 +287,21 @@ namespace module
             fd = open(deviceID.c_str(), O_RDWR);
 
             // Check if we managed to open our file descriptor
+            int resetCount = 0;
+
+            while (fd < 0 && resetCount < 100)
+            {
+                    std::cout << "Toggling GPIO" << std::endl;
+                    std::ofstream gpio;
+                    gpio.open ("/sys/class/gpio/gpio8/value");
+                    gpio << "0";
+                    std::this_thread::sleep_for(std::chrono::milliseconds(150));
+                    gpio << "1";
+                    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                    gpio.close();
+                    fd = open(deviceID.c_str(), O_RDWR);
+                    resetCount++;
+            }
             if (fd < 0)
             {
                 throw std::runtime_error(std::string("We were unable to access the camera device on ") + deviceID);
@@ -411,6 +454,22 @@ namespace module
                 streaming = false;
             }                
         }
+
+        void V4L2Camera::closeCamera()
+            {
+                if (fd != -1)
+                {
+                    try{
+                        stopStreaming();
+                    }
+                    catch (std::system_error)
+                    {
+                        streaming = false;
+                    }
+                    close(fd);
+                    fd = -1;
+                }                
+            }
 
         void V4L2Camera::setConfig(const ::extension::Configuration& _config)
         {
