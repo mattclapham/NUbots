@@ -15,7 +15,6 @@ namespace module
 
         using FOURCC = utility::vision::FOURCC;
 
-        struct ToggleGPIO {};
 
         V4L2Camera Camera::initiateV4L2Camera(const Configuration& config)
         {
@@ -53,7 +52,7 @@ namespace module
 
                 for (auto& camera : V4L2Cameras)
                 {
-                    try { 
+                    try {
                         if (camera.second.isStreaming())
                         {
                             // Set all other camera settings
@@ -85,73 +84,9 @@ namespace module
                         log("Camera Reset");
                     }
                 }
-            }); 
-
-            camera.setSettingsHandle(V4L2SettingsHandle);
-
-            on<Trigger<ToggleGPIO>>().then([&] {
-                    log("Toggling GPIO");
-                    std::ofstream gpio;
-                    gpio.open ("/sys/class/gpio/gpio8/value");
-                    gpio << "0";
-                    std::this_thread::sleep_for(std::chrono::milliseconds(500));
-                    gpio << "1";
-                    std::this_thread::sleep_for(std::chrono::milliseconds(1));
-                    gpio.close();
             });
 
-            /*constexpr auto devFlags = FileWatch::CREATED | 
-                                      FileWatch::UPDATED | 
-                                      FileWatch::REMOVED | 
-                                      FileWatch::RENAMED | 
-                                      FileWatch::MOVED_FROM | 
-                                      FileWatch::MOVED_TO;
-
-            on<FileWatch>("/dev/", devFlags).then([&] (const FileWatch& watch) {
-                if (watch.path.compare("/dev/CAM")) {
-                    if (watch.events & (FileWatch::CREATED | FileWatch::UPDATED | FileWatch::MOVED_TO)) {
-                        log("Camerea Device Found");
-                        // Unbind camera.
-                        camera.unbindCameraHandle();
-
-                        // Reopen camera
-                        camera.resetCamera();
-
-                        // Bind camHandle to new fd and enable reaction
-                        auto camHandle = on<IO>(camera.getFile(), IO::READ | IO::CLOSE).then("Read V4L2Camera", [&] (const IO::Event& e) {
-                            log("IO Image");
-                            auto cam = V4L2Cameras.find(deviceID);
-                            // We have no idea who this camera is something messed up is happening
-                            if (cam == V4L2Cameras.end()) {
-                                log<NUClear::ERROR>(deviceID, "Is still bound but was already deleted!");
-                            }
-                            else {
-                                // The camera closed
-                                if (e.events & IO::CLOSE || (fcntl(e.fd, F_GETFD) != -1 && errno != EBADFD)) {
-                                    camera.unbindCameraHandle();
-                                    emit(std::make_unique<ToggleGPIO>(ToggleGPIO()));
-                                }
-                                else {
-                                    // The camera is not dead!
-                                    if (cam->second.isStreaming()) {
-                                        emit(std::make_unique<Image>(cam->second.getImage()));
-                                    }
-                                }
-                            }
-                        });
-
-                        camera.setCameraHandle(camHandle);
-                    }
-
-                    if (watch.events & (FileWatch::REMOVED | FileWatch::RENAMED | FileWatch::MOVED_FROM)) {
-                        // Unbind and disable camHandle
-                        log("Camerea Device Lost");
-                        camera.unbindCameraHandle();
-                        emit(std::make_unique<ToggleGPIO>());
-                    }
-                }
-            });*/
-
+            camera.setSettingsHandle(V4L2SettingsHandle);
             auto cameraParameters = std::make_unique<CameraParameters>();
             double tanHalfFOV[2], imageCentre[2];
 
@@ -169,7 +104,7 @@ namespace module
 
             log("Emitted camera parameters for camera", config["deviceID"].as<std::string>());
 
-            try 
+            try
             {
                 // Recreate the camera device at the required resolution
                 int width  = config["imageWidth"].as<uint>();
@@ -197,7 +132,7 @@ namespace module
                         if (camera.setSetting(it->second, setting.second.as<int>()) == false)
                         {
                             log<NUClear::DEBUG>("Failed to set", it->first, "on camera", deviceID);
-                        }                        
+                        }
                     }
                 }
 
@@ -211,16 +146,16 @@ namespace module
                 return(std::move(camera));
             }
 
-            catch(const std::exception& e) 
+            catch(const std::exception& e)
             {
                 NUClear::log<NUClear::DEBUG>(std::string("Exception while setting camera configuration: ") + e.what());
                 throw e;
             }
         }
 
-        message::input::Image V4L2Camera::getImage() 
+        message::input::Image V4L2Camera::getImage()
         {
-            if (!streaming) 
+            if (!streaming)
             {
                 throw std::runtime_error("The camera is currently not streaming");
             }
@@ -320,7 +255,7 @@ namespace module
                 format.fmt.pix.pixelformat = V4L2_PIX_FMT_YUYV;
             }
 
-            else if(fmt == "MJPG") 
+            else if(fmt == "MJPG")
             {
                 format.fmt.pix.pixelformat = V4L2_PIX_FMT_MJPEG;
             }
@@ -427,7 +362,7 @@ namespace module
                 }
 
                 streaming = true;
-            }                
+            }
         }
 
         void V4L2Camera::stopStreaming()
@@ -452,7 +387,7 @@ namespace module
                 }
 
                 streaming = false;
-            }                
+            }
         }
 
         void V4L2Camera::closeCamera()
@@ -468,7 +403,7 @@ namespace module
                     }
                     close(fd);
                     fd = -1;
-                }                
+                }
             }
 
         void V4L2Camera::setConfig(const ::extension::Configuration& _config)
@@ -487,7 +422,7 @@ namespace module
                 deviceID != ID)
             {
                 resetCamera(ID, fmt, cc, w, h);
-            }                
+            }
         }
 
         int32_t V4L2Camera::getSetting(unsigned int id)
@@ -496,7 +431,7 @@ namespace module
             struct v4l2_queryctrl queryctrl;
             queryctrl.id = id;
 
-            if (ioctl(fd, VIDIOC_QUERYCTRL, &queryctrl) == -1) 
+            if (ioctl(fd, VIDIOC_QUERYCTRL, &queryctrl) == -1)
             {
                 throw std::system_error(errno, std::system_category(), "There was an error while attempting to get the status of this camera value");
             }

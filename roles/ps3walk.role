@@ -28,11 +28,10 @@ NUCLEAR_ROLE(
     vision::LUTClassifier
     vision::GoalDetector
     vision::BallDetector
-    vision::ObstacleDetector
 
     # Behaviour
     behaviour::Controller
-    behaviour::skills::WalkEngineStand
+    behaviour::skills::Stand
     behaviour::skills::FallingRelax
     behaviour::skills::Getup
     behaviour::skills::DirectWalkController

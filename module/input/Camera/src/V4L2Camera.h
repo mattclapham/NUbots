@@ -246,4 +246,3 @@ namespace module
 }  // modules
 
 #endif  // MODULES_INPUT_V4L2CAMERA_H
-

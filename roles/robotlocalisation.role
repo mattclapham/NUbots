@@ -23,7 +23,6 @@ NUCLEAR_ROLE(
     vision::LUTClassifier
     vision::BallDetector
     vision::GoalDetector
-    vision::ObstacleDetector
 
     # Localisation
     localisation::RobotFieldLocalisation
@@ -46,7 +45,7 @@ NUCLEAR_ROLE(
     # motion::OldWalkEngine
     motion::ScriptEngine
     motion::HeadController
-    motion::IKKick
+    #motion::IKKick
 
 )
 

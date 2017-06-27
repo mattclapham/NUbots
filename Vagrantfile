@@ -45,7 +45,7 @@ Vagrant.configure("2") do |config|
     shell.inline = "apt-get install -y puppet;
                     mkdir -p /etc/puppet/modules;
                     puppet module list | grep -q 'puppetlabs-apt' \
-                         || puppet module install puppetlabs-apt --module_repository https://forge.puppet.com;
+                         || puppet module install puppetlabs-apt --module_repository https://forge.puppet.com --version 2.4.0;
                     puppet module list | grep -q 'puppetlabs-vcsrepo' \
                          || puppet module install puppetlabs-vcsrepo --module_repository https://forge.puppet.com;
                     puppet module list | grep -q 'camptocamp-archive' \
@@ -72,7 +72,7 @@ Vagrant.configure("2") do |config|
   # Define the NUbots development VM, and make it the primary VM
   # (meaning that a plain `vagrant up` will only create this machine)
   # This VM will install all dependencies using the NUbots deb file (faster, generally recommended)
-  config.vm.define "nubotsvm", primary: true do |nubots|
+  config.vm.define "nubotsvm", autostart: true, primary: true do |nubots|
     nubots.vm.hostname = "nubotsvm.nubots.net"
 
     # Note: Use NFS for more predictable shared folder support.
@@ -90,10 +90,13 @@ Vagrant.configure("2") do |config|
     if File.directory?("../NUClear")
       nubots.vm.synced_folder "../NUClear", "/home/vagrant/NUClear"
     end
+    if File.directory?("../CM730")
+      nubots.vm.synced_folder "../CM730", "/home/vagrant/CM730"
+    end
   end
 
   # This VM will build all dependencies by source (use this to update old dependencies, or to generate a new deb file)
-  config.vm.define "nubotsvmbuild", autostart: false do |nubots|
+  config.vm.define "nubotsvmbuild", autostart: false, primary: false do |nubots|
     nubots.vm.hostname = "nubotsvmbuild.nubots.net"
 
     # Note: Use NFS for more predictable shared folder support.
@@ -107,6 +110,9 @@ Vagrant.configure("2") do |config|
     end
     if File.directory?("../NUClear")
       nubots.vm.synced_folder "../NUClear", "/home/vagrant/NUClear"
+    end
+    if File.directory?("../CM730")
+      nubots.vm.synced_folder "../CM730", "/home/vagrant/CM730"
     end
   end
 end

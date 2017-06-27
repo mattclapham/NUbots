@@ -8,7 +8,6 @@ NUCLEAR_ROLE(
     support::configuration::SoccerConfig
     support::configuration::NetworkConfiguration
     support::NUbugger
-    support::KickCommander
 
     #Sensors
     platform::darwin::HardwareSimulator
@@ -18,9 +17,10 @@ NUCLEAR_ROLE(
     behaviour::Controller
     behaviour::skills::Stand
     behaviour::skills::Getup
+    behaviour::tools::KickCommander
 
     # Motion
-    motion::IKKick
+    #motion::IKKick
     motion::FootMotionPlanner
     motion::FootPlacementPlanner
     motion::TorsoMotionPlanner

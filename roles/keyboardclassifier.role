@@ -23,13 +23,12 @@ NUCLEAR_ROLE(
     motion::OldWalkEngine
     motion::ScriptEngine
     motion::HeadController
-    motion::IKKick
+    ##motion::IKKick
 
     #Vision
     vision::LUTClassifier
     vision::GoalDetector
     vision::BallDetector
-    vision::ObstacleDetector
 
     # Behaviour
     behaviour::Controller

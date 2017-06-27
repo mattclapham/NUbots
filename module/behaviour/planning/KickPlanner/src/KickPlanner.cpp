@@ -77,20 +77,17 @@ namespace planning {
             cfg.seconds_not_seen_limit = config["seconds_not_seen_limit"].as<float>();
             cfg.kick_forward_angle_limit = config["kick_forward_angle_limit"].as<float>();
             emit(std::make_unique<KickPlannerConfig>(cfg));
+            emit(std::make_unique<WantsToKick>(false));
         });
 
         on<Trigger<std::vector<Ball>>,
             With<std::vector<Self>>,
             With<FieldDescription>,
-            With<KickPlan>,
-            With<Sensors>,
-            With<IKKickParams>>().then([this] (
+            With<KickPlan>>().then([this] (
             const std::vector<Ball>& ball,
             const std::vector<Self>& selfs,
             const FieldDescription& fd,
-            const KickPlan& kickPlan,
-            const Sensors& sensors,
-            const IKKickParams& params) {
+            const KickPlan& kickPlan) {
 
             //Get time since last seen ball
             auto now = NUClear::clock::now();
@@ -98,8 +95,8 @@ namespace planning {
 
             //Compute target in robot coords
             auto self = selfs[0];
-            arma::vec2 kickTarget = {1,0,0}; //Kick forwards
-            // arma::vec2 kickTarget = WorldToRobotTransform(self.position, self.heading, kickPlan.target);
+            // arma::vec2 kickTarget = {1,0,0}; //Kick forwards
+            arma::vec2 kickTarget = WorldToRobotTransform(convert<double,2>(self.locObject.position), convert<double,2>(self.heading), convert<double,2>(kickPlan.target));
             arma::vec3 ballPosition = {100,0,0};//too far to kick
             if(ball.size()>0){
                 ballPosition = {ball[0].locObject.position[0], ball[0].locObject.position[1], fd.ball_radius};
@@ -113,19 +110,22 @@ namespace planning {
             // log("KickAngle",KickAngle);
             // log("ballPosition",ballPosition);
             // log("secondsSinceLastSeen",secondsSinceLastSeen);
-            bool kickIsValid = kickValid(ballPosition, params.stand_height, sensors);
+            bool kickIsValid = kickValid(ballPosition);
             if(kickIsValid){
                 lastTimeValid = now;
             }
             float timeSinceValid = (now - lastTimeValid).count() * (1 / double(NUClear::clock::period::den));
 
+            // log("kick checks",secondsSinceLastSeen < cfg.seconds_not_seen_limit
+            //     , kickIsValid
+            //     , KickAngle < cfg.kick_forward_angle_limit);
             if(secondsSinceLastSeen < cfg.seconds_not_seen_limit
                 && kickIsValid
                 && KickAngle < cfg.kick_forward_angle_limit) {
 
                 switch (kickPlan.kickType.value) {
                     case KickType::IK_KICK:
-                        NUClear::log("ik_kick");
+                        // NUClear::log("ik_kick");
                         if(ballPosition[1] > 0){
                             emit(std::make_unique<KickCommand>(KickCommand(Eigen::Vector3d(0.1, 0.04, 0), Eigen::Vector3d(1.0, 0.0, 0.0), KickCommandType::NORMAL)));
                             emit(std::make_unique<WantsToKick>(true));
@@ -135,7 +135,7 @@ namespace planning {
                         }
                         break;
                     case KickType::SCRIPTED:
-                        NUClear::log("scripted");
+                        // NUClear::log("scripted");
                         if(ballPosition[1] > 0){
                             emit(std::make_unique<KickScriptCommand>(KickScriptCommand(Eigen::Vector3d(1.0, 0.0, 0.0), LimbID::LEFT_LEG)));
                             emit(std::make_unique<WantsToKick>(true));;
@@ -154,14 +154,7 @@ namespace planning {
     }
 
 
-    bool KickPlanner::kickValid(const arma::vec3& ballPos, float /*standHeight*/, const Sensors& /*sensors*/){
-        // IK check seems broken
-        // Transform3D ballPose;
-        // Transform3D torsoToGround = sensors.orientationBodyToGround;
-        // torsoToGround.translation()[2] = standHeight;
-        // ballPose.translation() = torsoToGround.i().transformPoint(ballPos);
-        // ballPose.translate(arma::vec3({-DarwinModel::Leg::FOOT_LENGTH / 2,0,0}));
-        // return (legPoseValid<DarwinModel>(ballPose, LimbID::RIGHT_LEG) || legPoseValid<DarwinModel>(ballPose, LimbID::LEFT_LEG));
+    bool KickPlanner::kickValid(const arma::vec3& ballPos){
         return (ballPos[0] > 0) && (ballPos[0] < cfg.max_ball_distance) && (std::fabs(ballPos[1]) < cfg.kick_corridor_width / 2.0);
     }
 

@@ -22,7 +22,7 @@
 #include <ncurses.h>
 #include <csignal>
 #include <cstdio>
-#include <cppformat/format.h>
+#include <fmt/format.h>
 
 #include "utility/behaviour/MotionCommand.h"
 #include "message/behaviour/MotionCommand.h"
@@ -166,10 +166,10 @@ namespace strategy {
     }
 
     void KeyboardWalk::kickRightForward() {
-        emit(std::make_unique<KickCommand>(KickCommand{
+        /*emit(std::make_unique<KickCommand>(KickCommand{
             {-0.05, 0, 0}, //Ball is right of centre for right kick
             {1, 0, 0}
-        }));
+        }));*/
         log("right forward kick");
     }
 
