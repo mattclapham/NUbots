@@ -33,7 +33,7 @@ message DataPoint {
         // ROTATION_2D = 1;
         ROTATION_3D = 2; // A column-major float list representing a 3x3 rotation marix
         // TRANSFORM_2D = 3;
-        // TRANSFORM_3D = 4;
+        TRANSFORM_3D = 4; // A column-major float list representing a 4x4 transformation marix
         // SCATTER_2D = 5;
         // SCATTER_3D = 6;
     }
