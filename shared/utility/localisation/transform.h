@@ -20,91 +20,80 @@
 #ifndef UTILITY_LOCALISATION_TRANSFORM_H
 #define UTILITY_LOCALISATION_TRANSFORM_H
 
+#include "utility/math/coordinates.h"
 #include "utility/math/matrix/Rotation2D.h"
 #include "utility/math/matrix/Rotation3D.h"
-#include "utility/math/coordinates.h"
 
 namespace utility {
 namespace localisation {
-namespace transform {
+    namespace transform {
 
-    inline Eigen::VectorXd RobotToWorldTransform(const arma::vec& robot_pos,
-                                           const arma::vec& robot_heading,
-                                           const arma::vec& relative_ball_pos) {
-        Eigen::VectorXd u = robot_heading.normalize();
-        arma::mat rot;
-        rot <<  u[0] << -u[1] << arma::endr
-            <<  u[1] <<  u[0];
-        // Rotate relative_ball_pos by robot_heading, then add robot_pos.
-        return rot * relative_ball_pos + robot_pos;
+        inline Eigen::Vector2d RobotToWorldTransform(const Eigen::Vector2d& robot_pos,
+                                                     const Eigen::Vector2d& robot_heading,
+                                                     const Eigen::Vector2d& relative_ball_pos) {
+            Eigen::Vector2d u = robot_heading.normalized();
+            Eigen::Matrix2d rot;
+            rot << u[0], -u[1],  // row 1
+                u[1], u[0];      // row 2
+            // Rotate relative_ball_pos by robot_heading, then add robot_pos.
+            return rot * relative_ball_pos + robot_pos;
+        }
+
+        inline Eigen::Vector2d WorldToRobotTransform(const Eigen::Vector2d& robot_pos,
+                                                     const Eigen::Vector2d& robot_heading,
+                                                     const Eigen::Vector2d& field_ball_pos) {
+            Eigen::Vector2d u = robot_heading.normalized();
+            Eigen::Matrix2d rot;
+            rot << u[0], u[1],  // row 1
+                -u[1], u[0];    // row 2
+            // Subtract robot_pos, then rotate relative_ball_pos by -robot_heading.
+            return rot * (field_ball_pos - robot_pos);
+        }
+
+        inline Eigen::Vector2d RobotToWorldTransform(const Eigen::Vector2d& robot_pos,
+                                                     const double& robot_heading,
+                                                     const Eigen::Vector2d& relative_ball_pos) {
+            Eigen::Matrix2d rot = math::matrix::Rotation2D::createRotation(robot_heading);
+            // Rotate relative_ball_pos by robot_heading, then add robot_pos.
+            return rot * relative_ball_pos + robot_pos;
+        }
+
+        inline Eigen::Vector2d WorldToRobotTransform(const Eigen::Vector2d& robot_pos,
+                                                     const double& robot_heading,
+                                                     const Eigen::Vector2d& field_ball_pos) {
+            Eigen::Matrix2d rot = math::matrix::Rotation2D::createRotation(-robot_heading);
+            // Subtract robot_pos, then rotate relative_ball_pos by -robot_heading.
+            return rot * (field_ball_pos - robot_pos);
+        }
+
+        inline Eigen::Vector3d SphericalRobotObservation(const Eigen::Vector2d& robot_pos,
+                                                         const double& robot_heading,
+                                                         const Eigen::Vector3d& actual_position) {
+            Eigen::Vector2d actual_pos_robot_2d =
+                WorldToRobotTransform(robot_pos, robot_heading, actual_position.head<2>());
+            Eigen::Vector3d actual_pos_robot_3d{actual_pos_robot_2d(0), actual_pos_robot_2d(1), actual_position(2)};
+            Eigen::Vector3d obs = utility::math::coordinates::cartesianToSpherical(actual_pos_robot_3d);
+
+            return obs;
+        }
+
+        inline Eigen::Vector2d ImuToWorldHeadingTransform(double imuOffset, math::matrix::Rotation3D orientation) {
+            math::matrix::Rotation3D imuRotation = math::matrix::Rotation3D::createRotationZ(imuOffset);
+            Eigen::Vector3d worldRobotHeading    = imuRotation * orientation.i().leftCols<1>();
+            return worldRobotHeading.head<2>().normalized();
+        }
+
+        inline Eigen::Vector3d SphericalRobotObservation(const Eigen::Vector2d& robot_pos,
+                                                         const Eigen::Vector2d& robot_heading,
+                                                         const Eigen::Vector3d& actual_position) {
+            Eigen::Vector2d actual_pos_robot_2d =
+                WorldToRobotTransform(robot_pos, robot_heading, actual_position.head<2>());
+            Eigen::Vector3d actual_pos_robot_3d = {actual_pos_robot_2d(0), actual_pos_robot_2d(1), actual_position(2)};
+            Eigen::Vector3d obs                 = utility::math::coordinates::cartesianToSpherical(actual_pos_robot_3d);
+
+            return obs;
+        }
     }
-
-    inline Eigen::VectorXd WorldToRobotTransform(const arma::vec& robot_pos,
-                                           const arma::vec& robot_heading,
-                                           const arma::vec& field_ball_pos) {
-        Eigen::VectorXd u = robot_heading.normalize();
-        arma::mat rot;
-        rot <<  u[0] <<  u[1] << arma::endr
-            << -u[1] <<  u[0];
-        // Subtract robot_pos, then rotate relative_ball_pos by -robot_heading.
-        return rot * (field_ball_pos - robot_pos);
-    }
-
-    inline Eigen::VectorXd RobotToWorldTransform(const arma::vec& robot_pos,
-                                           const double& robot_heading,
-                                           const arma::vec& relative_ball_pos) {
-        arma::mat rot = math::matrix::Rotation2D::createRotation(robot_heading);
-        // Rotate relative_ball_pos by robot_heading, then add robot_pos.
-        return rot * relative_ball_pos + robot_pos;
-    }
-
-    inline Eigen::VectorXd WorldToRobotTransform(const arma::vec& robot_pos,
-                                           const double& robot_heading,
-                                           const arma::vec& field_ball_pos) {
-        arma::mat rot = math::matrix::Rotation2D::createRotation(-robot_heading);
-        // Subtract robot_pos, then rotate relative_ball_pos by -robot_heading.
-        return rot * (field_ball_pos - robot_pos);
-    }
-
-    inline Eigen::VectorXd SphericalRobotObservation(
-            const arma::vec& robot_pos,
-            const double& robot_heading,
-            const Eigen::Vector3d& actual_position) {
-        auto actual_pos_robot_2d = WorldToRobotTransform(robot_pos,
-                                                     robot_heading,
-                                                     actual_position.rows(0, 1));
-        auto actual_pos_robot_3d = Eigen::Vector3d(actual_pos_robot_2d(0),
-                                           actual_pos_robot_2d(1),
-                                           actual_position(2));
-
-        auto obs = utility::math::coordinates::cartesianToSpherical(actual_pos_robot_3d);
-
-        return obs;
-    }
-
-    inline Eigen::Vector2d ImuToWorldHeadingTransform(double imuOffset, math::matrix::Rotation3D orientation) {
-        math::matrix::Rotation3D imuRotation = math::matrix::Rotation3D::createRotationZ(imuOffset);
-        Eigen::Vector3d worldRobotHeading = imuRotation * arma::mat(orientation.inverse()).col(0);
-        return worldRobotHeading.rows(0, 1).normalize();
-    }
-
-    inline Eigen::VectorXd SphericalRobotObservation(
-            const arma::vec& robot_pos,
-            const Eigen::Vector2d& robot_heading,
-            const Eigen::Vector3d& actual_position) {
-        auto actual_pos_robot_2d = WorldToRobotTransform(robot_pos,
-                                                     robot_heading,
-                                                     actual_position.rows(0, 1));
-        auto actual_pos_robot_3d = Eigen::Vector3d(actual_pos_robot_2d(0),
-                                           actual_pos_robot_2d(1),
-                                           actual_position(2));
-
-        auto obs = utility::math::coordinates::cartesianToSpherical(actual_pos_robot_3d);
-
-        return obs;
-    }
-
-}
 }
 }
 #endif
