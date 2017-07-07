@@ -21,54 +21,55 @@
 #define MODULES_MULTIMODALROBOTMODEL_H
 
 #include <nuclear>
+#include "RobotModel.h"
+#include "extension/Configuration.h"
+#include "message/input/Sensors.h"
+#include "message/localisation/ResetRobotHypotheses.h"
+#include "message/vision/VisionObjects.h"
 #include "utility/localisation/LocalisationFieldObject.h"
 #include "utility/math/filter/ParticleFilter.h"
 #include "utility/math/filter/UKF.h"
-#include "extension/Configuration.h"
-#include "message/vision/VisionObjects.h"
-#include "RobotModel.h"
-#include "message/input/Sensors.h"
-#include "message/localisation/ResetRobotHypotheses.h"
 
 namespace module {
 namespace localisation {
 
     class RobotHypothesis {
-    // private:
-    public: // for unit testing.
+        // private:
+    public:  // for unit testing.
         utility::math::filter::UKF<robot::RobotModel> filter_;
         // utility::math::filter::ParticleFilter<robot::RobotModel> filter_;
 
         double weight_;
 
     public:
-
         // std::string obs_trail_;
         int obs_count_;
 
         RobotHypothesis()
-            : filter_(
-                {-4.5, 0, 0}, // mean
-                Eigen::Matrix<double, robot::RobotModel::size, robot::RobotModel::size>::Identity() * 0.1, // cov
-                0.1) // alpha
+            : filter_({-4.5, 0, 0},  // mean
+                      Eigen::Matrix<double, robot::RobotModel::size, robot::RobotModel::size>::Identity() * 0.1,  // cov
+                      0.1)  // alpha
             , weight_(1)
             , obs_count_(0) {
-                arma::mat cov = Eigen::Matrix<double, robot::RobotModel::size, robot::RobotModel::size>::Identity() * 0.1;
-                cov(2,2) = 1;
-                filter_.setState(Eigen::Matrix<double, robot::RobotModel::size, 1>({-4.5, 0, 0}), cov);
-            }
+            arma::mat cov = Eigen::Matrix<double, robot::RobotModel::size, robot::RobotModel::size>::Identity() * 0.1;
+            cov(2, 2) = 1;
+            filter_.setState(Eigen::Matrix<double, robot::RobotModel::size, 1>({-4.5, 0, 0}), cov);
+        }
 
-        RobotHypothesis(const message::localisation::ResetRobotHypotheses::Self& reset_self, const message::input::Sensors& sensors)
+        RobotHypothesis(const message::localisation::ResetRobotHypotheses::Self& reset_self,
+                        const message::input::Sensors& sensors)
             : RobotHypothesis() {
             Eigen::Vector2d imuDirection = sensors.world.col(0).rows(0, 1).normalize();
-            double imuHeading = std::atan2(imuDirection(1), imuDirection(0));
-            double imuOffset = reset_self.heading + imuHeading;
+            double imuHeading            = std::atan2(imuDirection(1), imuDirection(0));
+            double imuOffset             = reset_self.heading + imuHeading;
 
-            // Eigen::Vector3d mean = arma::join_rows(reset_self.position, arma::vec(imuOffset));
-            Eigen::Matrix<double, robot::RobotModel::size, 1> mean = Eigen::Matrix<double, robot::RobotModel::size, 1>({reset_self.position(0), reset_self.position(1), imuOffset});
-            Eigen::Matrix<double, robot::RobotModel::size, robot::RobotModel::size> cov = Eigen::Matrix<double, robot::RobotModel::size, robot::RobotModel::size>::Identity() * 0.1;
-            cov.submat(0,0,1,1) = reset_self.position_cov;
-            cov(2,2) = reset_self.heading_var;
+            // Eigen::Vector3d mean = arma::joirows()(reset_self.position, arma::vec(imuOffset));
+            Eigen::Matrix<double, robot::RobotModel::size, 1> mean = Eigen::Matrix<double, robot::RobotModel::size, 1>(
+                {reset_self.position(0), reset_self.position(1), imuOffset});
+            Eigen::Matrix<double, robot::RobotModel::size, robot::RobotModel::size> cov =
+                Eigen::Matrix<double, robot::RobotModel::size, robot::RobotModel::size>::Identity() * 0.1;
+            cov.submat(0, 0, 1, 1) = reset_self.position_cov;
+            cov(2, 2) = reset_self.heading_var;
             filter_.setState(mean, cov);
         }
 
@@ -76,8 +77,12 @@ namespace localisation {
             filter_.model.cfg_ = cfg;
         };
 
-        float GetFilterWeight() const { return weight_; }
-        void SetFilterWeight(float weight) { weight_ = weight; }
+        float GetFilterWeight() const {
+            return weight_;
+        }
+        void SetFilterWeight(float weight) {
+            weight_ = weight;
+        }
 
         Eigen::Matrix<double, robot::RobotModel::size, 1> GetEstimate() const {
             return filter_.get();
@@ -87,17 +92,15 @@ namespace localisation {
             return filter_.getCovariance();
         }
 
-        double MeasurementUpdate(
-            const message::vision::Goal& observed_object,
-            const utility::localisation::LocalisationFieldObject& actual_object);
+        double MeasurementUpdate(const message::vision::Goal& observed_object,
+                                 const utility::localisation::LocalisationFieldObject& actual_object);
 
-        double MeasurementUpdate(
-            const std::vector<message::vision::Goal>& observed_objects,
-            const std::vector<utility::localisation::LocalisationFieldObject>& actual_objects);
+        double MeasurementUpdate(const std::vector<message::vision::Goal>& observed_objects,
+                                 const std::vector<utility::localisation::LocalisationFieldObject>& actual_objects);
 
         void TimeUpdate(double seconds, const message::input::Sensors& sensors);
 
-        friend std::ostream& operator<<(std::ostream &os, const RobotHypothesis& h);
+        friend std::ostream& operator<<(std::ostream& os, const RobotHypothesis& h);
     };
 
     class MultiModalRobotModel {
@@ -106,21 +109,22 @@ namespace localisation {
             robot_models_.push_back(std::make_unique<RobotHypothesis>());
         }
 
-        void UpdateConfiguration( const extension::Configuration& config) {
-            cfg_.merging_enabled = config["MergingEnabled"].as<bool>();
-            cfg_.max_models_after_merge = config["MaxModelsAfterMerge"].as<int>();
+        void UpdateConfiguration(const extension::Configuration& config) {
+            cfg_.merging_enabled            = config["MergingEnabled"].as<bool>();
+            cfg_.max_models_after_merge     = config["MaxModelsAfterMerge"].as<int>();
             cfg_.merge_min_translation_dist = config["MergeMinTranslationDist"].as<float>();
-            cfg_.merge_min_heading_dist = config["MergeMinHeadingDist"].as<float>();
+            cfg_.merge_min_heading_dist     = config["MergeMinHeadingDist"].as<float>();
 
             robot::RobotModel::Config rm_cfg;
-            rm_cfg.processNoisePositionFactor = config["ProcessNoisePositionFactor"].as<double>();
-            rm_cfg.processNoiseHeadingFactor = config["ProcessNoiseHeadingFactor"].as<double>();
-            rm_cfg.processNoiseVelocityFactor = config["ProcessNoiseVelocityFactor"].as<double>();
-            rm_cfg.observationDifferenceBearingFactor = config["ObservationDifferenceBearingFactor"].as<double>();
+            rm_cfg.processNoisePositionFactor           = config["ProcessNoisePositionFactor"].as<double>();
+            rm_cfg.processNoiseHeadingFactor            = config["ProcessNoiseHeadingFactor"].as<double>();
+            rm_cfg.processNoiseVelocityFactor           = config["ProcessNoiseVelocityFactor"].as<double>();
+            rm_cfg.observationDifferenceBearingFactor   = config["ObservationDifferenceBearingFactor"].as<double>();
             rm_cfg.observationDifferenceElevationFactor = config["ObservationDifferenceElevationFactor"].as<double>();
 
             for (auto& model : robot_models_) {
-                std::cout << __FILE__ << "," << __LINE__ << ": SEGMENTATION FAULT occurs when this cout is absent." << std::endl;
+                std::cout << __FILE__ << "," << __LINE__ << ": SEGMENTATION FAULT occurs when this cout is absent."
+                          << std::endl;
                 model->SetConfig(rm_cfg);
             }
         };
@@ -140,15 +144,13 @@ namespace localisation {
 
         void TimeUpdate(double seconds, const message::input::Sensors& sensors);
 
-        void MeasurementUpdate(
-            const message::vision::Goal& observed_object,
-            const utility::localisation::LocalisationFieldObject& actual_object);
+        void MeasurementUpdate(const message::vision::Goal& observed_object,
+                               const utility::localisation::LocalisationFieldObject& actual_object);
 
         void MeasurementUpdate(const message::input::Sensors& sensors);
 
-        void MeasurementUpdate(
-            const std::vector<message::vision::Goal>& observed_objects,
-            const std::vector<utility::localisation::LocalisationFieldObject>& actual_objects);
+        void MeasurementUpdate(const std::vector<message::vision::Goal>& observed_objects,
+                               const std::vector<utility::localisation::LocalisationFieldObject>& actual_objects);
 
         void AmbiguousMeasurementUpdate(
             const message::vision::Goal& ambiguous_object,
@@ -180,18 +182,16 @@ namespace localisation {
         //     AmbiguousObject &ambiguous_object,
         //     const std::vector<StationaryObject*>& possible_objects);
 
-    public: // For unit testing
+    public:  // For unit testing
         std::vector<std::unique_ptr<RobotHypothesis>> robot_models_;
 
         struct {
-            bool merging_enabled = true;
-            int max_models_after_merge = 2;
+            bool merging_enabled             = true;
+            int max_models_after_merge       = 2;
             float merge_min_translation_dist = 0.05;
-            float merge_min_heading_dist = 0.01;
+            float merge_min_heading_dist     = 0.01;
         } cfg_;
     };
 }
 }
 #endif
-
-

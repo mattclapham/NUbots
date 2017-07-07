@@ -20,46 +20,46 @@
 #ifndef MODULES_PLATFORM_DARWIN_DARWINVIRTUALLOADSENSOR_H
 #define MODULES_PLATFORM_DARWIN_DARWINVIRTUALLOADSENSOR_H
 
-#include "utility/math/matrix/Transform3D.h"
 #include "utility/math/matrix/Rotation3D.h"
+#include "utility/math/matrix/Transform3D.h"
 
 
 namespace module {
-    namespace platform {
-        namespace darwin {
+namespace platform {
+    namespace darwin {
 
-            class DarwinVirtualLoadSensor {
-                //this implements a linear model (trained by logistic regression) with a bayes filter on the output
-                private:
-                    double noiseFactor;
-                    double currentNoise;
-                    double certaintyThreshold;
-                    double uncertaintyThreshold;
+        class DarwinVirtualLoadSensor {
+            // this implements a linear model (trained by logistic regression) with a bayes filter on the output
+        private:
+            double noiseFactor;
+            double currentNoise;
+            double certaintyThreshold;
+            double uncertaintyThreshold;
 
-                    arma::mat hiddenWeights;
-                    Eigen::VectorXd hiddenBias;
-                    arma::mat outputWeights;
-                    Eigen::VectorXd outputBias;
+            Eigen::MatrixXd hiddenWeights;
+            Eigen::VectorXd hiddenBias;
+            Eigen::MatrixXd outputWeights;
+            Eigen::VectorXd outputBias;
 
-                public:
-                    double state = 0.5;
-                    bool outputState = true;
+        public:
+            double state     = 0.5;
+            bool outputState = true;
 
 
-                    DarwinVirtualLoadSensor();
+            DarwinVirtualLoadSensor();
 
-                    DarwinVirtualLoadSensor(arma::mat hiddenWeights,
-                                            Eigen::VectorXd hiddenBias,
-                                            arma::mat outputWeights,
-                                            Eigen::VectorXd outputBias,
-                                            double noiseFactor,
-                                            double certaintyThreshold,
-                                            double uncertaintyThreshold);
+            DarwinVirtualLoadSensor(const Eigen::MatrixXd& hiddenWeights,
+                                    const Eigen::VectorXd& hiddenBias,
+                                    const Eigen::MatrixXd& outputWeights,
+                                    const Eigen::VectorXd& outputBias,
+                                    double noiseFactor,
+                                    double certaintyThreshold,
+                                    double uncertaintyThreshold);
 
-                    bool updateFoot(const arma::vec& legMotors);
-            };
-        }
+            bool updateFoot(const Eigen::VectorXd& legMotors);
+        };
     }
+}
 }
 
 #endif

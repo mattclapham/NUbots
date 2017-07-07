@@ -24,7 +24,8 @@ namespace vision {
 
     bool RansacGoalModel::regenerate(const std::array<DataPoint, REQUIRED_POINTS>& pts) {
 
-        if(pts.size() == REQUIRED_POINTS && !arma::all(pts[0].left == pts[1].left) && !arma::all(pts[0].right == pts[1].right)) {
+        if ((pts.size() == REQUIRED_POINTS) && pts[0].left.cwiseNotEqual(pts[1].left).any()
+            && pts[0].right.cwiseNotEqual(pts[1].right).any()) {
 
             left.setFromPoints(pts[0].left, pts[1].left);
             right.setFromPoints(pts[0].right, pts[1].right);

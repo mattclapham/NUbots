@@ -22,48 +22,48 @@
 
 
 #include "message/input/Sensors.h"
-#include "message/vision/VisionObjects.h"
 #include "message/support/FieldDescription.h"
+#include "message/vision/VisionObjects.h"
 
 namespace module {
-    namespace localisation {
+namespace localisation {
 
-        class FieldModel {
-        public:
+    class FieldModel {
+    public:
+        // The indices for our vector
+        static constexpr uint DPX    = 0;
+        static constexpr uint DPY    = 1;
+        static constexpr uint DTHETA = 2;
 
-            // The indicies for our vector
-            static constexpr uint DPX = 0;
-            static constexpr uint DPY = 1;
-            static constexpr uint DTHETA = 2;
+        static constexpr size_t size = 3;
 
-            static constexpr size_t size = 3;
-
-            struct MeasurementType {
-                struct GOAL {};
-            };
-
-            Eigen::Vector3d processNoiseDiagonal;
-
-
-            FieldModel() : processNoiseDiagonal(arma::fill::eye) {} // empty constructor
-
-            Eigen::Matrix<double, size, 1> timeUpdate(const Eigen::Matrix<double, size, 1>& state, double deltaT);
-
-            Eigen::VectorXd predictedObservation(const Eigen::Matrix<double, size, 1>& state
-                , const std::vector<std::tuple<message::vision::Goal::Team::Value,
-                                               message::vision::Goal::Side::Value,
-                                               message::vision::Goal::MeasurementType>>& measurements
-                , const message::support::FieldDescription& field
-                , const message::input::Sensors& sensors
-                , const MeasurementType::GOAL&);
-
-            Eigen::VectorXd observationDifference(const arma::vec& a, const arma::vec& b) const;
-
-            Eigen::Matrix<double, size, 1> limitState(const Eigen::Matrix<double, size, 1>& state) const;
-
-            Eigen::Matrix<double, size, size> processNoise() const;
+        struct MeasurementType {
+            struct GOAL {};
         };
 
-    }
+        Eigen::Vector3d processNoiseDiagonal;
+
+        FieldModel() : processNoiseDiagonal(Eigen::Vector3d::Identity()) {}  // empty constructor
+
+        Eigen::Matrix<double, size, 1> timeUpdate(const Eigen::Matrix<double, size, 1>& state, double deltaT);
+
+        Eigen::VectorXd predictedObservation(
+            const Eigen::Matrix<double, size, 1>& state,
+            const std::vector<std::tuple<message::vision::Goal::Team::Value,
+                                         message::vision::Goal::Side::Value,
+                                         message::vision::Goal::MeasurementType>>& measurements,
+            const message::support::FieldDescription& field,
+            const message::input::Sensors& sensors,
+            const MeasurementType::GOAL&);
+
+        template <typename Scalar, int Rows>
+        Eigen::Matrix<Scalar, Rows, 1> observationDifference(const Eigen::Matrix<Scalar, Rows, 1>& a,
+                                                             const Eigen::Matrix<Scalar, Rows, 1>& b) const;
+
+        Eigen::Matrix<double, size, 1> limitState(const Eigen::Matrix<double, size, 1>& state) const;
+
+        Eigen::Matrix<double, size, size> processNoise() const;
+    };
+}
 }
 #endif  // MODULE_LOCALISATION_FIELDMODEL_H

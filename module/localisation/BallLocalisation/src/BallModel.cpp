@@ -24,63 +24,62 @@
 
 #include "utility/input/ServoID.h"
 #include "utility/math/matrix/Rotation3D.h"
-#include "utility/math/matrix/Transform3D.h"
 #include "utility/math/matrix/Transform2D.h"
+#include "utility/math/matrix/Transform3D.h"
 #include "utility/math/vision.h"
 
 namespace module {
-    namespace localisation {
+namespace localisation {
 
-        using utility::math::matrix::Rotation3D;
-        using utility::math::matrix::Transform3D;
-        using utility::math::matrix::Transform2D;
-        using message::support::FieldDescription;
-        using message::input::Sensors;
-        using ServoID = utility::input::ServoID;
+    using utility::math::matrix::Rotation3D;
+    using utility::math::matrix::Transform3D;
+    using utility::math::matrix::Transform2D;
+    using message::support::FieldDescription;
+    using message::input::Sensors;
+    using ServoID = utility::input::ServoID;
 
-        Eigen::Matrix<double, BallModel::size, 1> BallModel::timeUpdate(const Eigen::Matrix<double, size, 1>& state, double /*deltaT*/) {
-            return state;
-        }
-
-        Eigen::Vector3d BallModel::predictedObservation(const Eigen::Matrix<double, size, 1>& state
-            , const FieldDescription& field
-            , const Sensors& sensors
-            , const MeasurementType::BALL&) const {
-
-            // Get our transform to world coordinates
-            const Transform3D& Htw = sensors.world;
-            const Transform3D& Htc = sensors.forwardKinematics.at(ServoID::HEAD_PITCH);
-            Transform3D Hcw = Htc.inverse() * Htw;
-
-            Eigen::Vector3d rBWw = { state[PX], state[PY], field.ball_radius };
-
-            return Hcw.transformPoint(rBWw);
-        }
-
-        Eigen::Matrix<double, 1, 1> BallModel::observationDifference(const arma::vec& measurement
-            , const Eigen::Vector3d& rBCc
-            , const FieldDescription& field
-            , const Sensors& /*sensors*/
-            , const MeasurementType::BALL&) const {
-
-            double len = rBCc.norm();
-
-            double expectedAngle = 2.0 * std::asin((field.ball_radius) / len);
-
-            double actualAngle = std::acos(measurement.dot(rBCc / len));
-
-            Eigen::Matrix<double, 1, 1> ret;
-            ret(0,0) = actualAngle - expectedAngle;
-            return ret;
-        }
-
-        Eigen::Matrix<double, BallModel::size, 1> BallModel::limitState(const Eigen::Matrix<double, size, 1>& state) const {
-            return state;
-        }
-
-        Eigen::Matrix<double, BallModel::size, BallModel::size> BallModel::processNoise() const {
-            return arma::diagmat(processNoiseDiagonal);
-        }
-
+    Eigen::Matrix<double, BallModel::size, 1> BallModel::timeUpdate(const Eigen::Matrix<double, size, 1>& state,
+                                                                    double /*deltaT*/) {
+        return state;
     }
+
+    Eigen::Vector3d BallModel::predictedObservation(const Eigen::Matrix<double, size, 1>& state,
+                                                    const FieldDescription& field,
+                                                    const Sensors& sensors,
+                                                    const MeasurementType::BALL&) const {
+
+        // Get our transform to world coordinates
+        const Transform3D& Htw = sensors.world;
+        const Transform3D& Htc = sensors.forwardKinematics.at(ServoID::HEAD_PITCH);
+        Transform3D Hcw        = Htc.inverse() * Htw;
+
+        Eigen::Vector3d rBWw = {state[PX], state[PY], field.ball_radius};
+
+        return Hcw.transformPoint(rBWw);
+    }
+
+    double BallModel::observationDifference(const Eigen::Vector3d& measurement,
+                                            const Eigen::Vector3d& rBCc,
+                                            const FieldDescription& field,
+                                            const Sensors& /*sensors*/
+                                            ,
+                                            const MeasurementType::BALL&) const {
+
+        double len = rBCc.norm();
+
+        double expectedAngle = 2.0 * std::asin((field.ball_radius) / len);
+
+        double actualAngle = std::acos(measurement.dot(rBCc / len));
+
+        return (actualAngle - expectedAngle);
+    }
+
+    Eigen::Matrix<double, BallModel::size, 1> BallModel::limitState(const Eigen::Matrix<double, size, 1>& state) const {
+        return state;
+    }
+
+    Eigen::Matrix<double, BallModel::size, BallModel::size> BallModel::processNoise() const {
+        return processNoiseDiagonal.asDiagonal();
+    }
+}
 }

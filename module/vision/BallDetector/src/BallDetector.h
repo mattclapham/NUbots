@@ -22,10 +22,9 @@
 
 #include <nuclear>
 
-#include "message/vision/LookUpTable.h"
 #include "message/input/Image.h"
+#include "message/vision/LookUpTable.h"
 
-#include "utility/learning/KMeans.h"
 #include "utility/math/geometry/Circle.h"
 #include "utility/vision/LookUpTable.h"
 
@@ -51,10 +50,8 @@ namespace vision {
         double green_radial_samples;
         double green_angular_samples;
 
-        utility::learning::KMeans kmeansClusterer;
-
-        struct Frame{
-            Frame() : time(), widthBall(arma::fill::zeros), projBall(arma::fill::zeros) {}
+        struct Frame {
+            Frame() : time(), widthBall(Eigen::Vector3d::Zero()), projBall(Eigen::Vector3d::Zero()) {}
             Frame(const NUClear::clock::time_point& time, const Eigen::Vector3d& width, const Eigen::Vector3d& proj)
                 : time(time), widthBall(width), projBall(proj) {}
 
@@ -67,13 +64,14 @@ namespace vision {
 
         bool print_throwout_logs;
 
-        float approximateCircleGreenRatio(const utility::math::geometry::Circle& circle, const message::input::Image& image, const message::vision::LookUpTable& lut);
-    public:
+        float approximateCircleGreenRatio(const utility::math::geometry::Circle& circle,
+                                          const message::input::Image& image,
+                                          const message::vision::LookUpTable& lut);
 
+    public:
         /// @brief Called by the powerplant to build and setup the BallDetector reactor.
         explicit BallDetector(std::unique_ptr<NUClear::Environment> environment);
     };
-
 }
 }
 

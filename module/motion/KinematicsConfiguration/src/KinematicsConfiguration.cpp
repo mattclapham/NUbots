@@ -36,31 +36,31 @@ namespace motion {
 
 
     KinematicsConfiguration::KinematicsConfiguration(std::unique_ptr<NUClear::Environment> environment)
-    : Reactor(std::move(environment)) {
+        : Reactor(std::move(environment)) {
 
-        on<Configuration>("KinematicsConfiguration.yaml").then([this] (const Configuration& config) {
+        on<Configuration>("KinematicsConfiguration.yaml").then([this](const Configuration& config) {
 
             KinematicsModel model;
             configure(model, config);
             emit(std::make_unique<KinematicsModel>(model));
         });
-
     }
 
-    void KinematicsConfiguration::configure (KinematicsModel& model, const Configuration& objDarwinModel) {
+    void KinematicsConfiguration::configure(KinematicsModel& model, const Configuration& objDarwinModel) {
         configureLeg(model, objDarwinModel["leg"]);
         configureHead(model, objDarwinModel["head"]);
         configureArm(model, objDarwinModel["arm"]);
 
         configureMassModel(model, objDarwinModel["mass_model"]);
-        model.TEAMDARWINCHEST_TO_ORIGIN = objDarwinModel["team_darwin_chest_to_origin"].as<float>() - model.leg.HIP_OFFSET_Z;
+        model.TEAMDARWINCHEST_TO_ORIGIN =
+            objDarwinModel["team_darwin_chest_to_origin"].as<float>() - model.leg.HIP_OFFSET_Z;
     }
 
-    void KinematicsConfiguration::configureLeg (KinematicsModel& model, const YAML::Node& objLeg) {
+    void KinematicsConfiguration::configureLeg(KinematicsModel& model, const YAML::Node& objLeg) {
         Eigen::Vector3d leg_hipOffset = objLeg["hip_offset"].as<Expression>();
-        model.leg.HIP_OFFSET_X = leg_hipOffset[0];
-        model.leg.HIP_OFFSET_Y = leg_hipOffset[1];
-        model.leg.HIP_OFFSET_Z = leg_hipOffset[2];
+        model.leg.HIP_OFFSET_X        = leg_hipOffset[0];
+        model.leg.HIP_OFFSET_Y        = leg_hipOffset[1];
+        model.leg.HIP_OFFSET_Z        = leg_hipOffset[2];
 
         model.leg.UPPER_LEG_LENGTH = objLeg["upper_leg_length"].as<float>();
         model.leg.LOWER_LEG_LENGTH = objLeg["lower_leg_length"].as<float>();
@@ -69,15 +69,15 @@ namespace motion {
 
         model.leg.FOOT_CENTRE_TO_ANKLE_CENTRE = objLeg["foot_centre_to_ankle_centre"].as<float>();
 
-        auto& objFoot = objLeg["foot"];
-        model.leg.FOOT_WIDTH = objFoot["width"].as<float>();
+        auto& objFoot         = objLeg["foot"];
+        model.leg.FOOT_WIDTH  = objFoot["width"].as<float>();
         model.leg.FOOT_HEIGHT = objFoot["height"].as<float>();
         model.leg.FOOT_LENGTH = objFoot["length"].as<float>();
-        model.leg.TOE_LENGTH = objFoot["toe_length"].as<float>();
+        model.leg.TOE_LENGTH  = objFoot["toe_length"].as<float>();
 
         model.leg.LENGTH_BETWEEN_LEGS = objLeg["length_between_legs"].as<float>();
 
-        auto& objLeftRight = objLeg["left_to_right"];
+        auto& objLeftRight                  = objLeg["left_to_right"];
         model.leg.LEFT_TO_RIGHT_HIP_YAW     = objLeftRight["hip_yaw"].as<int>();
         model.leg.LEFT_TO_RIGHT_HIP_ROLL    = objLeftRight["hip_roll"].as<int>();
         model.leg.LEFT_TO_RIGHT_HIP_PITCH   = objLeftRight["hip_pitch"].as<int>();
@@ -86,35 +86,34 @@ namespace motion {
         model.leg.LEFT_TO_RIGHT_ANKLE_ROLL  = objLeftRight["ankle_roll"].as<int>();
     }
 
-    void KinematicsConfiguration::configureHead (KinematicsModel& model, const YAML::Node& objHead) {
+    void KinematicsConfiguration::configureHead(KinematicsModel& model, const YAML::Node& objHead) {
         model.head.CAMERA_DECLINATION_ANGLE_OFFSET = objHead["camera_declination_angle_offset"].as<float>();
 
         Eigen::Vector3d head_neckToCamera = objHead["neck_to_camera"].as<Expression>();
-        model.head.NECK_TO_CAMERA_X = head_neckToCamera[0];
-        model.head.NECK_TO_CAMERA_Y = head_neckToCamera[1];
-        model.head.NECK_TO_CAMERA_Z = head_neckToCamera[2];
+        model.head.NECK_TO_CAMERA_X       = head_neckToCamera[0];
+        model.head.NECK_TO_CAMERA_Y       = head_neckToCamera[1];
+        model.head.NECK_TO_CAMERA_Z       = head_neckToCamera[2];
 
         auto& objNeck = objHead["neck"];
 
         model.head.NECK_LENGTH = objNeck["length"].as<float>();
 
         Eigen::Vector3d neck_basePositionFromOrigin = objNeck["base_position_from_origin"].as<Expression>();
-        model.head.NECK_BASE_POS_FROM_ORIGIN_X = neck_basePositionFromOrigin[0];
-        model.head.NECK_BASE_POS_FROM_ORIGIN_Y = neck_basePositionFromOrigin[1];
-        model.head.NECK_BASE_POS_FROM_ORIGIN_Z = neck_basePositionFromOrigin[2];
+        model.head.NECK_BASE_POS_FROM_ORIGIN_X      = neck_basePositionFromOrigin[0];
+        model.head.NECK_BASE_POS_FROM_ORIGIN_Y      = neck_basePositionFromOrigin[1];
+        model.head.NECK_BASE_POS_FROM_ORIGIN_Z      = neck_basePositionFromOrigin[2];
 
         auto& objHeadMovementLimits = objHead["limits"];
 
-        Eigen::Vector2d headMovementLimits_yaw = objHeadMovementLimits["yaw"].as<Expression>();
+        Eigen::Vector2d headMovementLimits_yaw   = objHeadMovementLimits["yaw"].as<Expression>();
         Eigen::Vector2d headMovementLimits_pitch = objHeadMovementLimits["pitch"].as<Expression>();
-        model.head.MIN_YAW = headMovementLimits_yaw[0];
-        model.head.MAX_YAW = headMovementLimits_yaw[1];
-        model.head.MIN_PITCH = headMovementLimits_pitch[0];
-        model.head.MAX_PITCH = headMovementLimits_pitch[1];
-
+        model.head.MIN_YAW                       = headMovementLimits_yaw[0];
+        model.head.MAX_YAW                       = headMovementLimits_yaw[1];
+        model.head.MIN_PITCH                     = headMovementLimits_pitch[0];
+        model.head.MAX_PITCH                     = headMovementLimits_pitch[1];
     }
 
-    void KinematicsConfiguration::configureArm (KinematicsModel& model, const YAML::Node& objArm) {
+    void KinematicsConfiguration::configureArm(KinematicsModel& model, const YAML::Node& objArm) {
         // arm.distanceBetweenShoulders = objArm["distance_between_shoulders"].as<float>();
 
         // auto& shoulder = arm.shoulder;
@@ -135,30 +134,34 @@ namespace motion {
         // lowerArm.offset = objLowerArm["offset"].as<Expression>();
 
         model.arm.DISTANCE_BETWEEN_SHOULDERS = objArm["distance_between_shoulders"].as<float>();
-        model.arm.SHOULDER_Z_OFFSET = objShoulder["offset"].as<Expression>()[1];
-        model.arm.SHOULDER_X_OFFSET = objShoulder["offset"].as<Expression>()[0];
-        model.arm.SHOULDER_LENGTH = objShoulder["length"].as<float>();
-        model.arm.SHOULDER_WIDTH = objShoulder["width"].as<float>();
-        model.arm.SHOULDER_HEIGHT = objShoulder["height"].as<float>();
-        model.arm.UPPER_ARM_LENGTH = objUpperArm["length"].as<float>();
-        model.arm.UPPER_ARM_Y_OFFSET = objUpperArm["offset"].as<Expression>()[0];
-        model.arm.UPPER_ARM_X_OFFSET = objUpperArm["offset"].as<Expression>()[1];
-        model.arm.LOWER_ARM_LENGTH = objLowerArm["length"].as<float>();
-        model.arm.LOWER_ARM_Y_OFFSET = objLowerArm["offset"].as<Expression>()[0];
-        model.arm.LOWER_ARM_Z_OFFSET = objLowerArm["offset"].as<Expression>()[1];
+
+        Eigen::Vector2f SHOULDER_OFFSET = objShoulder["offset"].as<Expression>();
+        model.arm.SHOULDER_Z_OFFSET     = SHOULDER_OFFSET[1];
+        model.arm.SHOULDER_X_OFFSET     = SHOULDER_OFFSET[0];
+        model.arm.SHOULDER_LENGTH       = objShoulder["length"].as<float>();
+        model.arm.SHOULDER_WIDTH        = objShoulder["width"].as<float>();
+        model.arm.SHOULDER_HEIGHT       = objShoulder["height"].as<float>();
+
+        Eigen::Vector2f UPPER_ARM_OFFSET = objUpperArm["offset"].as<Expression>();
+        model.arm.UPPER_ARM_Y_OFFSET     = UPPER_ARM_OFFSET[0];
+        model.arm.UPPER_ARM_X_OFFSET     = UPPER_ARM_OFFSET[1];
+        model.arm.UPPER_ARM_LENGTH       = objUpperArm["length"].as<float>();
+
+        Eigen::Vector2f LOWER_ARM_OFFSET = objLowerArm["offset"].as<Expression>();
+        model.arm.LOWER_ARM_Y_OFFSET     = LOWER_ARM_OFFSET[0];
+        model.arm.LOWER_ARM_Z_OFFSET     = LOWER_ARM_OFFSET[1];
+        model.arm.LOWER_ARM_LENGTH       = objLowerArm["length"].as<float>();
     }
 
-    void KinematicsConfiguration::configureMassModel (KinematicsModel& model, const YAML::Node& objMassModel) {
+    void KinematicsConfiguration::configureMassModel(KinematicsModel& model, const YAML::Node& objMassModel) {
 
         auto& objMasses = objMassModel["masses"];
 
-        auto masses = objMasses.as<std::vector<Eigen::Vector4d>>();
+        std::vector<Expression> masses = objMasses.as<std::vector<Expression>>();
         model.massModel.masses.reserve(masses.size());
-        for (const auto& mass : masses)
-        {
-            model.massModel.masses.push_back(mass);
+        for (const auto& mass : masses) {
+            model.massModel.masses.push_back(static_cast<Eigen::Vector4d>(mass));
         }
     }
-
 }
 }

@@ -20,119 +20,131 @@
 #ifndef MODULES_PLATFORM_DARWIN_SENSORFILTER_H
 #define MODULES_PLATFORM_DARWIN_SENSORFILTER_H
 
+#include <Eigen/Core>
 #include <nuclear>
 
-#include "utility/math/matrix/Transform3D.h"
-#include "utility/math/matrix/Rotation3D.h"
 #include "utility/math/filter/UKF.h"
-
-#include "MotionModel.h"
-#include "DarwinVirtualLoadSensor.h"
 #include "utility/math/matrix/Rotation3D.h"
+#include "utility/math/matrix/Transform3D.h"
+
+#include "DarwinVirtualLoadSensor.h"
+#include "MotionModel.h"
 #include "message/motion/KinematicsModels.h"
+#include "utility/math/matrix/Rotation3D.h"
 
 
 namespace module {
-    namespace platform {
-        namespace darwin {
+namespace platform {
+    namespace darwin {
 
-            /**
-             * TODO document
-             *
-             * @author Jake Fountain
-             * @author Trent Houliston
-             */
-            class SensorFilter : public NUClear::Reactor {
-            public:
-                explicit SensorFilter(std::unique_ptr<NUClear::Environment> environment);
+        /**
+         * TODO document
+         *
+         * @author Jake Fountain
+         * @author Trent Houliston
+         */
+        class SensorFilter : public NUClear::Reactor {
+        public:
+            explicit SensorFilter(std::unique_ptr<NUClear::Environment> environment);
 
-                utility::math::filter::UKF<MotionModel> motionFilter;
+            utility::math::filter::UKF<MotionModel> motionFilter;
 
-                struct Config {
-                    Config() : battery(), motionFilter(), buttons() {}
+            struct Config {
+                Config() : battery(), motionFilter(), buttons() {}
 
-                    struct Battery {
-                        Battery() : chargedVoltage(0.0f), flatVoltage(0.0f) {}
-                        float chargedVoltage;
-                        float flatVoltage;
-                    } battery;
+                struct Battery {
+                    Battery() : chargedVoltage(0.0f), flatVoltage(0.0f) {}
+                    float chargedVoltage;
+                    float flatVoltage;
+                } battery;
 
-                    struct MotionFilter {
-                        MotionFilter() : velocityDecay(arma::fill::zeros), noise(), initial() {}
+                struct MotionFilter {
+                    MotionFilter() : velocityDecay(Eigen::Vector3d::Zero()), noise(), initial() {}
 
-                        Eigen::Vector3d velocityDecay;
+                    Eigen::Vector3d velocityDecay;
 
-                        struct Noise {
-                            Noise() : measurement(), process() {}
-                            struct Measurement {
-                                Measurement() : accelerometer(arma::fill::eye), accelerometerMagnitude(arma::fill::eye), gyroscope(arma::fill::eye),
-                                                footUpWithZ(arma::fill::eye), flatFootOdometry(arma::fill::eye),
-                                                flatFootOrientation(arma::fill::eye) {}
-                                Eigen::Matrix3d accelerometer;
-                                Eigen::Matrix3d accelerometerMagnitude;
-                                Eigen::Matrix3d gyroscope;
-                                Eigen::Matrix4d footUpWithZ;
-                                Eigen::Matrix3d flatFootOdometry;
-                                Eigen::Matrix4d flatFootOrientation;
-                            } measurement;
-                            struct Process {
-                                Process() : position(arma::fill::ones), velocity(arma::fill::ones),
-                                            rotation(arma::fill::ones), rotationalVelocity(arma::fill::ones) {}
-                                Eigen::Vector3d position;
-                                Eigen::Vector3d velocity;
-                                Eigen::Vector4d rotation;
-                                Eigen::Vector3d rotationalVelocity;
-                            } process;
-                        } noise;
-                        struct Initial {
-                            Initial() : mean(), covariance() {}
-                            struct Mean {
-                                Mean() : position(arma::fill::ones), velocity(arma::fill::ones),
-                                         rotation(arma::fill::ones), rotationalVelocity(arma::fill::ones) {}
-                                Eigen::Vector3d position;
-                                Eigen::Vector3d velocity;
-                                Eigen::Vector4d rotation;
-                                Eigen::Vector3d rotationalVelocity;
-                            } mean;
-                            struct Covariance {
-                                Covariance() : position(arma::fill::ones), velocity(arma::fill::ones),
-                                               rotation(arma::fill::ones), rotationalVelocity(arma::fill::ones) {}
-                                Eigen::Vector3d position;
-                                Eigen::Vector3d velocity;
-                                Eigen::Vector4d rotation;
-                                Eigen::Vector3d rotationalVelocity;
-                            } covariance;
-                        } initial;
-                    } motionFilter;
+                    struct Noise {
+                        Noise() : measurement(), process() {}
+                        struct Measurement {
+                            Measurement()
+                                : accelerometer(Eigen::Matrix3d::Identity())
+                                , accelerometerMagnitude(Eigen::Matrix3d::Identity())
+                                , gyroscope(Eigen::Matrix3d::Identity())
+                                , footUpWithZ(Eigen::Matrix4d::Identity())
+                                , flatFootOdometry(Eigen::Matrix3d::Identity())
+                                , flatFootOrientation(Eigen::Matrix4d::Identity()) {}
+                            Eigen::Matrix3d accelerometer;
+                            Eigen::Matrix3d accelerometerMagnitude;
+                            Eigen::Matrix3d gyroscope;
+                            Eigen::Matrix4d footUpWithZ;
+                            Eigen::Matrix3d flatFootOdometry;
+                            Eigen::Matrix4d flatFootOrientation;
+                        } measurement;
+                        struct Process {
+                            Process()
+                                : position(Eigen::Vector3d::Ones())
+                                , velocity(Eigen::Vector3d::Ones())
+                                , rotation(Eigen::Vector4d::Ones())
+                                , rotationalVelocity(Eigen::Vector3d::Ones()) {}
+                            Eigen::Vector3d position;
+                            Eigen::Vector3d velocity;
+                            Eigen::Vector4d rotation;
+                            Eigen::Vector3d rotationalVelocity;
+                        } process;
+                    } noise;
+                    struct Initial {
+                        Initial() : mean(), covariance() {}
+                        struct Mean {
+                            Mean()
+                                : position(Eigen::Vector3d::Ones())
+                                , velocity(Eigen::Vector3d::Ones())
+                                , rotation(Eigen::Vector4d::Ones())
+                                , rotationalVelocity(Eigen::Vector3d::Ones()) {}
+                            Eigen::Vector3d position;
+                            Eigen::Vector3d velocity;
+                            Eigen::Vector4d rotation;
+                            Eigen::Vector3d rotationalVelocity;
+                        } mean;
+                        struct Covariance {
+                            Covariance()
+                                : position(Eigen::Vector3d::Ones())
+                                , velocity(Eigen::Vector3d::Ones())
+                                , rotation(Eigen::Vector4d::Ones())
+                                , rotationalVelocity(Eigen::Vector3d::Ones()) {}
+                            Eigen::Vector3d position;
+                            Eigen::Vector3d velocity;
+                            Eigen::Vector4d rotation;
+                            Eigen::Vector3d rotationalVelocity;
+                        } covariance;
+                    } initial;
+                } motionFilter;
 
-                    struct Button {
-                        Button() : debounceThreshold(0) {}
-                        int debounceThreshold;
-                    } buttons;
-                } config;
+                struct Button {
+                    Button() : debounceThreshold(0) {}
+                    int debounceThreshold;
+                } buttons;
+            } config;
 
-            private:
-                // Current state of the button pushes
-                // used to debounce button presses
-                bool leftDown = false;
-                bool middleDown = false;
+        private:
+            // Current state of the button pushes
+            // used to debounce button presses
+            bool leftDown   = false;
+            bool middleDown = false;
 
-                // Our sensor for foot down
-                DarwinVirtualLoadSensor leftFootDown;
-                DarwinVirtualLoadSensor rightFootDown;
+            // Our sensor for foot down
+            DarwinVirtualLoadSensor leftFootDown;
+            DarwinVirtualLoadSensor rightFootDown;
 
-                //World to foot in world rotation when the foot landed
-                std::array<Eigen::Vector3d, 2> footlanding_rFWw;
+            // World to foot in world rotation when the foot landed
+            std::array<Eigen::Vector3d, 2> footlanding_rFWw;
 
-                //Foot to world in foot-flat rotation when the foot landed
-                std::array<utility::math::matrix::Rotation3D, 2> footlanding_Rfw;
+            // Foot to world in foot-flat rotation when the foot landed
+            std::array<utility::math::matrix::Rotation3D, 2> footlanding_Rfw;
 
-                //World to foot in foot-flat rotation when the foot landed
-                std::array<utility::math::matrix::Rotation3D, 2> footlanding_Rwf;
-
-            };
-        }
+            // World to foot in foot-flat rotation when the foot landed
+            std::array<utility::math::matrix::Rotation3D, 2> footlanding_Rwf;
+        };
     }
 }
+}
 #endif  // MODULES_PLATFORM_DARWIN_SENSORFILTER_H
-

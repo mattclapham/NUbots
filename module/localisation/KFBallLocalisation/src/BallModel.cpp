@@ -20,10 +20,10 @@
 #include "BallModel.h"
 
 
+#include "message/localisation/FieldObject.h"
+#include "utility/localisation/transform.h"
 #include "utility/math/angle.h"
 #include "utility/math/coordinates.h"
-#include "utility/localisation/transform.h"
-#include "message/localisation/FieldObject.h"
 
 
 // using message::localisation::FakeOdometry;
@@ -31,82 +31,83 @@ using utility::localisation::transform::SphericalRobotObservation;
 
 namespace module {
 namespace localisation {
-namespace ball {
+    namespace ball {
 
-Eigen::Matrix<double, BallModel::size, 1> BallModel::ApplyVelocity(
-    const Eigen::Matrix<double, BallModel::size, 1>& state, double deltaT) {
-    auto result = state;
+        Eigen::Matrix<double, BallModel::size, 1> BallModel::ApplyVelocity(
+            const Eigen::Matrix<double, BallModel::size, 1>& state,
+            double deltaT) {
+            auto result = state;
 
-    // Apply ball velocity
-    result(kX) += state(kVx) * deltaT;
-    result(kY) += state(kVy) * deltaT;
-    result(kVx) -= result(kVx) * cfg_.ballDragCoefficient * deltaT;
-    result(kVy) -= result(kVy) * cfg_.ballDragCoefficient * deltaT;
+            // Apply ball velocity
+            result(kX) += state(kVx) * deltaT;
+            result(kY) += state(kVy) * deltaT;
+            result(kVx) -= result(kVx) * cfg_.ballDragCoefficient * deltaT;
+            result(kVy) -= result(kVy) * cfg_.ballDragCoefficient * deltaT;
 
-    return result;
-}
+            return result;
+        }
 
-Eigen::Matrix<double, BallModel::size, 1> BallModel::timeUpdate(
-    const Eigen::Matrix<double, BallModel::size, 1>& state, double deltaT) {
+        Eigen::Matrix<double, BallModel::size, 1> BallModel::timeUpdate(
+            const Eigen::Matrix<double, BallModel::size, 1>& state,
+            double deltaT) {
 
-    return ApplyVelocity(state, deltaT);
-}
+            return ApplyVelocity(state, deltaT);
+        }
 
-// Eigen::Matrix<double, BallModel::size, 1> BallModel::timeUpdate(
-//     const Eigen::Matrix<double, BallModel::size, 1>& state, double deltaT,
-//     const FakeOdometry& odom) {
+        // Eigen::Matrix<double, BallModel::size, 1> BallModel::timeUpdate(
+        //     const Eigen::Matrix<double, BallModel::size, 1>& state, double deltaT,
+        //     const FakeOdometry& odom) {
 
-//     auto result = ApplyVelocity(state, deltaT);
+        //     auto result = ApplyVelocity(state, deltaT);
 
-//     // Apply robot odometry / robot position change
-//     result.rows(kX, kY) -= odom.torso_displacement;
+        //     // Apply robot odometry / robot position change
+        //     result.rows(kX, kY) -= odom.torso_displacement;
 
-//     // Rotate ball_pos by -torso_rotation.
-//     Eigen::Matrix2d rot = rotationMatrix(-odom.torso_rotation);
-//     result.rows(kX, kY) = rot * result.rows(kX, kY);
-//     result.rows(kVx, kVy) = rot * result.rows(kVx, kVy);
+        //     // Rotate ball_pos by -torso_rotation.
+        //     Eigen::Matrix2d rot = rotationMatrix(-odom.torso_rotation);
+        //     result.rows(kX, kY) = rot * result.rows(kX, kY);
+        //     result.rows(kVx, kVy) = rot * result.rows(kVx, kVy);
 
-//     return result;
-// }
+        //     return result;
+        // }
 
-/// Return the predicted observation of an object at the given position
-Eigen::VectorXd BallModel::predictedObservation(
-    const Eigen::Matrix<double, BallModel::size, 1>& state, double ballAngle) {
+        /// Return the predicted observation of an object at the given position
+        Eigen::VectorXd BallModel::predictedObservation(const Eigen::Matrix<double, BallModel::size, 1>& state,
+                                                        double ballAngle) {
 
-    Eigen::Vector3d ball_pos = Eigen::Vector3d(state(kX), state(kY), cfg_.ballHeight);
-    auto obs = SphericalRobotObservation({0, 0}, 0, ball_pos);
-    obs(1) -= ballAngle;
+            Eigen::Vector3d ball_pos = Eigen::Vector3d(state(kX), state(kY), cfg_.ballHeight);
+            auto obs                 = SphericalRobotObservation({0, 0}, 0, ball_pos);
+            obs(1) -= ballAngle;
 
-    Eigen::VectorXd obsVel = arma::join_cols(obs,state.rows(kVx,kVy));
-    return obsVel;
-}
+            Eigen::VectorXd obsVel = arma::joicols()(obs, state.rows(kVx, kVy));
+            return obsVel;
+        }
 
-Eigen::VectorXd BallModel::observationDifference(const arma::vec& a,
-                                           const arma::vec& b){
-    Eigen::VectorXd result = a - b;
-    // result(1) = utility::math::angle::normalizeAngle(result(1));
-    // result(2) = utility::math::angle::normalizeAngle(result(2));
-    return result;
-}
+        Eigen::VectorXd BallModel::observationDifference(const arma::vec& a, const arma::vec& b) {
+            Eigen::VectorXd result = a - b;
+            // result(1) = utility::math::angle::normalizeAngle(result(1));
+            // result(2) = utility::math::angle::normalizeAngle(result(2));
+            return result;
+        }
 
-Eigen::Matrix<double, BallModel::size, 1> BallModel::limitState(
-    const Eigen::Matrix<double, BallModel::size, 1>& state) {
-    auto new_state = state;
-    new_state.rows(kVx,kVy) = Eigen::Vector2d(0,0);
-    return new_state;
-}
+        Eigen::Matrix<double, BallModel::size, 1> BallModel::limitState(
+            const Eigen::Matrix<double, BallModel::size, 1>& state) {
+            auto new_state = state;
+            new_state.rows(kVx, kVy) = Eigen::Vector2d(0, 0);
+            return new_state;
+        }
 
-Eigen::Matrix<double, BallModel::size, BallModel::size> BallModel::processNoise() {
-    Eigen::Matrix<double, BallModel::size, BallModel::size> noise = Eigen::Matrix<double, BallModel::size, BallModel::size>::Identity();
+        Eigen::Matrix<double, BallModel::size, BallModel::size> BallModel::processNoise() {
+            Eigen::Matrix<double, BallModel::size, BallModel::size> noise =
+                Eigen::Matrix<double, BallModel::size, BallModel::size>::Identity();
 
-    noise(kX, kX) *= cfg_.processNoisePositionFactor;
-    noise(kY, kY) *= cfg_.processNoisePositionFactor;
-    noise(kVx, kVx) *= cfg_.processNoiseVelocityFactor;
-    noise(kVy, kVy) *= cfg_.processNoiseVelocityFactor;
+            noise(kX, kX) *= cfg_.processNoisePositionFactor;
+            noise(kY, kY) *= cfg_.processNoisePositionFactor;
+            noise(kVx, kVx) *= cfg_.processNoiseVelocityFactor;
+            noise(kVy, kVy) *= cfg_.processNoiseVelocityFactor;
 
-    return noise;
-}
-
-}
+            return noise;
+        }
+    }
 }
 }

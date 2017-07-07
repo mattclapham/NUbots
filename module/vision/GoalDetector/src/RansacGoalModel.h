@@ -36,7 +36,7 @@ namespace vision {
         static constexpr size_t REQUIRED_POINTS = 2;
 
         struct GoalSegment {
-            GoalSegment() : left(arma::fill::zeros), right(arma::fill::zeros) {}
+            GoalSegment() : left(Eigen::Vector2d::Zero()), right(Eigen::Vector2d::Zero()) {}
             GoalSegment(const Eigen::Vector2d& l, const Eigen::Vector2d& r) : left(l), right(r) {}
             Eigen::Vector2d left;
             Eigen::Vector2d right;
@@ -57,26 +57,38 @@ namespace vision {
             struct LIt {
                 Iterator state;
                 LIt(Iterator state) : state(state) {}
-                LIt& operator++() { ++state; return *this; }
-                const Eigen::Vector2d& operator*() { return state->left; }
-                bool operator!=(const LIt& other) { return state != other.state; }
+                LIt& operator++() {
+                    ++state;
+                    return *this;
+                }
+                const Eigen::Vector2d& operator*() {
+                    return state->left;
+                }
+                bool operator!=(const LIt& other) {
+                    return state != other.state;
+                }
             };
 
             // Allows us to iterate through only the right states without copying
             struct RIt {
                 Iterator state;
                 RIt(Iterator state) : state(state) {}
-                RIt& operator++() { ++state; return *this; }
-                const Eigen::Vector2d& operator*() { return state->right; }
-                bool operator!=(const RIt& other) { return state != other.state; }
+                RIt& operator++() {
+                    ++state;
+                    return *this;
+                }
+                const Eigen::Vector2d& operator*() {
+                    return state->right;
+                }
+                bool operator!=(const RIt& other) {
+                    return state != other.state;
+                }
             };
 
             left.leastSquaresUpdate(LIt(begin), LIt(end), threshold);
             right.leastSquaresUpdate(RIt(begin), RIt(end), threshold);
         }
-
-};
-
+    };
 }
 }
 

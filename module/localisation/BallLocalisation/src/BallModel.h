@@ -25,44 +25,42 @@
 #include "message/support/FieldDescription.h"
 
 namespace module {
-    namespace localisation {
+namespace localisation {
 
-        class BallModel {
-        public:
+    class BallModel {
+    public:
+        // The indicies for our vector
+        static constexpr uint PX = 0;
+        static constexpr uint PY = 1;
 
-            // The indicies for our vector
-            static constexpr uint PX = 0;
-            static constexpr uint PY = 1;
+        static constexpr size_t size = 2;
 
-            static constexpr size_t size = 2;
-
-            struct MeasurementType {
-                struct BALL {};
-            };
-
-            Eigen::Vector2d processNoiseDiagonal;
-
-
-            BallModel() : processNoiseDiagonal(arma::fill::eye) {} // empty constructor
-
-            Eigen::Matrix<double, size, 1> timeUpdate(const Eigen::Matrix<double, size, 1>& state, double deltaT);
-
-            Eigen::Vector3d predictedObservation(const Eigen::Matrix<double, size, 1>& state
-                , const message::support::FieldDescription& field
-                , const message::input::Sensors& sensors
-                , const MeasurementType::BALL&) const;
-
-            Eigen::VectorXd observationDifference(const arma::vec& measurement
-                , const Eigen::Vector3d& rBCc
-                , const message::support::FieldDescription& field
-                , const message::input::Sensors& sensors
-                , const MeasurementType::BALL&) const;
-
-            Eigen::Matrix<double, size, 1> limitState(const Eigen::Matrix<double, size, 1>& state) const;
-
-            Eigen::Matrix<double, size, size> processNoise() const;
+        struct MeasurementType {
+            struct BALL {};
         };
 
-    }
+        Eigen::Vector2d processNoiseDiagonal;
+
+
+        BallModel() : processNoiseDiagonal(Eigen::Vector2d::Identity()) {}  // empty constructor
+
+        Eigen::Matrix<double, size, 1> timeUpdate(const Eigen::Matrix<double, size, 1>& state, double deltaT);
+
+        Eigen::Vector3d predictedObservation(const Eigen::Matrix<double, size, 1>& state,
+                                             const message::support::FieldDescription& field,
+                                             const message::input::Sensors& sensors,
+                                             const MeasurementType::BALL&) const;
+
+        double observationDifference(const Eigen::Vector3d& measurement,
+                                     const Eigen::Vector3d& rBCc,
+                                     const message::support::FieldDescription& field,
+                                     const message::input::Sensors& sensors,
+                                     const MeasurementType::BALL&) const;
+
+        Eigen::Matrix<double, size, 1> limitState(const Eigen::Matrix<double, size, 1>& state) const;
+
+        Eigen::Matrix<double, size, size> processNoise() const;
+    };
+}
 }
 #endif  // MODULE_LOCALISATION_BALLMODEL_H
