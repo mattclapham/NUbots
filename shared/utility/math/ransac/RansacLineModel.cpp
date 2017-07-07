@@ -24,7 +24,7 @@ namespace math {
     namespace ransac {
 
         bool RansacLineModel::regenerate(const std::array<DataPoint, REQUIRED_POINTS>& pts) {
-            if ((pts.size() == REQUIRED_POINTS) && (pts[0].cwiseNotEqual(pts[1]).all())) {
+            if ((pts.size() == REQUIRED_POINTS) && (pts[0].cwiseNotEqual(pts[1]).any())) {
                 setFromPoints(pts[0], pts[1]);
                 return true;
             }

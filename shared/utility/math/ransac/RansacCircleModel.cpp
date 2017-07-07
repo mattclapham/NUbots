@@ -24,9 +24,9 @@ namespace math {
     namespace ransac {
 
         bool RansacCircleModel::regenerate(const std::array<DataPoint, REQUIRED_POINTS>& points) {
-            if (points.size() == REQUIRED_POINTS && (points[0].cwiseNotEqual(points[1]).all())
-                && (points[0].cwiseNotEqual(points[2]).all())
-                && (points[1].cwiseNotEqual(points[2]).all())) {
+            if (points.size() == REQUIRED_POINTS && (points[0].cwiseNotEqual(points[1]).any())
+                && (points[0].cwiseNotEqual(points[2]).any())
+                && (points[1].cwiseNotEqual(points[2]).any())) {
                 return setFromPoints(points[0], points[1], points[2], 1.0e-2);
             }
 

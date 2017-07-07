@@ -25,82 +25,100 @@
 
 #include "message/support/optimisation/OptimiserTypes.h"
 
-namespace utility {
-    namespace math {
-        namespace optimisation {
-            using message::support::optimisation::OptimiserParameters;
-            using message::support::optimisation::OptimiserEstimate;
+#include "utility/support/eigen.h"
 
-            class GaussianSampler {
-            private:
-                uint64_t batchSize;
-                uint64_t sampleCount = 0;
-                int64_t generation = -1;
-                Eigen::VectorXd upperBound;
-                Eigen::VectorXd lowerBound;
-                arma::mat samples;
-            public:
-                GaussianSampler(const OptimiserParameters& params)
+namespace utility {
+namespace math {
+    namespace optimisation {
+        using message::support::optimisation::OptimiserParameters;
+        using message::support::optimisation::OptimiserEstimate;
+
+        class GaussianSampler {
+        private:
+            uint64_t batchSize;
+            uint64_t sampleCount = 0;
+            int64_t generation   = -1;
+            Eigen::VectorXd upperBound;
+            Eigen::VectorXd lowerBound;
+            Eigen::MatrixXd samples;
+
+        public:
+            GaussianSampler(const OptimiserParameters& params)
                 : batchSize(params.batchSize)
                 , generation(params.initial.generation)
                 , upperBound(params.upperBound)
                 , lowerBound(params.lowerBound)
                 , samples() {}
 
-                void clear() {
-                    generation = -1;
-                }
+            void clear() {
+                generation = -1;
+            }
 
-                arma::mat getSamples(OptimiserEstimate& bestParams, uint64_t numSamples) {
-                    //note: bestParams.covariance is possibly mutable in this step, do not const it!
-                    if (bestParams.generation != generation
-                        || sampleCount+numSamples > batchSize
-                        || samples.n_cols == 0) {
+            Eigen::MatrixXd getSamples(OptimiserEstimate& bestParams, uint64_t numSamples) {
+                // note: bestParams.covariance is possibly mutable in this step, do not const it!
+                if (bestParams.generation != generation || sampleCount + numSamples > batchSize
+                    || samples.cols() == 0) {
 
-                        //generate initial data
-                        Eigen::VectorXd weights = arma::diagvec(bestParams.covariance);
-                        samples = arma::randn(bestParams.estimate.n_elem, batchSize);
-                        samples.each_col() %= weights;
-                        samples.each_col() += bestParams.estimate;
-
+                    // generate initial data
+                    Eigen::VectorXd weights = bestParams.covariance.asDiagonal();
+                    samples                 = utility::support::randn(bestParams.estimate.size(), batchSize);
+                    samples                 = samples.colwise().cwiseProduct(weights);
+                    samples.colwise() += bestParams.estimate;
 
 
-                        //out of bounds check
-                        if (lowerBound.n_elem > 0 and upperBound.n_elem > 0) {
-                            Eigen::Matrix<unsigned int, Eigen::Dynamic, 1> outOfBounds = arma::sum(samples > arma::repmat(upperBound,1,samples.n_cols),1);
-                            outOfBounds += arma::sum(samples < arma::repmat(lowerBound,1,samples.n_cols),1);
-                            samples = samples.cols(arma::find(outOfBounds == 0));
+                    // out of bounds check
+                    if (lowerBound.size() > 0 and upperBound.size() > 0) {
+                        Eigen::Matrix<unsigned int, Eigen::Dynamic, 1> outOfBounds =
+                            (samples.array() > upperBound.replicate(1, samples.cols()).array())
+                                .select(samples, Eigen::MatrixXd::Zero(bestParams.estimate.size(), batchSize))
+                                .rowwise()
+                                .sum();
+                        outOfBounds +=
+                            (samples.array() < lowerBound.replicate(1, samples.cols()).array())
+                                .select(samples, Eigen::MatrixXd::Zero(bestParams.estimate.size(), batchSize))
+                                .rowwise()
+                                .sum();
+                        samples = utility::support::index(samples.colwise(), utility::support::find(outOfBounds == 0u));
 
-                            while (samples.n_cols < batchSize) {
-                                arma::mat samples2 = arma::randn(bestParams.estimate.n_elem, batchSize);
-                                samples2.each_col() %= weights;
-                                samples2.each_col() += bestParams.estimate;
+                        while (static_cast<uint64_t>(samples.cols()) < batchSize) {
+                            Eigen::MatrixXd samples2 = utility::support::randn(bestParams.estimate.size(), batchSize);
+                            samples2                 = samples2.colwise().cwiseProduct(weights);
+                            samples2.colwise() += bestParams.estimate;
 
-                                outOfBounds = arma::sum(samples2 > arma::repmat(upperBound,1,samples2.n_cols),1);
-                                outOfBounds += arma::sum(samples2 < arma::repmat(lowerBound,1,samples2.n_cols),1);
-                                samples2 = samples2.cols(arma::find(outOfBounds == 0));
+                            outOfBounds =
+                                (samples2.array() > upperBound.replicate(1, samples2.cols()).array())
+                                    .select(samples2, Eigen::MatrixXd::Zero(bestParams.estimate.size(), batchSize))
+                                    .rowwise()
+                                    .sum();
+                            outOfBounds +=
+                                (samples2.array() < lowerBound.replicate(1, samples2.cols()).array())
+                                    .select(samples2, Eigen::MatrixXd::Zero(bestParams.estimate.size(), batchSize))
+                                    .rowwise()
+                                    .sum();
+                            samples2 =
+                                utility::support::index(samples2.colwise(), utility::support::find(outOfBounds == 0u));
 
-                                if (samples2.n_rows > 0) {
-                                    samples = join_rows(samples,samples2);
-                                }
-                            }
-
-                            if (samples.n_elem >= batchSize) {
-                                samples = samples.cols(0,batchSize-1);
+                            if (samples2.rows() > 0) {
+                                samples << samples, samples2;
                             }
                         }
 
-                        //reset required variables
-                        sampleCount = 0;
-                        arma::mat covariance = arma::diagmat(weights);
-                        bestParams.covariance = covariance;
+                        if (static_cast<uint64_t>(samples.size()) >= batchSize) {
+                            samples = samples.leftCols(batchSize);
+                        }
                     }
-                    sampleCount += numSamples;
-                    return samples.cols(sampleCount-numSamples,sampleCount-1);
+
+                    // reset required variables
+                    sampleCount           = 0;
+                    bestParams.covariance = weights.asDiagonal();
                 }
-            };
-        }
+
+                sampleCount += numSamples;
+                return samples.middleCols(sampleCount - numSamples, numSamples);
+            }
+        };
     }
 }
+}
 
-#endif // UTILITY_MATH_OPTIMISATION_GAUSSIANSAMPLER_H
+#endif  // UTILITY_MATH_OPTIMISATION_GAUSSIANSAMPLER_H

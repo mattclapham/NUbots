@@ -20,66 +20,71 @@
 #ifndef UTILITY_MATH_OPTIMISATION_PGA_H
 #define UTILITY_MATH_OPTIMISATION_PGA_H
 
+#include <Eigen/Core>
 #include <cmath>
 
 #include "message/support/optimisation/OptimiserTypes.h"
 
 namespace utility {
-    namespace math {
-        namespace optimisation {
-            using message::support::optimisation::OptimiserParameters;
-            using message::support::optimisation::OptimiserEstimate;
+namespace math {
+    namespace optimisation {
+        using message::support::optimisation::OptimiserParameters;
+        using message::support::optimisation::OptimiserEstimate;
 
+        /**
+         * The PGAEstimator provides a steady-state solution to the PI2 path integral RL algorithm.
+         * This can be used as a black-box, gradient-free local optimiser.
+         */
+        class PGAEstimator {
+        private:
+            double c = 7.0;
+
+        public:
             /**
-             * The PGAEstimator provides a steady-state solution to the PI2 path integral RL algorithm.
-             * This can be used as a black-box, gradient-free local optimiser.
+             * Initialise the estimator with a new starting point in parameter space
+             *
+             * @param params - the starting optimisation point for the algorithm
+             *
+             * @author Josiah Walker
              */
-            class PGAEstimator {
-            private:
-                double c = 7.0;
+            PGAEstimator(const OptimiserParameters& /*params*/) {
+                // XXX: still no good place to set c!
+            }
 
-            public:
-                /**
-                 * Initialise the estimator with a new starting point in parameter space
-                 *
-                 * @param params - the starting optimisation point for the algorithm
-                 *
-                 * @author Josiah Walker
-                 */
-                PGAEstimator(const OptimiserParameters& /*params*/) {
-                    //XXX: still no good place to set c!
-                }
+            void clear() {}
 
-                void clear() {}
+            OptimiserEstimate updateEstimate(const Eigen::MatrixXd& samples,
+                                             const Eigen::VectorXd& fitnesses,
+                                             const OptimiserEstimate& previousEstimate) {
 
-                OptimiserEstimate updateEstimate(const arma::mat& samples,
-                                                 const arma::vec& fitnesses,
-                                                 const OptimiserEstimate& previousEstimate) {
+                // create a vector of normed fitnesses
+                const double min = fitnesses.minCoeff();
+                const double max = fitnesses.maxCoeff();
+                const Eigen::VectorXd normedFitnesses =
+                    (max - fitnesses.rowwise()) / (max - min + std::numeric_limits<double>::epsilon());
 
-                    //create a vector of normed fitnesses
-                    const double min = arma::min(fitnesses);
-                    const double max = arma::max(fitnesses);
-                    const Eigen::VectorXd normedFitnesses = (max - fitnesses) / (max - min + std::numeric_limits<double>::epsilon());
+                // create a set of weights per sample which specifies the likelihood that they are near the best
+                // estimate
+                const Eigen::VectorXd sampleWeights = (-c * normedFitnesses).exp();
 
-                    //create a set of weights per sample which specifies the likelihood that they are near the best estimate
-                    const Eigen::VectorXd sampleWeights = arma::exp(-c * normedFitnesses);
+                // calculate the probabilistically weighted result estimate
+                Eigen::VectorXd bestEstimate =
+                    samples.cwiseProduct((sampleWeights / sampleWeights.sum()).replicate(1, samples.cols()))
+                        .colwise()
+                        .sum()
+                        .transpose();
 
-                    //calculate the probabilistically weighted result estimate
-                    Eigen::VectorXd bestEstimate = arma::sum(samples % arma::repmat(sampleWeights / arma::accu(sampleWeights), 1, samples.n_cols), 0).transpose();
+                // calculate the covariance matrix
+                Eigen::MatrixXd s2 = samples;
+                s2.rowwise() -= bestEstimate.transpose();
+                Eigen::MatrixXd covmat = s2 * s2.transpose();
 
-                    //calculate the covariance matrix
-                    arma::mat s2 = samples;
-                    s2.each_row() -= bestEstimate.transpose();
-                    arma::mat covmat = s2 * s2.transpose();
-
-                    return OptimiserEstimate(previousEstimate.generation + 1, bestEstimate, previousEstimate.covariance);
-                }
-            };
-
-        }
+                return OptimiserEstimate(previousEstimate.generation + 1, bestEstimate, previousEstimate.covariance);
+            }
+        };
     }
+}
 }
 
 
-#endif // UTILITY_MATH_COORDINATES_H
-
+#endif  // UTILITY_MATH_COORDINATES_H

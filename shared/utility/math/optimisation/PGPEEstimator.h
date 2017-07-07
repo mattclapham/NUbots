@@ -20,83 +20,88 @@
 #ifndef UTILITY_MATH_OPTIMISATION_PGPE_H
 #define UTILITY_MATH_OPTIMISATION_PGPE_H
 
+#include <Eigen/Core>
 #include <cmath>
 
 #include "message/support/optimisation/OptimiserTypes.h"
 
 namespace utility {
-    namespace math {
-        namespace optimisation {
-            using message::support::optimisation::OptimiserParameters;
-            using message::support::optimisation::OptimiserEstimate;
+namespace math {
+    namespace optimisation {
+        using message::support::optimisation::OptimiserParameters;
+        using message::support::optimisation::OptimiserEstimate;
 
-            class PGPEEstimator {
-            private:
-                double baseline = 0.0;
-                double learningRate = 0.1;
-                double sigmaLearningRate = 0.2;
-                bool firstRun = true;
+        class PGPEEstimator {
+        private:
+            double baseline          = 0.0;
+            double learningRate      = 0.1;
+            double sigmaLearningRate = 0.2;
+            bool firstRun            = true;
 
-            public:
-                /**
-                 * Initialise the estimator with a new starting point in parameter space
-                 *
-                 * @param params - the starting optimisation point for the algorithm
-                 *
-                 * @author Josiah Walker
-                 */
-                PGPEEstimator(const OptimiserParameters& /*params*/) {
-                     //XXX: in the future, set learning rate through params
-                };
-
-                void clear() {
-                    firstRun = true;
-                }
-
-                /**
-                 * Generate a new best-estimate using the parameter samples and fitnesses provided.
-                 * Takes a row-wise list of sample parameters, a corresponding vector of fitnesses
-                 *
-                 * @param samples - the tested samples in the matrix format returned by getSamples below (one sample per row)
-                 * @param fitnesses - a vector of fitnesses corresponding to each sample
-                 * @param variances - a vector of variances corresponding to estimated gradient change in each dimension
-                 *
-                 * @returns currentEstimate - an updated best parameter estimate vector to re-sample from
-                 *
-                 * @author Josiah Walker
-                 */
-                OptimiserEstimate updateEstimate(const arma::mat& samples, const arma::vec& fitnesses, OptimiserEstimate& previousEstimate) {
-                    Eigen::VectorXd bestEstimate = previousEstimate.estimate;
-                    Eigen::VectorXd covEstimate = arma::diagvec(previousEstimate.covariance);
-
-                    if (firstRun) {
-                        firstRun = false;
-                        baseline = fitnesses.mean();
-                    }
-
-                    Eigen::VectorXd alpha = covEstimate * learningRate;
-                    Eigen::VectorXd alphaCov = covEstimate * sigmaLearningRate;
-                    Eigen::VectorXd update(covEstimate.n_elem,arma::fill::zeros);
-                    Eigen::VectorXd updateCov(covEstimate.n_elem,arma::fill::zeros);
-                    for(uint64_t i = 0; i < fitnesses.n_elem; ++i) {
-                        update += alpha * (fitnesses[i]-baseline) % (samples.row(i).transpose() - bestEstimate);
-                        Eigen::VectorXd x = Eigen::square((samples.row(i).transpose() - bestEstimate).array()).matrix() - covEstimate;
-                        updateCov += alphaCov * (fitnesses[i] - baseline).cwiseProduct(x).cwiseQuotient(Eigen::sqrt(covEstimate.array()).matrix());
-                    }
-
-                    baseline = baseline * 0.9 + 0.1 * fitnesses.mean();
-
-                    bestEstimate += update;
-                    covEstimate += updateCov;
-
-                    return OptimiserEstimate(previousEstimate.generation + 1, bestEstimate, arma::mat(diagmat(covEstimate)));
-                }
+        public:
+            /**
+             * Initialise the estimator with a new starting point in parameter space
+             *
+             * @param params - the starting optimisation point for the algorithm
+             *
+             * @author Josiah Walker
+             */
+            PGPEEstimator(const OptimiserParameters& /*params*/){
+                // XXX: in the future, set learning rate through params
             };
 
-        }
+            void clear() {
+                firstRun = true;
+            }
+
+            /**
+             * Generate a new best-estimate using the parameter samples and fitnesses provided.
+             * Takes a row-wise list of sample parameters, a corresponding vector of fitnesses
+             *
+             * @param samples - the tested samples in the matrix format returned by getSamples below (one sample per
+             * row)
+             * @param fitnesses - a vector of fitnesses corresponding to each sample
+             * @param variances - a vector of variances corresponding to estimated gradient change in each dimension
+             *
+             * @returns currentEstimate - an updated best parameter estimate vector to re-sample from
+             *
+             * @author Josiah Walker
+             */
+            OptimiserEstimate updateEstimate(const Eigen::MatrixXd& samples,
+                                             const Eigen::VectorXd& fitnesses,
+                                             OptimiserEstimate& previousEstimate) {
+                Eigen::VectorXd bestEstimate = previousEstimate.estimate;
+                Eigen::VectorXd covEstimate  = previousEstimate.covariance.asDiagonal();
+
+                if (firstRun) {
+                    firstRun = false;
+                    baseline = fitnesses.mean();
+                }
+
+                Eigen::VectorXd alpha     = covEstimate * learningRate;
+                Eigen::VectorXd alphaCov  = covEstimate * sigmaLearningRate;
+                Eigen::VectorXd update    = Eigen::VectorXd::Zero(covEstimate.size());
+                Eigen::VectorXd updateCov = Eigen::VectorXd::Zero(covEstimate.size());
+
+                for (size_t i = 0; i < fitnesses.size(); ++i) {
+                    update += alpha * (fitnesses[i] - baseline).cwiseProduct(samples.row(i).transpose() - bestEstimate);
+                    updateCov += alphaCov
+                                 * (fitnesses[i] - baseline)
+                                       .cwiseProduct((samples.row(i).transpose() - bestEstimate).square() - covEstimate)
+                                       .cwiseQuotient(covEstimate.sqrt());
+                }
+
+                baseline = baseline * 0.9 + 0.1 * fitnesses.mean();
+
+                bestEstimate += update;
+                covEstimate += updateCov;
+
+                return OptimiserEstimate(previousEstimate.generation + 1, bestEstimate, covEstimate.asDiagonal());
+            }
+        };
     }
+}
 }
 
 
-#endif // UTILITY_MATH_COORDINATES_H
-
+#endif  // UTILITY_MATH_COORDINATES_H

@@ -20,74 +20,99 @@
 #ifndef UTILITY_MATH_OPTIMISATION_CHOLESKYSAMPLER_H
 #define UTILITY_MATH_OPTIMISATION_CHOLESKYSAMPLER_H
 
+#include <Eigen/Cholesky>
+#include <Eigen/Core>
 #include <cmath>
 
 #include "message/support/optimisation/OptimiserTypes.h"
 
-namespace utility {
-    namespace math {
-        namespace optimisation {
-            using message::support::optimisation::OptimiserParameters;
-            using message::support::optimisation::OptimiserEstimate;
+#include "utility/support/eigen.h"
 
-            class CholeskySampler {
-            private:
-                uint64_t batchSize;
-                uint64_t sampleCount = 0;
-                int generation = -1;
-                Eigen::VectorXd upperBound;
-                Eigen::VectorXd lowerBound;
-                arma::mat samples;
-            public:
-                CholeskySampler(const OptimiserParameters& params)
+namespace utility {
+namespace math {
+    namespace optimisation {
+        using message::support::optimisation::OptimiserParameters;
+        using message::support::optimisation::OptimiserEstimate;
+
+        class CholeskySampler {
+        private:
+            uint64_t batchSize;
+            uint64_t sampleCount = 0;
+            int generation       = -1;
+            Eigen::VectorXd upperBound;
+            Eigen::VectorXd lowerBound;
+            Eigen::MatrixXd samples;
+
+        public:
+            CholeskySampler(const OptimiserParameters& params)
                 : batchSize(params.batchSize)
                 , generation(params.initial.generation)
                 , upperBound(params.upperBound)
                 , lowerBound(params.lowerBound)
                 , samples() {}
 
-                void clear() {
-                    generation = -1;
-                }
+            void clear() {
+                generation = -1;
+            }
 
-                arma::mat getSamples(const OptimiserEstimate& bestParams, uint64_t numSamples) {
-                    if (bestParams.generation != generation || sampleCount+numSamples > batchSize) {
-                        arma::mat projection = arma::chol(bestParams.covariance);
-                        samples = (arma::randn(bestParams.estimate.n_elem, batchSize) * projection).transpose();
-                        samples.each_col() += bestParams.estimate;
+            Eigen::MatrixXd getSamples(const OptimiserEstimate& bestParams, uint64_t numSamples) {
+                if (bestParams.generation != generation || sampleCount + numSamples > batchSize) {
+                    Eigen::MatrixXd projection = bestParams.covariance.llt().matrixL();
+                    samples = (utility::support::randn(bestParams.estimate.size(), batchSize) * projection)
+                                  .transpose()
+                                  .colwise() += bestParams.estimate;
 
-                        //out of bounds check
-                        if (lowerBound.n_elem > 0 and upperBound.n_elem > 0) {
-                            Eigen::Matrix<unsigned int, Eigen::Dynamic, 1> outOfBounds = arma::sum(samples > arma::repmat(upperBound, samples.n_cols, 1), 1);
-                            outOfBounds += arma::sum(samples < arma::repmat(lowerBound, samples.n_cols, 1), 1);
-                            samples = samples.rows(arma::find(outOfBounds == 0));
+                    // out of bounds check
+                    if (lowerBound.size() > 0 && upperBound.size() > 0) {
+                        Eigen::Matrix<unsigned int, Eigen::Dynamic, 1> outOfBounds =
+                            (samples.array() > upperBound.replicate(samples.cols(), 1).array())
+                                .select(samples, Eigen::MatrixXd::Zero(bestParams.estimate.size(), batchSize))
+                                .rowwise()
+                                .sum();
+                        outOfBounds +=
+                            (samples.array() < lowerBound.replicate(samples.cols(), 1).array())
+                                .select(samples, Eigen::MatrixXd::Zero(bestParams.estimate.size(), batchSize))
+                                .rowwise()
+                                .sum();
+                        samples = utility::support::index(samples.rowwise(), utility::support::find(outOfBounds == 0u));
 
-                            while (samples.n_rows < batchSize) {
-                                arma::mat samples2 = arma::randn(bestParams.estimate.n_elem, batchSize);
-                                samples2 = (arma::randn(bestParams.estimate.n_elem, batchSize) * projection).transpose();
-                                samples2.each_col() += bestParams.estimate;
+                        while (static_cast<uint64_t>(samples.rows()) < batchSize) {
+                            Eigen::MatrixXd samples2 = utility::support::randn(bestParams.estimate.size(), batchSize);
+                            samples2 = (utility::support::randn(bestParams.estimate.size(), batchSize) * projection)
+                                           .transpose()
+                                           .colwise() += bestParams.estimate;
 
-                                outOfBounds = arma::sum(samples2 > arma::repmat(upperBound, samples2.n_cols, 1), 1);
-                                outOfBounds += arma::sum(samples2 < arma::repmat(lowerBound, samples2.n_cols, 1), 1);
-                                samples2 = samples2.rows(arma::find(outOfBounds == 0));
+                            outOfBounds =
+                                (samples2.array() > upperBound.replicate(samples2.cols(), 1).array())
+                                    .select(samples2, Eigen::MatrixXd::Zero(bestParams.estimate.size(), batchSize))
+                                    .rowwise()
+                                    .sum();
+                            outOfBounds +=
+                                (samples2.array() < lowerBound.replicate(samples2.cols(), 1).array())
+                                    .select(samples2, Eigen::MatrixXd::Zero(bestParams.estimate.size(), batchSize))
+                                    .rowwise()
+                                    .sum();
+                            samples2 =
+                                utility::support::index(samples2.rowwise(), utility::support::find(outOfBounds == 0u));
 
-                                samples = join_rows(samples, samples2);
-                            }
-
-                            if (samples.n_cols >= batchSize) {
-                                samples = samples.rows(0, batchSize - 1);
-                            }
+                            samples << samples, samples2;
                         }
 
-                        //reset required variables
-                        sampleCount = 0;
+                        if (static_cast<uint64_t>(samples.cols()) >= batchSize) {
+                            samples = samples.topRows(batchSize);
+                        }
                     }
-                    sampleCount += numSamples;
-                    return samples.cols(sampleCount - numSamples, sampleCount - 1);
+
+                    // reset required variables
+                    sampleCount = 0;
                 }
-            };
-        }
+
+                sampleCount += numSamples;
+                return samples.middleCols(sampleCount - numSamples, numSamples);
+            }
+        };
     }
 }
+}
 
-#endif // UTILITY_MATH_OPTIMISATION_CHOLESKYSAMPLER_H
+#endif  // UTILITY_MATH_OPTIMISATION_CHOLESKYSAMPLER_H

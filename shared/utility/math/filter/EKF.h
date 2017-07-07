@@ -20,99 +20,102 @@
 #ifndef UTILITY_MATH_FILTER_EKF_H
 #define UTILITY_MATH_FILTER_EKF_H
 
+#include <Eigen/Core>
 #include <nuclear>
 
 namespace utility {
-    namespace math {
-        namespace filter {
+namespace math {
+    namespace filter {
 
-            template <typename Model> //model is is a template parameter that Kalman also inherits
-            class EKF {
-            public:
-                // The model
-                Model model;
+        template <typename Model>  // model is is a template parameter that Kalman also inherits
+        class EKF {
+        public:
+            // The model
+            Model model;
 
-            private:
+        private:
+            using StateVec = Eigen::Matrix<double, Model::size, 1>;
+            using StateMat = Eigen::Matrix<double, Model::size, Model::size>;
 
-                using StateVec = Eigen::Matrix<double, Model::size, 1>;
-                using StateMat = Eigen::Matrix<double, Model::size, Model::size>;
+            // the internal UKF variables
+            StateMat processNoise, processNoisePartial;
 
-                //the internal UKF variables
-                StateMat processNoise, processNoisePartial;
-
-                //the current state estimate
-                StateVec state;
-
-
-            public:
-                EKF(StateVec initialMean = Eigen::Matrix<double, Model::size, 1>::Zero(),
-                    StateMat initialCovariance = Eigen::Matrix<double, Model::size, Model::size>::Identity() * 0.1
-                    StateMat initialJacobian = model.timeUpdateJacobian(0.)) {
-                    //strictly speaking, a time update should be called straight away with a non-zero timedelta
-                    //but.... we don't know what the delta is so we must trust the user to do this
-                    reset(initialMean, initialCovariance,initialJacobian);
-                }
-
-                void reset(StateVec initialMean, StateMat initialCovariance, StateMat initialJacobian) {
-                    state = initialMean;
-                    covariance = initialCovariance;
-                    jacobian = initialJacobian;
-
-                    //re-initialize covariance
-                    processNoise = Eigen::Matrix<double, Model::size, Model::size>::Identity();
-                    processNoisePartial = Eigen::Matrix<double, Model::size, Model::size>::Identity();
-                }
-
-                void setState(StateVec initialMean) {
-                    //this is for hard resets where covariance data should be kept. Again, call timeUpdate immediately.
-                    state = initialMean;
-                }
-
-                template <typename... TAdditionalParameters>
-                void timeUpdate(double deltaT, const TAdditionalParameters&... additionalParameters) {
-                    //timeUpdate sets the new jacobian as well as updating parameters
+            // the current state estimate
+            StateVec state;
 
 
-                    state = model.timeUpdate(state,deltaT, additionalParameters...);
-                    StateMat jacobian = model.timeUpdateJacobian(state, additionalParameters...);
+        public:
+            EKF(StateVec initialMean       = Eigen::Matrix<double, Model::size, 1>::Zero(),
+                StateMat initialCovariance = Eigen::Matrix<double, Model::size, Model::size>::Identity() * 0.1 StateMat
+                    initialJacobian        = model.timeUpdateJacobian(0.0)) {
+                // strictly speaking, a time update should be called straight away with a non-zero time delta
+                // but.... we don't know what the delta is so we must trust the user to do this
+                reset(initialMean, initialCovariance, initialJacobian);
+            }
 
-                    //this is the original
-                    //processNoise = jacobian * processNoise * jacobian.transpose() + model.processNoise();
+            void reset(StateVec initialMean, StateMat initialCovariance, StateMat initialJacobian) {
+                state      = initialMean;
+                covariance = initialCovariance;
+                jacobian   = initialJacobian;
 
-                    //this is steve's out-of-order update (backported from UKF)
-                    processNoise = jacobian * (processNoisePartial * processNoise) * jacobian.transpose() + model.processNoise();
+                // re-initialize covariance
+                processNoise        = Eigen::Matrix<double, Model::size, Model::size>::Identity();
+                processNoisePartial = Eigen::Matrix<double, Model::size, Model::size>::Identity();
+            }
 
-                    processNoisePartial = Eigen::Matrix<double, Model::size, Model::size>::Identity();
-                }
+            void setState(StateVec initialMean) {
+                // this is for hard resets where covariance data should be kept. Again, call timeUpdate immediately.
+                state = initialMean;
+            }
 
-                template <typename TMeasurement, typename... TMeasurementArgs>
-                double measurementUpdate(const TMeasurement& measurement,
-                                         const arma::mat& measurementVariance,
-                                         const TMeasurementArgs&... measurementArgs) {
-                    arma::mat measurementTransform = model.StateToMeasurementTransform(measurement, measurementArgs...);
+            template <typename... TAdditionalParameters>
+            void timeUpdate(double deltaT, const TAdditionalParameters&... additionalParameters) {
+                // timeUpdate sets the new jacobian as well as updating parameters
+                state             = model.timeUpdate(state, deltaT, additionalParameters...);
+                StateMat jacobian = model.timeUpdateJacobian(state, additionalParameters...);
 
-                    arma::mat kalmanGain = processNoise * measurementTransform *
-                                            (arma::trimatu(measurementTransform * processNoisePartial * processNoise * measurementTransform.transpose() + measurementVariance)).inverse();
+                // this is the original
+                // processNoise = jacobian * processNoise * jacobian.transpose() + model.processNoise();
 
-                    state += kalmanGain * (measurement - measurementTransform * state);
+                // this is steve's out-of-order update (backported from UKF)
+                processNoise =
+                    jacobian * (processNoisePartial * processNoise) * jacobian.transpose() + model.processNoise();
 
-                    //original
-                    //processNoise = (Eigen::Matrix<double, Model::size, Model::size>::Identity() - kalmanGain * H) * processNoise;
+                processNoisePartial = Eigen::Matrix<double, Model::size, Model::size>::Identity();
+            }
 
-                    //steve's backported out-of-order update
-                    processNoisePartial -= kalmanGain * measurementTransform;
-                }
+            template <typename TMeasurement, typename... TMeasurementArgs>
+            double measurementUpdate(const TMeasurement& measurement,
+                                     const arma::mat& measurementVariance,
+                                     const TMeasurementArgs&... measurementArgs) {
+                arma::mat measurementTransform = model.StateToMeasurementTransform(measurement, measurementArgs...);
 
-                StateVec get() const {
-                    return state;
-                }
+                arma::mat kalmanGain = processNoise * measurementTransform
+                                       * (arma::trimatu(measurementTransform * processNoisePartial * processNoise
+                                                            * measurementTransform.transpose()
+                                                        + measurementVariance))
+                                             .inverse();
 
-                StateMat getCovariance() const {
-                    return processNoisePartial * processNoise;
-                }
-            };
-        }
+                state += kalmanGain * (measurement - measurementTransform * state);
+
+                // original
+                // processNoise = (Eigen::Matrix<double, Model::size, Model::size>::Identity() - kalmanGain * H) *
+                // processNoise;
+
+                // steve's backported out-of-order update
+                processNoisePartial -= kalmanGain * measurementTransform;
+            }
+
+            StateVec get() const {
+                return state;
+            }
+
+            StateMat getCovariance() const {
+                return processNoisePartial * processNoise;
+            }
+        };
     }
+}
 }
 
 

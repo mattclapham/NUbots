@@ -35,6 +35,7 @@
 #include "utility/math/geometry/Plane.h"
 #include "utility/math/matrix/Transform2D.h"
 #include "utility/math/matrix/Transform3D.h"
+#include "utility/support/eigen.h"
 
 namespace utility {
 namespace math {
@@ -214,26 +215,6 @@ namespace math {
             return Htc.i() * Htf;
         }
 
-        template <typename Scalar, int N>
-        inline Eigen::Matrix<Scalar, N, 1> sort(const Eigen::Matrix<Scalar, N, 1>& in) {
-            Eigen::Matrix<Scalar, N, 1> out{in};
-
-            std::sort(out.data(), out.data() + N);
-            return out;
-        }
-
-        template <typename Scalar, int N>
-        inline Eigen::Matrix<Eigen::Index, N, 1> sort_index(const Eigen::Matrix<Scalar, N, 1>& in) {
-            Eigen::Matrix<Eigen::Index, N, 1> out = Eigen::Matrix<Eigen::Index, N, 1>::LinSpaced(N, 0, N - 1);
-
-            // sort indexes based on comparing values in v
-            std::sort(out.data(), out.data() + N, [&in](const Eigen::Index& i1, const Eigen::Index& i2) {
-                return in[i1] < in[i2];
-            });
-
-            return out;
-        }
-
         // camtoground is either camera to ground or camera to world, depending on application
         inline Eigen::Matrix<double, 3, 4> cameraSpaceGoalProjection(
             const Eigen::Vector3d& robotPose,
@@ -247,9 +228,12 @@ namespace math {
             // make the base goal corners
             Eigen::Matrix4d goalBaseCorners = Eigen::Matrix4d::Ones();
             goalBaseCorners.topLeftCorner<3, 4>().colwise() = goalLocation;
-            goalBaseCorners.topLeftCorner<2, 4>().colwise().rowwise() -= 0.5 * field.dimensions.goalpost_diameter;
-            goalBaseCorners.topLeftCorner<2, 1>().colwise().rowwise() += field.dimensions.goalpost_diameter;
-            goalBaseCorners.block<2, 1>(1, 1).colwise().rowwise() += field.dimensions.goalpost_diameter;
+            goalBaseCorners.topLeftCorner<2, 4>() -=
+                0.5 * field.dimensions.goalpost_diameter * Eigen::Matrix<double, 2, 4>::Ones();
+            goalBaseCorners.topLeftCorner<2, 1>() +=
+                field.dimensions.goalpost_diameter * Eigen::Matrix<double, 2, 1>::Ones();
+            goalBaseCorners.block<2, 1>(1, 1) +=
+                field.dimensions.goalpost_diameter * Eigen::Matrix<double, 2, 1>::Ones();
 
             // make the top corner points
             Eigen::Matrix4d goalTopCorners = goalBaseCorners;
@@ -273,13 +257,13 @@ namespace math {
             Eigen::Vector4d pvals =
                 goalBaseCorners.topRows<3>().transpose()
                 * goalBaseCorners.topRows<3>().leftCols<1>().cross(goalTopCorners.topRows<3>().leftCols<1>());
-            Eigen::Matrix<Eigen::Index, 4, 1> baseIndices = sort_index(pvals);
+            Eigen::Matrix<Eigen::Index, 4, 1> baseIndices = utility::support::sort_index(pvals);
             cornerIndices[2] = baseIndices[0];
             cornerIndices[3] = baseIndices[3];
 
             pvals = goalTopCorners.topRows<3>().transpose()
                     * goalBaseCorners.topRows<3>().leftCols<1>().cross(goalTopCorners.topRows<3>().leftCols<1>());
-            Eigen::Matrix<Eigen::Index, 4, 1> topIndices = sort_index(pvals);
+            Eigen::Matrix<Eigen::Index, 4, 1> topIndices = utility::support::sort_index(pvals);
             cornerIndices[0] = topIndices[0];
             cornerIndices[1] = topIndices[3];
 

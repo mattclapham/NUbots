@@ -88,14 +88,14 @@ namespace math {
                     covmat /= (ctr);
 
                     // step 2: calculate the slope and intercept
-                    double m = (covmat[1] - average[0] * average[1]);
+                    double m = (covmat(1) - average[0] * average[1]);
                     if (std::abs(normal[0]) > std::abs(normal[1])) {  // check whether to use y=mx+b or x=my+b
                         // make a unit vector at right angles to the direction of slope
-                        normal = Eigen::Vector2d(-1.0, m / (covmat[0] - average[0] * average[0])).normalized();
+                        normal = Eigen::Vector2d(-1.0, m / (covmat(0) - average[0] * average[0])).normalized();
                     }
                     else {
                         // make a unit vector at right angles to the direction of slope
-                        normal = Eigen::Vector2d(1.0, -m / (covmat[3] - average[1] * average[1])).normalized();
+                        normal = Eigen::Vector2d(1.0, -m / (covmat(3) - average[1] * average[1])).normalized();
                     }
 
                     // find distance the usual way
