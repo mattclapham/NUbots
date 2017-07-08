@@ -29,31 +29,31 @@
 
 namespace module {
 namespace behaviour {
-namespace tools {
+    namespace tools {
 
-    using extension::Configuration;
+        using extension::Configuration;
 
-    using message::motion::KickCommand;
-    using KickCommandType = message::motion::KickCommandType;
+        using message::motion::KickCommand;
+        using KickCommandType = message::motion::KickCommandType;
 
-    KickCommander::KickCommander(std::unique_ptr<NUClear::Environment> environment)
-    : Reactor(std::move(environment)) {
+        using utility::support::Expression;
 
-        on<Configuration>("KickCommander.yaml").then([this] (const Configuration& config) {
-            log("I'm running");
-            if(!doThings){
-                doThings = true;
-            } else {
-                emit(std::make_unique<KickCommand>(KickCommand(
-                   config["target"].as<Expression>(),
-                   config["direction"].as<Expression>(),
-                   KickCommandType::NORMAL
-                )));
-            }
+        KickCommander::KickCommander(std::unique_ptr<NUClear::Environment> environment)
+            : Reactor(std::move(environment)) {
 
-        });
+            on<Configuration>("KickCommander.yaml").then([this](const Configuration& config) {
+                log("I'm running");
+                if (!doThings) {
+                    doThings = true;
+                }
+                else {
+                    emit(std::make_unique<KickCommand>(KickCommand(config["target"].as<Expression>(),
+                                                                   config["direction"].as<Expression>(),
+                                                                   KickCommandType::NORMAL)));
+                }
+
+            });
+        }
     }
-
-}
 }
 }

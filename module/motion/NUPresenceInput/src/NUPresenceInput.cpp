@@ -59,9 +59,9 @@ namespace motion {
 
     NUPresenceInput::NUPresenceInput(std::unique_ptr<NUClear::Environment> environment)
         : Reactor(std::move(environment))
-        , l_arm(arma::fill::zeros)
-        , r_arm(arma::fill::zeros)
-        , mocap_head_pos(arma::fill::zeros)
+        , l_arm(Eigen::Vector3d::Zero())
+        , r_arm(Eigen::Vector3d::Zero())
+        , mocap_head_pos(Eigen::Vector3d::Zero())
         , head_id(0)
         , l_arm_id(0)
         , r_arm_id(0)
@@ -100,9 +100,7 @@ namespace motion {
             Eigen::VectorXd oculus_y_axis = config["oculus"]["y_axis"].as<Expression>();
             Eigen::VectorXd oculus_z_axis = config["oculus"]["z_axis"].as<Expression>();
 
-            Eigen::Matrix3d camera_to_robot_rot =
-                arma::joirows()(oculus_x_axis, arma::joirows()(oculus_y_axis, oculus_z_axis));
-            camera_to_robot.rotation() = camera_to_robot_rot;
+            camera_to_robot.rotation() << oculus_x_axis, oculus_y_axis, oculus_z_axis;
 
             // Kinematic limits:
             distance_limit        = config["limits"]["distance"].as<Expression>();
@@ -136,18 +134,17 @@ namespace motion {
             Eigen::VectorXd mocap_x_axis = config["mocap"]["x_axis"].as<Expression>();
             Eigen::VectorXd mocap_y_axis = config["mocap"]["y_axis"].as<Expression>();
             Eigen::VectorXd mocap_z_axis = config["mocap"]["z_axis"].as<Expression>();
-            mocap_to_robot               = arma::joirows()(mocap_x_axis, arma::joirows()(mocap_y_axis, mocap_z_axis));
+            mocap_to_robot << mocap_x_axis, mocap_y_axis, mocap_z_axis;
 
             gyro_compensation = config["gyro_compensation"].as<bool>();
-
         });
 
         on<Network<PresenceUserState>, Sync<NUPresenceInput>>().then(
             "NUPresenceInput Network Input", [this](const PresenceUserState& user) {
 
                 // Rotate to robot coordinate system
-                goalCamPose = arma::conv_to<arma::mat>::from(user.head_pose);
-                goalCamPose = camera_to_robot * goalCamPose.inverse() * camera_to_robot.transpose();
+                goalCamPose = user.head_pose.cast<double>();
+                goalCamPose = camera_to_robot * goalCamPose.i() * camera_to_robot.transpose();
                 goalCamPose.translation() *= oculus_to_robot_scale;
 
                 limitPose(goalCamPose);
@@ -210,7 +207,7 @@ namespace motion {
                 // currentCamPose.rotation() = Rotation3D();
 
                 // 3DoF
-                Eigen::Vector3d gaze = currentCamPose.rotation().col(0);
+                Eigen::Vector3d gaze = currentCamPose.rotation().leftCols<1>();
                 Rotation3D yawlessOrientation =
                     Rotation3D::createRotationZ(Rotation3D(Transform3D(-sensors.world).rotation()).yaw())
                     * Transform3D(sensors.world).rotation();
@@ -226,12 +223,14 @@ namespace motion {
 
                 // Adjust arm position
                 // int max_number_of_iterations = 20;
-                Transform3D camToBody    = sensors.forwardKinematics.at(ServoID::HEAD_PITCH);
-                Eigen::Vector3d kneckPos = {kinematicsModel.head.NECK_BASE_POS_FROM_ORIGIN_X,
-                                            kinematicsModel.head.NECK_BASE_POS_FROM_ORIGIN_Y,
-                                            kinematicsModel.head.NECK_BASE_POS_FROM_ORIGIN_Z};
-                auto arm_jointsL = utility::motion::kinematics::setArmApprox(kinematicsModel, kneckPos + l_arm, true);
-                auto arm_jointsR = utility::motion::kinematics::setArmApprox(kinematicsModel, kneckPos + r_arm, false);
+                // Transform3D camToBody    = sensors.forwardKinematics.at(ServoID::HEAD_PITCH);
+                // Eigen::Vector3d kneckPos = {kinematicsModel.head.NECK_BASE_POS_FROM_ORIGIN_X,
+                // kinematicsModel.head.NECK_BASE_POS_FROM_ORIGIN_Y,
+                // kinematicsModel.head.NECK_BASE_POS_FROM_ORIGIN_Z};
+                // auto arm_jointsL = utility::motion::kinematics::setArmApprox(kinematicsModel, kneckPos + l_arm,
+                // true);
+                // auto arm_jointsR = utility::motion::kinematics::setArmApprox(kinematicsModel, kneckPos + r_arm,
+                // false);
                 // joints.insert(joints.end(), arm_jointsL.begin(), arm_jointsL.end());
                 // joints.insert(joints.end(), arm_jointsR.begin(), arm_jointsR.end());
 

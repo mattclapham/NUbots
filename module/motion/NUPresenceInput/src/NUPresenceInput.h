@@ -20,28 +20,29 @@
 #ifndef MODULES_MOTION_HEAD6DOFCONTROLLER_H
 #define MODULES_MOTION_HEAD6DOFCONTROLLER_H
 
+#include <Eigen/Core>
 #include <nuclear>
 
 #include "utility/input/ServoID.h"
 
-#include "utility/math/matrix/Transform3D.h"
 #include "utility/math/matrix/Rotation3D.h"
+#include "utility/math/matrix/Transform3D.h"
 #include "utility/support/Limiter.h"
 
 namespace module {
 namespace motion {
 
     class NUPresenceInput : public NUClear::Reactor {
-    	float foot_separation = 0.10;
-    	float body_angle = 0.0;
+        float foot_separation = 0.10;
+        float body_angle      = 0.0;
         float smoothing_alpha = 0.1;
 
-        Eigen::Vector3d l_arm,r_arm,mocap_head_pos;
+        Eigen::Vector3d l_arm, r_arm, mocap_head_pos;
         int head_id, l_arm_id, r_arm_id;
 
         utility::math::matrix::Transform3D camera_to_robot;
 
-    	utility::math::matrix::Transform3D robot_to_head;
+        utility::math::matrix::Transform3D robot_to_head;
         utility::math::matrix::Rotation3D mocap_to_robot;
         float oculus_to_robot_scale;
 
@@ -54,8 +55,7 @@ namespace motion {
             };
 
             EulerLimits() : roll(), pitch(), yaw() {}
-            EulerLimits(const Range& roll, const Range& pitch, const Range& yaw)
-                : roll(roll), pitch(pitch), yaw(yaw) {}
+            EulerLimits(const Range& roll, const Range& pitch, const Range& yaw) : roll(roll), pitch(pitch), yaw(yaw) {}
 
             Range roll;
             Range pitch;
@@ -64,17 +64,17 @@ namespace motion {
 
         float distance_limit = 0.1;
 
-        //State:
+        // State:
         utility::math::matrix::Transform3D goalCamPose;
         utility::math::matrix::Transform3D currentCamPose;
 
-        //Servo limiter
+        // Servo limiter
         utility::support::Limiter<utility::input::ServoID, float> jointLimiter;
 
-        //Subsumption:
-    	size_t id;
+        // Subsumption:
+        size_t id;
 
-    	void updatePriority(const float& priority);
+        void updatePriority(const float& priority);
 
         void limitPose(utility::math::matrix::Transform3D& pose);
 
@@ -82,7 +82,6 @@ namespace motion {
         /// @brief Called by the powerplant to build and setup the NUPresenceInput reactor.
         explicit NUPresenceInput(std::unique_ptr<NUClear::Environment> environment);
     };
-
 }
 }
 

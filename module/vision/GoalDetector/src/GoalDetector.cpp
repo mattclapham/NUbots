@@ -34,6 +34,7 @@
 
 #include "utility/math/coordinates.h"
 #include "utility/math/ransac/NPartiteRansac.h"
+#include "utility/math/statistics/running_stats.h"
 #include "utility/math/vision.h"
 
 #include "utility/vision/ClassifiedImage.h"
@@ -56,6 +57,8 @@ namespace vision {
     using utility::math::geometry::Quad;
 
     using utility::math::ransac::NPartiteRansac;
+
+    using utility::math::statistics::running_stat;
 
     using utility::math::vision::widthBasedDistanceToCircle;
     using utility::math::vision::projectCamToPlane;
@@ -238,7 +241,7 @@ namespace vision {
                         }
                     }
 
-                    arma::running_stat<double> stat;
+                    running_stat<double> stat;
 
                     // Look through our segments to find endpoints
                     for (auto& point : result) {

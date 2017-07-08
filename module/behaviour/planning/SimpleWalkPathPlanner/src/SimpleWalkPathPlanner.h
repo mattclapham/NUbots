@@ -20,56 +20,56 @@
 #ifndef MODULES_BEHAVIOUR_PLANNERS_SIMPLEWALKPATHPLANNER_H
 #define MODULES_BEHAVIOUR_PLANNERS_SIMPLEWALKPATHPLANNER_H
 
-#include <nuclear>
+#include <Eigen/Core>
 #include <cmath>
+#include <nuclear>
 
 #include "extension/Configuration.h"
 
-#include "message/behaviour/MotionCommand.h"
 #include "message/behaviour/KickPlan.h"
+#include "message/behaviour/MotionCommand.h"
 #include "message/localisation/FieldObject.h"
 #include "message/vision/VisionObjects.h"
 
 
 namespace module {
-    namespace behaviour {
-        namespace planning {
+namespace behaviour {
+    namespace planning {
 
-                //using namespace message;
-                /**
-                 * Executes a getup script if the robot falls over.
-                 *
-                 * @author Josiah Walker
-                 */
-                class SimpleWalkPathPlanner : public NUClear::Reactor {
-                private:
-                    message::behaviour::MotionCommand latestCommand;
-                    const size_t subsumptionId;
-                    float turnSpeed = 0.8;
-                    float forwardSpeed = 1;
-                    float a = 7;
-                    float b = 0;
-                    float search_timeout = 3;
+        // using namespace message;
+        /**
+         * Executes a getup script if the robot falls over.
+         *
+         * @author Josiah Walker
+         */
+        class SimpleWalkPathPlanner : public NUClear::Reactor {
+        private:
+            message::behaviour::MotionCommand latestCommand;
+            const size_t subsumptionId;
+            float turnSpeed      = 0.8;
+            float forwardSpeed   = 1;
+            float a              = 7;
+            float b              = 0;
+            float search_timeout = 3;
 
-                    //-----------non-config variables (not defined in WalkPathPlanner.yaml)-----------
+            //-----------non-config variables (not defined in WalkPathPlanner.yaml)-----------
 
-                    //info for the current walk
-                    Eigen::Vector2d currentTargetPosition;
-                    Eigen::Vector2d currentTargetHeading;
-                    message::behaviour::KickPlan targetHeading;
-                    Eigen::Vector2d targetPosition = {0, 0};
+            // info for the current walk
+            Eigen::Vector2d currentTargetPosition;
+            Eigen::Vector2d currentTargetHeading;
+            message::behaviour::KickPlan targetHeading;
+            Eigen::Vector2d targetPosition = Eigen::Vector2d::Zero();
 
-                    NUClear::clock::time_point timeBallLastSeen;
-                    Eigen::Vector3d rBWw = {10,0,0};
-                    bool robot_ground_space = true;
-                    Eigen::Vector3d position = {1,0,0};//ball pos rel to robot
-                public:
-                    explicit SimpleWalkPathPlanner(std::unique_ptr<NUClear::Environment> environment);
-            };
+            NUClear::clock::time_point timeBallLastSeen;
+            Eigen::Vector3d rBWw     = {10, 0, 0};
+            bool robot_ground_space  = true;
+            Eigen::Vector3d position = {1, 0, 0};  // ball pos rel to robot
+        public:
+            explicit SimpleWalkPathPlanner(std::unique_ptr<NUClear::Environment> environment);
+        };
 
-        }  // planning
-    }  // behaviours
+    }  // planning
+}  // behaviours
 }  // modules
 
 #endif  // MODULES_BEHAVIOUR_PLANNERS_SIMPLEWALKPATHPLANNER_H
-

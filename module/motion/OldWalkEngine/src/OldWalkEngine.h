@@ -29,8 +29,8 @@
 #include "message/motion/KinematicsModels.h"
 
 #include "utility/behaviour/Action.h"
-#include "utility/input/ServoID.h"
 #include "utility/input/LimbID.h"
+#include "utility/input/ServoID.h"
 #include "utility/math/geometry/UnitQuaternion.h"
 #include "utility/math/matrix/Transform2D.h"
 #include "utility/math/matrix/Transform3D.h"
@@ -56,6 +56,7 @@ namespace motion {
 
         static constexpr const char* CONFIGURATION_PATH = "OldWalkEngine.yaml";
         explicit OldWalkEngine(std::unique_ptr<NUClear::Environment> environment);
+
     private:
         using ServoCommand   = message::behaviour::ServoCommand;
         using Sensors        = message::input::Sensors;
@@ -246,7 +247,10 @@ namespace motion {
         std::unique_ptr<std::vector<ServoCommand>> motionLegs(std::vector<std::pair<ServoID, float>> joints);
         std::unique_ptr<std::vector<ServoCommand>> motionArms(double phase);
 
-        Transform2D getNewFootTarget(const Transform2D& velocity, const Transform2D& leftFoot, const Transform2D& rightFoot, const LimbID& swingLeg);
+        Transform2D getNewFootTarget(const Transform2D& velocity,
+                                     const Transform2D& leftFoot,
+                                     const Transform2D& rightFoot,
+                                     const LimbID& swingLeg);
 
         /**
          * Get the next torso position
@@ -261,14 +265,33 @@ namespace motion {
         /**
          * Solve the ZMP equation
          */
-        Eigen::Vector2d zmpSolve(double zs, double z1, double z2, double x1, double x2, double phase1Single, double phase2Single, double stepTime, double zmpTime);
+        Eigen::Vector2d zmpSolve(double zs,
+                                 double z1,
+                                 double z2,
+                                 double x1,
+                                 double x2,
+                                 double phase1Single,
+                                 double phase2Single,
+                                 double stepTime,
+                                 double zmpTime);
 
         /**
          * Uses ZMP to determine the torso position
          *
          * @return The torso position in Transform2D
          */
-        Transform2D zmpCom(double phase, Eigen::Vector4d zmpCoefficients, Eigen::Vector4d zmpParams, double stepTime, double zmpTime, double phase1Zmp, double phase2Zmp, Transform2D uSupport, Transform2D uLeftFootDestination, Transform2D uLeftFootSource, Transform2D uRightFootDestination, Transform2D uRightFootSource);
+        Transform2D zmpCom(double phase,
+                           Eigen::Vector4d zmpCoefficients,
+                           Eigen::Vector4d zmpParams,
+                           double stepTime,
+                           double zmpTime,
+                           double phase1Zmp,
+                           double phase2Zmp,
+                           Transform2D uSupport,
+                           Transform2D uLeftFootDestination,
+                           Transform2D uLeftFootSource,
+                           Transform2D uRightFootDestination,
+                           Transform2D uRightFootSource);
 
         /**
          * This is an easing function that returns 3 values {x,y,z} with the range [0,1]
@@ -278,8 +301,10 @@ namespace motion {
          * See: http://easings.net/ to reference common easing functions
          *
          * @param phase The input to the easing function, with a range of [0,1].
-         * @param phase1Single The phase time between [0,1] to start the step. A value of 0.1 means the step will not start until phase is >= 0.1
-         * @param phase2Single The phase time between [0,1] to end the step. A value of 0.9 means the step will end when phase >= 0.9
+         * @param phase1Single The phase time between [0,1] to start the step. A value of 0.1 means the step will not
+         * start until phase is >= 0.1
+         * @param phase2Single The phase time between [0,1] to end the step. A value of 0.9 means the step will end when
+         * phase >= 0.9
          */
         Eigen::Vector3d footPhase(double phase, double phase1Single, double phase2Single);
 
@@ -298,4 +323,3 @@ namespace motion {
 }  // modules
 
 #endif  // MODULES_MOTION_OLDWALKENGINE_H
-

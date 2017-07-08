@@ -84,6 +84,7 @@ namespace behaviour {
         using utility::math::matrix::Rotation3D;
         using utility::math::matrix::Transform2D;
         using utility::math::matrix::Transform3D;
+        using utility::support::Expression;
 
         SoccerStrategy::SoccerStrategy(std::unique_ptr<NUClear::Environment> environment)
             : Reactor(std::move(environment))

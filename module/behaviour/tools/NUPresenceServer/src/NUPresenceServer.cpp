@@ -71,8 +71,7 @@ namespace behaviour {
                 Eigen::VectorXd oculus_y_axis = config["oculus"]["y_axis"].as<Expression>();
                 Eigen::VectorXd oculus_z_axis = config["oculus"]["z_axis"].as<Expression>();
 
-                camera_to_robot.rotation() =
-                    arma::joirows()(oculus_x_axis, arma::joirows()(oculus_y_axis, oculus_z_axis));
+                camera_to_robot.rotation() << oculus_x_axis, oculus_y_axis, oculus_z_axis;
             });
 
             on<Trigger<Image>, With<Sensors>, Single>().then([this](const Image& image, const Sensors& sensors) {
@@ -84,14 +83,14 @@ namespace behaviour {
                 imageFragment->start = 0;
                 imageFragment->end   = image.data.size();
 
-                Transform3D cam_to_right_foot = sensors.forwardKinematics.at(ServoID::R_ANKLE_ROLL).inverse()
+                Transform3D cam_to_right_foot = Transform3D(sensors.forwardKinematics.at(ServoID::R_ANKLE_ROLL)).i()
                                                 * sensors.forwardKinematics.at(ServoID::HEAD_PITCH);
-                Transform3D cam_to_left_foot = sensors.forwardKinematics.at(ServoID::L_ANKLE_ROLL).inverse()
+                Transform3D cam_to_left_foot = Transform3D(sensors.forwardKinematics.at(ServoID::L_ANKLE_ROLL)).i()
                                                * sensors.forwardKinematics.at(ServoID::HEAD_PITCH);
 
                 Transform3D cam_to_feet   = cam_to_left_foot;
                 cam_to_feet.translation() = 0.5 * (cam_to_left_foot.translation() + cam_to_right_foot.translation());
-                cam_to_feet               = robot_to_head.inverse() * cam_to_feet;
+                cam_to_feet               = robot_to_head.i() * cam_to_feet;
                 cam_to_feet.translation() /= robot_to_head_scale;
 
                 cam_to_feet = camera_to_robot.transpose() * cam_to_feet * camera_to_robot;
@@ -101,7 +100,7 @@ namespace behaviour {
                 cam_to_feet.translation() *= 0;
                 // std::cout << "robot_to_head.inverse() \n" << robot_to_head.inverse();
                 // std::cout << "cam_to_feet \n" << cam_to_feet;
-                imageFragment->cam_to_feet = arma::conv_to<arma::fmat>::from(cam_to_feet);
+                imageFragment->cam_to_feet = cam_to_feet.cast<float>();
 
                 emit<Scope::NETWORK>(imageFragment, "nupresenceclient", reliable);
 

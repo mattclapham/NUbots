@@ -20,8 +20,8 @@
 #ifndef MODULE_MOTION_FOOTPLACEMENTPLANNER_H
 #define MODULE_MOTION_FOOTPLACEMENTPLANNER_H
 
-#include <nuclear>
 #include <Eigen/Core>
+#include <nuclear>
 
 #include <yaml-cpp/yaml.h>
 
@@ -32,38 +32,35 @@
 #include "message/behaviour/ServoCommand.h"
 #include "message/input/Sensors.h"
 #include "message/localisation/FieldObject.h"
-#include "message/motion/KinematicsModels.h"
-#include "message/motion/WalkCommand.h"
 #include "message/motion/FootMotionCommand.h"
 #include "message/motion/FootPlacementCommand.h"
-#include "message/motion/TorsoMotionCommand.h"
+#include "message/motion/KinematicsModels.h"
 #include "message/motion/ServoTarget.h"
+#include "message/motion/TorsoMotionCommand.h"
+#include "message/motion/WalkCommand.h"
 
 #include "utility/behaviour/Action.h"
 
 #include "utility/input/LimbID.h"
 
 #include "utility/math/angle.h"
-#include "utility/math/matrix/Rotation3D.h"
 #include "utility/math/geometry/UnitQuaternion.h"
+#include "utility/math/matrix/Rotation3D.h"
 #include "utility/math/matrix/Transform2D.h"
 #include "utility/math/matrix/Transform3D.h"
 
 #include "utility/motion/Balance.h"
-#include "utility/motion/InverseKinematics.h"
 #include "utility/motion/ForwardKinematics.h"
+#include "utility/motion/InverseKinematics.h"
 
 #include "utility/nubugger/NUhelpers.h"
 
 #include "utility/support/yaml_expression.h"
 
-namespace module
-{
-namespace motion
-{
+namespace module {
+namespace motion {
 
-    class FootPlacementPlanner : public NUClear::Reactor
-    {
+    class FootPlacementPlanner : public NUClear::Reactor {
     public:
         /**
          * The number of servo updates performnced per second
@@ -77,6 +74,7 @@ namespace motion
         static constexpr const char* ONTRIGGER_FOOT_TGT = "Foot Placement Planner - Calculate Target Foot Position";
 
         explicit FootPlacementPlanner(std::unique_ptr<NUClear::Environment> environment);
+
     private:
         using ServoCommand   = message::behaviour::ServoCommand;
         using Sensors        = message::input::Sensors;
@@ -88,9 +86,9 @@ namespace motion
         /**
          * Temporary debugging variables for local output logging...
          */
-        bool DEBUG;                 //
-        int  DEBUG_ITER;            //
-        double  EPSILON;            //
+        bool DEBUG;      //
+        int DEBUG_ITER;  //
+        double EPSILON;  //
 
         /**
          * NUsight feedback initialized from configuration script, see config file for documentation...
@@ -100,8 +98,10 @@ namespace motion
         /**
          * Resource abstractions for id and handler instances...
          */
-        ReactionHandle updateHandle;                    // handle(updateWaypoints), disabling when not moving will save unnecessary CPU resources
-        ReactionHandle generateStandScriptReaction;     // handle(generateStandAndSaveScript), disabling when not required for capturing standing phase
+        ReactionHandle
+            updateHandle;  // handle(updateWaypoints), disabling when not moving will save unnecessary CPU resources
+        ReactionHandle generateStandScriptReaction;  // handle(generateStandAndSaveScript), disabling when not required
+                                                     // for capturing standing phase
 
         /**
          * Decision abstractions and notify variables...
@@ -112,80 +112,80 @@ namespace motion
         /**
          * Anthropomorphic metrics for relevant humanoid joints & actuators...
          */
-        Transform2D torsoPositionTransform;             // Active torso position
-        Transform2D torsoPositionSource;                // Pre-step torso position
-        Transform2D torsoPositionDestination;           // Torso step target position
-        Transform2D leftFootPositionTransform;          // Active left foot position
-        Transform2D leftFootSource;                     // Pre-step left foot position
-        Transform2D rightFootPositionTransform;         // Active right foot position
-        Transform2D rightFootSource;                    // Pre-step right foot position
-        Transform2D leftFootDestination;                // Destination placement Transform2D left foot positions
-        Transform2D rightFootDestination;               // Destination placement Transform2D right foot positions
-        Transform2D uSupportMass;                       // Appears to be support foot pre-step position
-        LimbID activeForwardLimb;                       // The leg that is 'swinging' in the step, opposite of the support foot
-        LimbID activeLimbInitial;                       // TODO: Former initial non-support leg for deterministic walking approach
+        Transform2D torsoPositionTransform;      // Active torso position
+        Transform2D torsoPositionSource;         // Pre-step torso position
+        Transform2D torsoPositionDestination;    // Torso step target position
+        Transform2D leftFootPositionTransform;   // Active left foot position
+        Transform2D leftFootSource;              // Pre-step left foot position
+        Transform2D rightFootPositionTransform;  // Active right foot position
+        Transform2D rightFootSource;             // Pre-step right foot position
+        Transform2D leftFootDestination;         // Destination placement Transform2D left foot positions
+        Transform2D rightFootDestination;        // Destination placement Transform2D right foot positions
+        Transform2D uSupportMass;                // Appears to be support foot pre-step position
+        LimbID activeForwardLimb;                // The leg that is 'swinging' in the step, opposite of the support foot
+        LimbID activeLimbInitial;  // TODO: Former initial non-support leg for deterministic walking approach
 
         /**
          * Anthropomorphic metrics initialized from configuration script, see config file for documentation...
          */
-        double bodyTilt;                                //
-        double bodyHeight;                              //
-    //  double supportFront;                            //
-    //  double supportFront2;                           //
-    //  double supportBack;                             //
-    //  double supportSideX;                            //
-    //  double supportSideY;                            //
-    //  double supportTurn;                             //
-        double stanceLimitY2;                           //
-        double stepTime;                                //
-        double stepHeight;                              //
-        float  step_height_slow_fraction;               //
-        float  step_height_fast_fraction;               //
-        Eigen::Matrix<double, 3, 2> stepLimits;               //
-        Eigen::Vector2d footOffsetCoefficient;               //
-        Transform2D uLRFootOffset;                      // standard offset
+        double bodyTilt;                         //
+        double bodyHeight;                       //
+                                                 //  double supportFront;                            //
+                                                 //  double supportFront2;                           //
+                                                 //  double supportBack;                             //
+                                                 //  double supportSideX;                            //
+                                                 //  double supportSideY;                            //
+                                                 //  double supportTurn;                             //
+        double stanceLimitY2;                    //
+        double stepTime;                         //
+        double stepHeight;                       //
+        float step_height_slow_fraction;         //
+        float step_height_fast_fraction;         //
+        Eigen::Matrix<double, 3, 2> stepLimits;  //
+        Eigen::Vector2d footOffsetCoefficient;   //
+        Transform2D uLRFootOffset;               // standard offset
 
         /**
          * Internal timing reference variables...
          */
-        double beginStepTime;                                   // The time when the current step begun
-        double STAND_SCRIPT_DURATION;                           //
-        NUClear::clock::time_point lastVeloctiyUpdateTime;      //
+        double beginStepTime;                               // The time when the current step begun
+        double STAND_SCRIPT_DURATION;                       //
+        NUClear::clock::time_point lastVeloctiyUpdateTime;  //
 
         /**
          * Motion data for relevant humanoid actuators...
          */
-        double velocityHigh;                            //
-        double accelerationTurningFactor;               //
-        Eigen::Matrix<double, 3, 2> velocityLimits;           //
-        Eigen::Vector3d accelerationLimits;                  //
-        Eigen::Vector3d accelerationLimitsHigh;              //
-        Transform2D velocityCurrent;                    // Current robot velocity
-        Transform2D velocityCommand;                    // Current velocity command
+        double velocityHigh;                         //
+        double accelerationTurningFactor;            //
+        Eigen::Matrix<double, 3, 2> velocityLimits;  //
+        Eigen::Vector3d accelerationLimits;          //
+        Eigen::Vector3d accelerationLimitsHigh;      //
+        Transform2D velocityCurrent;                 // Current robot velocity
+        Transform2D velocityCommand;                 // Current velocity command
 
         /**
          * Dynamic analysis parameters for relevant motion planning...
          */
-        Eigen::Vector4d zmpCoefficients;                     // zmp expoential coefficients aXP aXN aYP aYN
-        Eigen::Vector4d zmpParameters;                       // zmp params m1X, m2X, m1Y, m2Y
+        Eigen::Vector4d zmpCoefficients;  // zmp expoential coefficients aXP aXN aYP aYN
+        Eigen::Vector4d zmpParameters;    // zmp params m1X, m2X, m1Y, m2Y
 
         /**
          * Dynamic analysis parameters initialized from configuration script, see config file for documentation...
          */
-        double zmpTime;                                 //
-        double phase1Single;                            //
-        double phase2Single;                            //
+        double zmpTime;       //
+        double phase1Single;  //
+        double phase2Single;  //
 
         /**
          * Balance & Kinematics module initialization...
          */
-        message::motion::KinematicsModel kinematicsModel;   //
+        message::motion::KinematicsModel kinematicsModel;  //
 
         /**
          * The last foot goal rotation...
          */
-        UnitQuaternion lastFootGoalRotation;            //
-        UnitQuaternion footGoalErrorSum;                //
+        UnitQuaternion lastFootGoalRotation;  //
+        UnitQuaternion footGoalErrorSum;      //
 
         /**
          * @brief [brief description]
@@ -223,7 +223,9 @@ namespace motion
          *
          * @param config [description]
          */
-        void calculateNewStep(const Transform2D& inVelocityCurrent, const Transform2D& inTorsoSource, const Transform2D& inTorsoPosition);
+        void calculateNewStep(const Transform2D& inVelocityCurrent,
+                              const Transform2D& inTorsoSource,
+                              const Transform2D& inTorsoPosition);
         /**
          * @brief [brief description]
          * @details [long description]

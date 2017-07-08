@@ -20,8 +20,8 @@
 #ifndef MODULES_BEHAVIOUR_SKILLS_SEARCHER_H
 #define MODULES_BEHAVIOUR_SKILLS_SEARCHER_H
 
+#include <Eigen/Core>
 #include <nuclear>
-
 
 namespace module {
 namespace behaviour {
@@ -51,7 +51,7 @@ namespace behaviour {
 
         public:
             Searcher()
-                : points(std::vector<T>(1, Eigen::Vector2d::Zero()))
+                : points(std::vector<T>(1, T::Zero()))
                 , current(0)
                 , refPoint()
                 , new_goal(false)

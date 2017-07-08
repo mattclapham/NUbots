@@ -19,11 +19,9 @@
 
 #include "VirtualBall.h"
 
-#include <Eigen/Core>
-
 #include "utility/input/ServoID.h"
-#include "utility/math/matrix/Rotation3D.h"
 #include "utility/math/coordinates.h"
+#include "utility/math/matrix/Rotation3D.h"
 #include "utility/math/vision.h"
 
 namespace module {
@@ -42,18 +40,13 @@ namespace support {
     using utility::math::vision::getFieldToCam;
 
     VirtualBall::VirtualBall()
-    : position(arma::fill::zeros)
-    , velocity(arma::fill::zeros)
-    , diameter(0.1)
-    , rd(rand()) {
-    }
+        : position(Eigen::Vector3d::Zero()), velocity(Eigen::Vector3d::Zero()), diameter(0.1), rd(rand()) {}
 
     VirtualBall::VirtualBall(Eigen::Vector2d position, float diameter)
-    : position({position[0], position[1], diameter * 0.5})
-    , velocity(arma::fill::zeros)
-    , diameter(diameter)
-    , rd(rand()) {
-    }
+        : position({position[0], position[1], diameter * 0.5})
+        , velocity(Eigen::Vector3d::Zero())
+        , diameter(diameter)
+        , rd(rand()) {}
 
     // utility::math::matrix::Transform2D ballPose;
     Eigen::Vector3d position;
@@ -62,12 +55,15 @@ namespace support {
     // Eigen::Vector2d position;
     float diameter;
 
-    Ball VirtualBall::detect(const CameraParameters& cam, Transform2D robotPose, const Sensors& sensors, Eigen::Vector4d /*error*/){
+    Ball VirtualBall::detect(const CameraParameters& cam,
+                             Transform2D robotPose,
+                             const Sensors& sensors,
+                             Eigen::Vector4d /*error*/) {
 
         Ball result;
 
         Transform3D Hcf = getFieldToCam(robotPose, sensors.camToGround);
-        Transform3D Hfc = Hcf.inverse();
+        Transform3D Hfc = Hcf.i();
 
         // Ball position in field
         Eigen::Vector3d rBFf = position;
@@ -76,7 +72,7 @@ namespace support {
         Eigen::Vector3d rCFf = Hfc.translation();
 
         // Get our ball position in camera
-        Eigen::Vector3d rBCc = Hcf.rotation() * Eigen::Vector3d(rBFf - rCFf);
+        Eigen::Vector3d rBCc = Hcf.rotation() * Eigen::Vector3d{rBFf - rCFf};
         if (rBCc[0] < 0.0) {
             result.edgePoints.clear();
             return result;
@@ -89,67 +85,64 @@ namespace support {
         double angle = 2.0 * std::asin((diameter * 0.5) / rBCc.norm());
 
         // Project the centre to the screen and work out the radius as if it was in the centre
-        Eigen::Vector2i centre = screenToImage(projectCamSpaceToScreen(rBCc, cam.focalLengthPixels), cam.imageSizePixels);
+        Eigen::Vector2i centre =
+            screenToImage(projectCamSpaceToScreen(rBCc, cam.focalLengthPixels), cam.imageSizePixels);
         double radius = cam.focalLengthPixels * std::tan(angle * 0.5);
 
         // Check our ball is on the screen at all and if so set the values
-        if (  centre[0] > 0
-           && centre[0] < int(cam.imageSizePixels[0])
-           && centre[1] > 0
-           && centre[1] < int(cam.imageSizePixels[1])) {
+        if (centre[0] > 0 && centre[0] < int(cam.imageSizePixels[0]) && centre[1] > 0
+            && centre[1] < int(cam.imageSizePixels[1])) {
 
             // Set our circle parameters for simulating the ball
-            result.circle.centre = arma::conv_to<arma::vec>::from(centre);
+            result.circle.centre = centre.cast<double>();
             result.circle.radius = radius;
 
             // Get our transform to world coordinates
             const Transform3D& Htw = sensors.world;
             const Transform3D& Htc = sensors.forwardKinematics.at(ServoID::HEAD_PITCH);
-            Transform3D Hcw = Htc.inverse() * Htw;
-            Transform3D Hwc = Hcw.inverse();
+            Transform3D Hcw        = Htc.i() * Htw;
+            Transform3D Hwc        = Hcw.i();
 
             result.position = Hwc.transformPoint(rBCc);
 
             // Measure points around the ball as a normal distribution
             Eigen::Vector3d rEBc;
-            if (rBCc[0] == 0.0 && rBCc[1] == 0.0 ) {
+            if (rBCc[0] == 0.0 && rBCc[1] == 0.0) {
                 if (rBCc[2] > 0.0) {
-                    rEBc = { 1, 0, 0};
-                } else {
-                    rEBc = { -1, 0, 0};
+                    rEBc = {1, 0, 0};
+                }
+                else {
+                    rEBc = {-1, 0, 0};
                 }
             }
             else {
-                //NOTE: this may not work correctly for view fields > 180 degrees
-                rEBc = { M_SQRT1_2, 0, M_SQRT1_2 };
+                // NOTE: this may not work correctly for view fields > 180 degrees
+                rEBc = {M_SQRT1_2, 0, M_SQRT1_2};
             }
-            //set rEBC to be a properly sized radius vector facing from the ball centre towards the (top or inner int he case of extreme values) ball edge
-            rEBc = rBCcLength * (rEBc - rEBc * rEBc.dot(rBCc) / rBCcLength).normalize();
+            // set rEBC to be a properly sized radius vector facing from the ball centre towards the (top or inner int
+            // he case of extreme values) ball edge
+            rEBc = rBCcLength * (rEBc - rEBc * rEBc.dot(rBCc) / rBCcLength).normalized();
 
 
             for (int i = 0; i < 50; ++i) {
                 //
                 double radialJitter = radialDistribution(rd);
-                double angleOffset = angularDistribution(rd);
+                double angleOffset  = angularDistribution(rd);
 
                 // Get a random number for which direciton the measurement is
                 Eigen::Vector3d rEBc = rEBc * std::tan(angle + radialJitter / 2.0);
 
                 // Make a rotation matrix to rotate our vector to our target
-                // Eigen lpNorm<p> is templated on p ... so p must be known at compile time.
-                // Introducing the fucked-up hack!!
-                //result.edgePoints.push_back(Rotation3D(arma::normalise(rBCc, angle + angleOffset) * rEBc).normalize());
-                result.edgePoints.push_back(Rotation3D(std::pow(rBCc.pow(angle + angleOffset).sum(), 1 / (angle + angleOffset)) * rEBc).normalize());
+                result.edgePoints.push_back((Rotation3D(rBCc.normalized(), angle + angleOffset) * rEBc).normalized());
             }
         }
 
-        result.visObject.sensors = const_cast<Sensors*>(&sensors)->shared_from_this();
-        result.visObject.timestamp = sensors.timestamp; // TODO: Eventually allow this to be different to sensors.
+        result.visObject.sensors   = const_cast<Sensors*>(&sensors)->shared_from_this();
+        result.visObject.timestamp = sensors.timestamp;  // TODO: Eventually allow this to be different to sensors.
 
 
-        //If no measurements are in the Ball, then there it was not observed
+        // If no measurements are in the Ball, then there it was not observed
         return result;
     }
-
 }
 }
