@@ -54,6 +54,32 @@ namespace support {
         return values;
     }
 
+    template <typename Scalar, int RowsIn, int ColsIn>
+    inline Eigen::Matrix<Scalar, RowsIn, Eigen::Dynamic> indexCols(
+        const Eigen::Matrix<Scalar, RowsIn, ColsIn>& A,
+        const Eigen::Matrix<Eigen::Index, Eigen::Dynamic, 1>& indices) {
+        Eigen::Matrix<Scalar, RowsIn, Eigen::Dynamic> values{RowsIn, indices.size()};
+
+        for (Eigen::Index index = 0; index < indices.size(); index++) {
+            values.template middleCols<1>(index) = A.template middleCols<1>(indices[index]);
+        }
+
+        return values;
+    }
+
+    template <typename Scalar, int RowsIn, int ColsIn>
+    inline Eigen::Matrix<Scalar, Eigen::Dynamic, ColsIn> indexRows(
+        const Eigen::Matrix<Scalar, RowsIn, ColsIn>& A,
+        const Eigen::Matrix<Eigen::Index, Eigen::Dynamic, 1>& indices) {
+        Eigen::Matrix<Scalar, Eigen::Dynamic, ColsIn> values{indices.size(), ColsIn};
+
+        for (Eigen::Index index = 0; index < indices.size(); index++) {
+            values.template middleRows<1>(index) = A.template middleRows<1>(indices[index]);
+        }
+
+        return values;
+    }
+
     template <typename Scalar, int N>
     inline Eigen::Matrix<Scalar, N, 1> sort(const Eigen::Matrix<Scalar, N, 1>& in) {
         Eigen::Matrix<Scalar, N, 1> out{in};
