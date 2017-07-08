@@ -62,41 +62,43 @@ namespace math {
                     // generate initial data
                     Eigen::VectorXd weights = bestParams.covariance.asDiagonal();
                     samples                 = utility::support::randn(bestParams.estimate.size(), batchSize);
-                    samples                 = samples.colwise().cwiseProduct(weights);
+                    // https://forum.kde.org/viewtopic.php?f=74&t=98568 (Coefficient-Wise Product and Broadcasting)
+                    samples = (samples.array().colwise() * weights.array()).matrix();
                     samples.colwise() += bestParams.estimate;
 
-
                     // out of bounds check
-                    if (lowerBound.size() > 0 and upperBound.size() > 0) {
-                        Eigen::Matrix<unsigned int, Eigen::Dynamic, 1> outOfBounds =
-                            (samples.array() > upperBound.replicate(1, samples.cols()).array())
-                                .select(samples, Eigen::MatrixXd::Zero(bestParams.estimate.size(), batchSize))
-                                .rowwise()
-                                .sum();
-                        outOfBounds +=
-                            (samples.array() < lowerBound.replicate(1, samples.cols()).array())
-                                .select(samples, Eigen::MatrixXd::Zero(bestParams.estimate.size(), batchSize))
-                                .rowwise()
-                                .sum();
-                        samples = utility::support::index(samples.colwise(), utility::support::find(outOfBounds == 0u));
+                    if (lowerBound.size() > 0 && upperBound.size() > 0) {
+                        Eigen::Matrix<unsigned int, Eigen::Dynamic, 1> outOfBounds;
+                        outOfBounds = ((samples - upperBound.replicate(samples.cols(), 1)).array() > 0.0)
+                                          .matrix()
+                                          .rowwise()
+                                          .count()
+                                          .cast<unsigned int>()
+                                      + ((samples - lowerBound.replicate(samples.cols(), 1)).array() < 0.0)
+                                            .matrix()
+                                            .rowwise()
+                                            .count()
+                                            .cast<unsigned int>();
+                        samples =
+                            utility::support::indexCols(samples, utility::support::find(outOfBounds.cwiseEqual(0)));
 
                         while (static_cast<uint64_t>(samples.cols()) < batchSize) {
                             Eigen::MatrixXd samples2 = utility::support::randn(bestParams.estimate.size(), batchSize);
-                            samples2                 = samples2.colwise().cwiseProduct(weights);
+                            samples2                 = (samples2.array().colwise() * weights.array()).matrix();
                             samples2.colwise() += bestParams.estimate;
 
-                            outOfBounds =
-                                (samples2.array() > upperBound.replicate(1, samples2.cols()).array())
-                                    .select(samples2, Eigen::MatrixXd::Zero(bestParams.estimate.size(), batchSize))
-                                    .rowwise()
-                                    .sum();
-                            outOfBounds +=
-                                (samples2.array() < lowerBound.replicate(1, samples2.cols()).array())
-                                    .select(samples2, Eigen::MatrixXd::Zero(bestParams.estimate.size(), batchSize))
-                                    .rowwise()
-                                    .sum();
-                            samples2 =
-                                utility::support::index(samples2.colwise(), utility::support::find(outOfBounds == 0u));
+                            outOfBounds = ((samples2 - upperBound.replicate(samples2.cols(), 1)).array() > 0.0)
+                                              .matrix()
+                                              .rowwise()
+                                              .count()
+                                              .cast<unsigned int>()
+                                          + ((samples2 - lowerBound.replicate(samples2.cols(), 1)).array() < 0.0)
+                                                .matrix()
+                                                .rowwise()
+                                                .count()
+                                                .cast<unsigned int>();
+                            samples2 = utility::support::indexCols(samples2,
+                                                                   utility::support::find(outOfBounds.cwiseEqual(0)));
 
                             if (samples2.rows() > 0) {
                                 samples << samples, samples2;

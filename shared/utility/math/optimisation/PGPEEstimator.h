@@ -83,12 +83,13 @@ namespace math {
                 Eigen::VectorXd update    = Eigen::VectorXd::Zero(covEstimate.size());
                 Eigen::VectorXd updateCov = Eigen::VectorXd::Zero(covEstimate.size());
 
-                for (size_t i = 0; i < fitnesses.size(); ++i) {
-                    update += alpha * (fitnesses[i] - baseline).cwiseProduct(samples.row(i).transpose() - bestEstimate);
-                    updateCov += alphaCov
-                                 * (fitnesses[i] - baseline)
-                                       .cwiseProduct((samples.row(i).transpose() - bestEstimate).square() - covEstimate)
-                                       .cwiseQuotient(covEstimate.sqrt());
+                for (ssize_t i = 0; i < fitnesses.size(); ++i) {
+                    update +=
+                        (alpha * (fitnesses[i] - baseline)).cwiseProduct(samples.row(i).transpose() - bestEstimate);
+                    updateCov += (alphaCov * (fitnesses[i] - baseline))
+                                     .cwiseProduct((samples.row(i).transpose() - bestEstimate).array().square().matrix()
+                                                   - covEstimate)
+                                     .cwiseQuotient(covEstimate.array().sqrt().matrix());
                 }
 
                 baseline = baseline * 0.9 + 0.1 * fitnesses.mean();

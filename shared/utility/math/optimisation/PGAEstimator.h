@@ -58,14 +58,14 @@ namespace math {
                                              const OptimiserEstimate& previousEstimate) {
 
                 // create a vector of normed fitnesses
-                const double min = fitnesses.minCoeff();
-                const double max = fitnesses.maxCoeff();
-                const Eigen::VectorXd normedFitnesses =
-                    (max - fitnesses.rowwise()) / (max - min + std::numeric_limits<double>::epsilon());
+                const double min                      = fitnesses.minCoeff();
+                const double max                      = fitnesses.maxCoeff();
+                const Eigen::VectorXd normedFitnesses = (max * Eigen::VectorXd::Ones(fitnesses.size()) - fitnesses)
+                                                        / (max - min + std::numeric_limits<double>::epsilon());
 
                 // create a set of weights per sample which specifies the likelihood that they are near the best
                 // estimate
-                const Eigen::VectorXd sampleWeights = (-c * normedFitnesses).exp();
+                const Eigen::VectorXd sampleWeights = (-c * normedFitnesses).array().exp();
 
                 // calculate the probabilistically weighted result estimate
                 Eigen::VectorXd bestEstimate =
