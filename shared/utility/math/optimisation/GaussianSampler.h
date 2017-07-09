@@ -61,7 +61,7 @@ namespace math {
 
                     // generate initial data
                     Eigen::VectorXd weights = bestParams.covariance.asDiagonal();
-                    samples                 = utility::support::randn(bestParams.estimate.size(), batchSize);
+                    samples = utility::support::randn<Eigen::MatrixXd>(bestParams.estimate.size(), batchSize);
                     // https://forum.kde.org/viewtopic.php?f=74&t=98568 (Coefficient-Wise Product and Broadcasting)
                     samples = (samples.array().colwise() * weights.array()).matrix();
                     samples.colwise() += bestParams.estimate;
@@ -83,8 +83,9 @@ namespace math {
                             utility::support::indexCols(samples, utility::support::find(outOfBounds.cwiseEqual(0)));
 
                         while (static_cast<uint64_t>(samples.cols()) < batchSize) {
-                            Eigen::MatrixXd samples2 = utility::support::randn(bestParams.estimate.size(), batchSize);
-                            samples2                 = (samples2.array().colwise() * weights.array()).matrix();
+                            Eigen::MatrixXd samples2 =
+                                utility::support::randn<Eigen::MatrixXd>(bestParams.estimate.size(), batchSize);
+                            samples2 = (samples2.array().colwise() * weights.array()).matrix();
                             samples2.colwise() += bestParams.estimate;
 
                             outOfBounds = ((samples2 - upperBound.replicate(samples2.cols(), 1)).array() > 0.0)

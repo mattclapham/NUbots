@@ -59,7 +59,7 @@ namespace math {
                 if (bestParams.generation != generation || sampleCount + numSamples > batchSize) {
                     Eigen::MatrixXd projection = bestParams.covariance.llt().matrixL();
                     samples =
-                        Eigen::MatrixXd(utility::support::randn(bestParams.estimate.size(), batchSize) * projection)
+                        (utility::support::randn<Eigen::MatrixXd>(bestParams.estimate.size(), batchSize) * projection)
                             .transpose()
                             .colwise()
                         + bestParams.estimate;
@@ -81,7 +81,8 @@ namespace math {
                             utility::support::indexRows(samples, utility::support::find(outOfBounds.cwiseEqual(0)));
 
                         while (static_cast<uint64_t>(samples.rows()) < batchSize) {
-                            Eigen::MatrixXd samples2 = utility::support::randn(bestParams.estimate.size(), batchSize);
+                            Eigen::MatrixXd samples2 =
+                                utility::support::randn<Eigen::MatrixXd>(bestParams.estimate.size(), batchSize);
                             samples2 = (samples2 * projection).transpose().colwise() + bestParams.estimate;
 
                             outOfBounds = ((samples2 - upperBound.replicate(samples2.cols(), 1)).array() > 0.0)
