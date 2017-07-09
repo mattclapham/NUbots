@@ -28,6 +28,7 @@
 namespace utility {
 namespace support {
 
+
     template <typename Comp>
     inline Eigen::Matrix<Eigen::Index, Eigen::Dynamic, 1> find(const Comp& comp) {
         Eigen::Matrix<Eigen::Index, Eigen::Dynamic, 1> indices(comp.count());
@@ -103,49 +104,112 @@ namespace support {
     template <typename T,
               std::enable_if_t<((T::RowsAtCompileTime != Eigen::Dynamic)
                                 && (T::ColsAtCompileTime != Eigen::Dynamic))>* = nullptr>
-    inline T randn() {
+    inline T randn(typename T::Scalar mean   = static_cast<typename T::Scalar>(0.0),
+                   typename T::Scalar stddev = static_cast<typename T::Scalar>(1.0)) {
         std::random_device rd;
         std::mt19937 gen(rd());
-        std::normal_distribution<typename T::Scalar> d(static_cast<typename T::Scalar>(0.0),
-                                                       static_cast<typename T::Scalar>(1.0));
+        std::normal_distribution<typename T::Scalar> d(mean, stddev);
 
-        return T().unaryExpr([&](typename T::Scalar elem) -> typename T::Scalar { return d(gen); });
+        T out;
+        return out.unaryExpr([&](typename T::Scalar) -> typename T::Scalar { return d(gen); });
     }
 
     template <typename T,
               std::enable_if_t<((T::RowsAtCompileTime == Eigen::Dynamic) && (T::ColsAtCompileTime == 1))>* = nullptr>
-    inline T randn(size_t cols) {
+    inline T randn(size_t rows,
+                   typename T::Scalar mean   = static_cast<typename T::Scalar>(0.0),
+                   typename T::Scalar stddev = static_cast<typename T::Scalar>(1.0)) {
         std::random_device rd;
         std::mt19937 gen(rd());
-        std::normal_distribution<typename T::Scalar> d(static_cast<typename T::Scalar>(0.0),
-                                                       static_cast<typename T::Scalar>(1.0));
+        std::normal_distribution<typename T::Scalar> d(mean, stddev);
 
-        return T(cols).unaryExpr([&](typename T::Scalar elem) -> typename T::Scalar { return d(gen); });
+        T out(rows);
+        return out.unaryExpr([&](typename T::Scalar) -> typename T::Scalar { return d(gen); });
     }
 
     template <typename T,
               std::enable_if_t<((T::RowsAtCompileTime == 1) && (T::ColsAtCompileTime == Eigen::Dynamic))>* = nullptr>
-    inline T randn(size_t rows) {
+    inline T randn(size_t cols,
+                   typename T::Scalar mean   = static_cast<typename T::Scalar>(0.0),
+                   typename T::Scalar stddev = static_cast<typename T::Scalar>(1.0)) {
         std::random_device rd;
         std::mt19937 gen(rd());
-        std::normal_distribution<typename T::Scalar> d(static_cast<typename T::Scalar>(0.0),
-                                                       static_cast<typename T::Scalar>(1.0));
+        std::normal_distribution<typename T::Scalar> d(mean, stddev);
 
-        return T(rows).unaryExpr([&](typename T::Scalar elem) -> typename T::Scalar { return d(gen); });
+        T out(cols);
+        return out.unaryExpr([&](typename T::Scalar) -> typename T::Scalar { return d(gen); });
     }
 
     template <typename T,
               std::enable_if_t<((T::RowsAtCompileTime == Eigen::Dynamic)
                                 && (T::ColsAtCompileTime == Eigen::Dynamic))>* = nullptr>
-    inline T randn(size_t rows, size_t cols) {
+    inline T randn(size_t rows,
+                   size_t cols,
+                   typename T::Scalar mean   = static_cast<typename T::Scalar>(0.0),
+                   typename T::Scalar stddev = static_cast<typename T::Scalar>(1.0)) {
         std::random_device rd;
         std::mt19937 gen(rd());
-        std::normal_distribution<typename T::Scalar> d(static_cast<typename T::Scalar>(0.0),
-                                                       static_cast<typename T::Scalar>(1.0));
+        std::normal_distribution<typename T::Scalar> d(mean, stddev);
 
-        return T(rows, cols).unaryExpr([&](typename T::Scalar elem) -> typename T::Scalar { return d(gen); });
+        T out(rows, cols);
+        return out.unaryExpr([&](typename T::Scalar) -> typename T::Scalar { return d(gen); });
+    }
+
+    template <typename T,
+              std::enable_if_t<((T::RowsAtCompileTime != Eigen::Dynamic)
+                                && (T::ColsAtCompileTime != Eigen::Dynamic))>* = nullptr>
+    inline T randu(typename T::Scalar a = static_cast<typename T::Scalar>(0.0),
+                   typename T::Scalar b = static_cast<typename T::Scalar>(1.0)) {
+        std::random_device rd;
+        std::mt19937 gen(rd());
+        std::uniform_real_distribution<typename T::Scalar> d(a, b);
+
+        T out;
+        return out.unaryExpr([&](typename T::Scalar) -> typename T::Scalar { return d(gen); });
+    }
+
+    template <typename T,
+              std::enable_if_t<((T::RowsAtCompileTime == Eigen::Dynamic) && (T::ColsAtCompileTime == 1))>* = nullptr>
+    inline T randu(size_t rows,
+                   typename T::Scalar a = static_cast<typename T::Scalar>(0.0),
+                   typename T::Scalar b = static_cast<typename T::Scalar>(1.0)) {
+        std::random_device rd;
+        std::mt19937 gen(rd());
+        std::uniform_real_distribution<typename T::Scalar> d(a, b);
+
+        T out(rows);
+        return out.unaryExpr([&](typename T::Scalar) -> typename T::Scalar { return d(gen); });
+    }
+
+    template <typename T,
+              std::enable_if_t<((T::RowsAtCompileTime == 1) && (T::ColsAtCompileTime == Eigen::Dynamic))>* = nullptr>
+    inline T randu(size_t cols,
+                   typename T::Scalar a = static_cast<typename T::Scalar>(0.0),
+                   typename T::Scalar b = static_cast<typename T::Scalar>(1.0)) {
+        std::random_device rd;
+        std::mt19937 gen(rd());
+        std::uniform_real_distribution<typename T::Scalar> d(a, b);
+
+        T out(cols);
+        return out.unaryExpr([&](typename T::Scalar) -> typename T::Scalar { return d(gen); });
+    }
+
+    template <typename T,
+              std::enable_if_t<((T::RowsAtCompileTime == Eigen::Dynamic)
+                                && (T::ColsAtCompileTime == Eigen::Dynamic))>* = nullptr>
+    inline T randu(size_t rows,
+                   size_t cols,
+                   typename T::Scalar a = static_cast<typename T::Scalar>(0.0),
+                   typename T::Scalar b = static_cast<typename T::Scalar>(1.0)) {
+        std::random_device rd;
+        std::mt19937 gen(rd());
+        std::uniform_real_distribution<typename T::Scalar> d(a, b);
+
+        T out(rows, cols);
+        return out.unaryExpr([&](typename T::Scalar) -> typename T::Scalar { return d(gen); });
     }
 }
 }
+
 
 #endif
