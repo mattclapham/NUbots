@@ -20,20 +20,17 @@
 #ifndef MODULES_INPUT_SERVOLOADMODEL_H
 #define MODULES_INPUT_SERVOLOADMODEL_H
 
-#include <nuclear>
-#include <chrono>
 #include <yaml-cpp/yaml.h>
+#include <chrono>
+#include <nuclear>
 
-namespace utility
-{
-namespace input
-{
-    class ServoLoadModel
-    {
-       public:
+namespace utility {
+namespace input {
+    class ServoLoadModel {
+    public:
         static constexpr size_t size = 1;
 
-        ServoLoadModel() {} // empty constructor
+        ServoLoadModel() {}  // empty constructor
 
         Eigen::Matrix<double, size, 1> timeUpdate(const Eigen::Matrix<double, size, 1>& state, double /*deltaT*/) {
             return state;

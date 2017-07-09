@@ -21,111 +21,130 @@
 
 #include <Eigen/Core>
 
-#include "utility/vision/fourcc.h"
 #include "utility/vision/LookUpTable.h"
 #include "utility/vision/Vision.h"
+#include "utility/vision/fourcc.h"
 
 namespace module {
-    namespace vision {
-        using message::input::Image;
-        using message::vision::LookUpTable;
-        using message::vision::ClassifiedImage;
-        using SegmentClass = message::vision::ClassifiedImage::SegmentClass::Value;
-        using quex::Token;
-        using FOURCC = utility::vision::FOURCC;
+namespace vision {
+    using message::input::Image;
+    using message::vision::LookUpTable;
+    using message::vision::ClassifiedImage;
+    using SegmentClass = message::vision::ClassifiedImage::SegmentClass::Value;
+    using quex::Token;
+    using FOURCC = utility::vision::FOURCC;
 
-        QuexClassifier::QuexClassifier()
-            : lexer(buffer, BUFFER_SIZE, buffer + 1)
-            , tknNumber(lexer.token_p()->number) {
+    QuexClassifier::QuexClassifier() : lexer(buffer, BUFFER_SIZE, buffer + 1), tknNumber(lexer.token_p()->number) {}
+
+    std::vector<ClassifiedImage::Segment> QuexClassifier::classify(const Image& image,
+                                                                   const LookUpTable& lut,
+                                                                   const Eigen::Vector2i& start,
+                                                                   const Eigen::Vector2i& end,
+                                                                   const uint& subsample) {
+
+        // Start reading data
+        lexer.buffer_fill_region_prepare();
+
+        // For vertical runs
+        if (start[0] == end[0]) {
+
+            size_t length = end[1] - start[1] + 1;
+
+            for (uint i = 0; i < length / subsample; ++i) {
+                buffer[i + 1] =
+                    utility::vision::getPixelColour(lut,
+                                                    utility::vision::getPixel(start[0],
+                                                                              start[1] + (i * subsample),
+                                                                              image.dimensions[0],
+                                                                              image.dimensions[1],
+                                                                              image.data,
+                                                                              static_cast<FOURCC>(image.format)));
+            }
+
+            lexer.buffer_fill_region_finish(length / subsample);
         }
 
-        std::vector<ClassifiedImage::Segment> QuexClassifier::classify(const Image& image, const LookUpTable& lut, const Eigen::Vector2i& start, const Eigen::Vector2i& end, const uint& subsample) {
+        // For horizontal runs
+        else if (start[1] == end[1]) {
 
-            // Start reading data
-            lexer.buffer_fill_region_prepare();
+            size_t length = end[0] - start[0] + 1;
 
-            // For vertical runs
-            if(start[0] == end[0]) {
-
-                size_t length = end[1] - start[1] + 1;
-
-                for(uint i = 0; i < length / subsample; ++i) {
-                    buffer[i + 1] = utility::vision::getPixelColour(lut,
-                        utility::vision::getPixel(start[0], start[1] + (i * subsample), image.dimensions[0], image.dimensions[1], image.data, static_cast<FOURCC>(image.format)));
-                }
-
-                lexer.buffer_fill_region_finish(length / subsample);
+            for (uint i = 0; i < length / subsample; ++i) {
+                buffer[i + 1] =
+                    utility::vision::getPixelColour(lut,
+                                                    utility::vision::getPixel(start[0] + (i * subsample),
+                                                                              start[1],
+                                                                              image.dimensions[0],
+                                                                              image.dimensions[1],
+                                                                              image.data,
+                                                                              static_cast<FOURCC>(image.format)));
             }
 
-            // For horizontal runs
-            else if(start[1] == end[1]) {
-
-                size_t length = end[0] - start[0] + 1;
-
-                for(uint i = 0; i < length / subsample; ++i) {
-                    buffer[i + 1] = utility::vision::getPixelColour(lut,
-                        utility::vision::getPixel(start[0] + (i * subsample), start[1], image.dimensions[0], image.dimensions[1], image.data, static_cast<FOURCC>(image.format)));
-                }
-
-                lexer.buffer_fill_region_finish(length / subsample);
-            }
-
-            // Diagonal run
-            else {
-                // TODO not implemented (and probably won't implement)
-            }
-
-            // Our output
-            std::vector<ClassifiedImage::Segment> output;
-            output.reserve(64);
-
-            // Our vector of position
-            Eigen::Vector2i position = start;
-
-            // A reference to the relevant movement direction
-            int& movement = start[1] == end[1] ? position[0] : position[1];
-
-            for(uint32_t typeID = lexer.receive(); typeID != QUEX_TKN_TERMINATION; typeID = lexer.receive()) {
-
-                // Update our position
-                Eigen::Vector2i s = position;
-                uint len = tknNumber * subsample;
-                movement += len;
-                Eigen::Vector2i m = (s + position) / 2;
-
-                switch(typeID) {
-                    case QUEX_TKN_FIELD:
-                        output.push_back(ClassifiedImage::Segment(SegmentClass::FIELD, len, subsample, s, position, m, -1, -1));
-                        break;
-
-                    case QUEX_TKN_BALL:
-                        output.push_back(ClassifiedImage::Segment(SegmentClass::BALL, len, subsample, s, position, m, -1, -1));
-                        break;
-
-                    case QUEX_TKN_GOAL:
-                        output.push_back(ClassifiedImage::Segment(SegmentClass::GOAL, len, subsample, s, position, m, -1, -1));
-                        break;
-
-                    case QUEX_TKN_LINE:
-                        output.push_back(ClassifiedImage::Segment(SegmentClass::LINE, len, subsample, s, position, m, -1, -1));
-                        break;
-
-                    case QUEX_TKN_CYAN_TEAM:
-                        output.push_back(ClassifiedImage::Segment(SegmentClass::CYAN_TEAM, len, subsample, s, position, m, -1, -1));
-                        break;
-
-                    case QUEX_TKN_MAGENTA_TEAM:
-                        output.push_back(ClassifiedImage::Segment(SegmentClass::MAGENTA_TEAM, len, subsample, s, position, m, -1, -1));
-                        break;
-
-                    case QUEX_TKN_UNCLASSIFIED:
-                        output.push_back(ClassifiedImage::Segment(SegmentClass::UNKNOWN_CLASS, len, subsample, s, position, m, -1, -1));
-                        break;
-                }
-            }
-
-            return output;
-
+            lexer.buffer_fill_region_finish(length / subsample);
         }
+
+        // Diagonal run
+        else {
+            // TODO not implemented (and probably won't implement)
+        }
+
+        // Our output
+        std::vector<ClassifiedImage::Segment> output;
+        output.reserve(64);
+
+        // Our vector of position
+        Eigen::Vector2i position = start;
+
+        // A reference to the relevant movement direction
+        int& movement = start[1] == end[1] ? position[0] : position[1];
+
+        for (uint32_t typeID = lexer.receive(); typeID != QUEX_TKN_TERMINATION; typeID = lexer.receive()) {
+
+            // Update our position
+            Eigen::Vector2i s = position;
+            uint len          = tknNumber * subsample;
+            movement += len;
+            Eigen::Vector2i m = (s + position) / 2;
+
+            switch (typeID) {
+                case QUEX_TKN_FIELD:
+                    output.push_back(
+                        ClassifiedImage::Segment(SegmentClass::FIELD, len, subsample, s, position, m, -1, -1));
+                    break;
+
+                case QUEX_TKN_BALL:
+                    output.push_back(
+                        ClassifiedImage::Segment(SegmentClass::BALL, len, subsample, s, position, m, -1, -1));
+                    break;
+
+                case QUEX_TKN_GOAL:
+                    output.push_back(
+                        ClassifiedImage::Segment(SegmentClass::GOAL, len, subsample, s, position, m, -1, -1));
+                    break;
+
+                case QUEX_TKN_LINE:
+                    output.push_back(
+                        ClassifiedImage::Segment(SegmentClass::LINE, len, subsample, s, position, m, -1, -1));
+                    break;
+
+                case QUEX_TKN_CYAN_TEAM:
+                    output.push_back(
+                        ClassifiedImage::Segment(SegmentClass::CYAN_TEAM, len, subsample, s, position, m, -1, -1));
+                    break;
+
+                case QUEX_TKN_MAGENTA_TEAM:
+                    output.push_back(
+                        ClassifiedImage::Segment(SegmentClass::MAGENTA_TEAM, len, subsample, s, position, m, -1, -1));
+                    break;
+
+                case QUEX_TKN_UNCLASSIFIED:
+                    output.push_back(
+                        ClassifiedImage::Segment(SegmentClass::UNKNOWN_CLASS, len, subsample, s, position, m, -1, -1));
+                    break;
+            }
+        }
+
+        return output;
     }
+}
 }

@@ -76,14 +76,15 @@ namespace localisation {
                                                         double ballAngle) {
 
             Eigen::Vector3d ball_pos = Eigen::Vector3d(state(kX), state(kY), cfg_.ballHeight);
-            auto obs                 = SphericalRobotObservation({0, 0}, 0, ball_pos);
+            Eigen::Vector3d obs      = SphericalRobotObservation({0, 0}, 0, ball_pos);
             obs(1) -= ballAngle;
 
-            Eigen::VectorXd obsVel = arma::joicols()(obs, state.rows(kVx, kVy));
+            Eigen::VectorXd obsVel;
+            obsVel << obs, state.middleRows<kVy - kVx + 1>(kVx);
             return obsVel;
         }
 
-        Eigen::VectorXd BallModel::observationDifference(const arma::vec& a, const arma::vec& b) {
+        Eigen::VectorXd BallModel::observationDifference(const Eigen::VectorXd& a, const Eigen::VectorXd& b) {
             Eigen::VectorXd result = a - b;
             // result(1) = utility::math::angle::normalizeAngle(result(1));
             // result(2) = utility::math::angle::normalizeAngle(result(2));
@@ -92,8 +93,8 @@ namespace localisation {
 
         Eigen::Matrix<double, BallModel::size, 1> BallModel::limitState(
             const Eigen::Matrix<double, BallModel::size, 1>& state) {
-            auto new_state = state;
-            new_state.rows(kVx, kVy) = Eigen::Vector2d(0, 0);
+            auto new_state                           = state;
+            new_state.middleRows<kVy - kVx + 1>(kVx) = Eigen::Vector2d::Zero();
             return new_state;
         }
 

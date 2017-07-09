@@ -18,14 +18,14 @@
  */
 
 #include "NUcapLocalisation.h"
-#include "utility/nubugger/NUhelpers.h"
-#include "utility/math/matrix/Rotation3D.h"
+#include "extension/Configuration.h"
 #include "message/input/MotionCapture.h"
 #include "message/input/Sensors.h"
-#include "utility/math/geometry/UnitQuaternion.h"
-#include "extension/Configuration.h"
 #include "message/localisation/FieldObject.h"
 #include "utility/math/angle.h"
+#include "utility/math/geometry/UnitQuaternion.h"
+#include "utility/math/matrix/Rotation3D.h"
+#include "utility/nubugger/NUhelpers.h"
 
 namespace module {
 namespace localisation {
@@ -38,11 +38,13 @@ namespace localisation {
     using utility::math::matrix::Rotation3D;
     using utility::nubugger::graph;
 
-    NUcapLocalisation::NUcapLocalisation(std::unique_ptr<NUClear::Environment> environment) : Reactor(std::move(environment)) {
+    NUcapLocalisation::NUcapLocalisation(std::unique_ptr<NUClear::Environment> environment)
+        : Reactor(std::move(environment)) {
 
         on<Configuration>("NUcapLocalisation.yaml").then([this](const Configuration& config) {
             robot_id = config["robot_id"].as<int>();
-            NUClear::log("NUcapLocalisation::robot_id = ", robot_id, ". If incorrect change config/NUcapLocalisation.yaml");
+            NUClear::log(
+                "NUcapLocalisation::robot_id = ", robot_id, ". If incorrect change config/NUcapLocalisation.yaml");
         });
 
         on<Network<MotionCapture>>([this](const MotionCapture& mocap) {
@@ -51,24 +53,24 @@ namespace localisation {
 
                 int id = rigidBody.identifier();
                 if (id == robot_id) {
-                    //TODO: switch to correct xyz coordinate system!!!!!!!!!!
+                    // TODO: switch to correct xyz coordinate system!!!!!!!!!!
                     float x = rigidBody.position().x();
                     float y = rigidBody.position().y();
                     float z = rigidBody.position().z();
                     UnitQuaternion q(Eigen::Vector4d{rigidBody.rotation().x(),
-                                                rigidBody.rotation().y(),
-                                                rigidBody.rotation().z(),
-                                                rigidBody.rotation().transpose()});
+                                                     rigidBody.rotation().y(),
+                                                     rigidBody.rotation().z(),
+                                                     rigidBody.rotation().transpose()});
 
-                    Rotation3D groundToWorldRotation = q;// * sensors.camToGround.submat(0,0,2,2).transpose();
+                    Rotation3D groundToWorldRotation = q;  // * sensors.camToGround.submat(0,0,2,2).transpose();
 
-                    double heading = utility::math::angle::acos_clamped(groundToWorldRotation(0,0));
+                    double heading = utility::math::angle::acos_clamped(groundToWorldRotation(0, 0));
 
                     // TODO: transform from head to field
                     auto selfs = std::make_unique<std::vector<Self>>();
                     selfs->push_back(Self());
-                    selfs->back().heading = groundToWorldRotation.submat(0, 0, 1, 0).normalize();
-                    selfs->back().position = Eigen::Vector2d{x,y};
+                    selfs->back().heading  = groundToWorldRotation.submat(0, 0, 1, 0).normalize();
+                    selfs->back().position = Eigen::Vector2d{x, y};
                     emit(std::move(selfs));
 
                     emit(graph("NUcap pos", x, y, z));

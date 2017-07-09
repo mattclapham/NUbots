@@ -20,81 +20,79 @@
 #ifndef MODULES_LOCALISATION_ROBOTMODEL_H
 #define MODULES_LOCALISATION_ROBOTMODEL_H
 
-#include "message/localisation/FieldObject.h"
 #include "message/input/Sensors.h"
+#include "message/localisation/FieldObject.h"
 #include "utility/math/matrix/Rotation3D.h"
 
 namespace module {
 namespace localisation {
-namespace robot {
-    // Number of dimensions
-    // The state consists of 3 components:
-    //    1. The x position on the field
-    //    2. The y position on the field
-    //    3. The robot's heading (in radians)
-    enum RobotModelStateComponents : int {
-        kX = 0, // world space
-        kY = 1, // world space
-        kImuOffset = 2
-        // kVX = 3, // robot space
-        // kVY = 4  // robot space
-        // kHeading = 2,
-        // kHeadingX = 2,
-        // kHeadingY = 3,
-    };
+    namespace robot {
+        // Number of dimensions
+        // The state consists of 3 components:
+        //    1. The x position on the field
+        //    2. The y position on the field
+        //    3. The robot's heading (in radians)
+        enum RobotModelStateComponents : int {
+            kX         = 0,  // world space
+            kY         = 1,  // world space
+            kImuOffset = 2
+            // kVX = 3, // robot space
+            // kVY = 4  // robot space
+            // kHeading = 2,
+            // kHeadingX = 2,
+            // kHeadingY = 3,
+        };
 
-    enum class MeasurementType {
-        kBRGoalMeasurement,
-        kBLGoalMeasurement,
-        kLandmarkMeasurement,
-        kAngleBetweenLandmarksMeasurement,
-    };
+        enum class MeasurementType {
+            kBRGoalMeasurement,
+            kBLGoalMeasurement,
+            kLandmarkMeasurement,
+            kAngleBetweenLandmarksMeasurement,
+        };
 
-    class RobotModel {
-    public:
-        static constexpr size_t size = 3;
+        class RobotModel {
+        public:
+            static constexpr size_t size = 3;
 
-        RobotModel() : cfg_(), currentImuOrientation() {
-        }
+            RobotModel() : cfg_(), currentImuOrientation() {}
 
-        Eigen::Matrix<double, RobotModel::size, 1> timeUpdate(
-            const Eigen::Matrix<double, RobotModel::size, 1>& state, double deltaT,
-            const message::input::Sensors& sensors);
+            Eigen::Matrix<double, RobotModel::size, 1> timeUpdate(
+                const Eigen::Matrix<double, RobotModel::size, 1>& state,
+                double deltaT,
+                const message::input::Sensors& sensors);
 
-        Eigen::VectorXd predictedObservation(
-            const Eigen::Matrix<double, RobotModel::size, 1>& state,
-            const Eigen::Vector3d& actual_position,
-            const message::input::Sensors& sensors);
+            Eigen::VectorXd predictedObservation(const Eigen::Matrix<double, RobotModel::size, 1>& state,
+                                                 const Eigen::Vector3d& actual_position,
+                                                 const message::input::Sensors& sensors);
 
-        //Eigen::VectorXd predictedObservation(
-        //    const Eigen::Matrix<double, RobotModel::size, 1>& state,
-        //    const message::input::Sensors& sensors);
+            // Eigen::VectorXd predictedObservation(
+            //    const Eigen::Matrix<double, RobotModel::size, 1>& state,
+            //    const message::input::Sensors& sensors);
 
-        Eigen::VectorXd predictedObservation(
-            const Eigen::Matrix<double, RobotModel::size, 1>& state,
-            const std::vector<arma::vec>& actual_positions,
-            const message::input::Sensors& sensors);
+            Eigen::VectorXd predictedObservation(const Eigen::Matrix<double, RobotModel::size, 1>& state,
+                                                 const std::vector<arma::vec>& actual_positions,
+                                                 const message::input::Sensors& sensors);
 
-        Eigen::VectorXd observationDifference(const arma::vec& a, const arma::vec& b);
+            Eigen::VectorXd observationDifference(const arma::vec& a, const arma::vec& b);
 
-        Eigen::Matrix<double, size, 1> limitState(const Eigen::Matrix<double, size, 1>& state);
+            Eigen::Matrix<double, size, 1> limitState(const Eigen::Matrix<double, size, 1>& state);
 
-        Eigen::Matrix<double, size, size> processNoise();
+            Eigen::Matrix<double, size, size> processNoise();
 
-        struct Config {
-            double processNoisePositionFactor = 1e-3;
-            double processNoiseHeadingFactor = 1e-3;
-            double processNoiseVelocityFactor = 1e-3;
-            double observationDifferenceBearingFactor = 0.2;
-            double observationDifferenceElevationFactor = 0.2;
-        } cfg_;
+            struct Config {
+                double processNoisePositionFactor           = 1e-3;
+                double processNoiseHeadingFactor            = 1e-3;
+                double processNoiseVelocityFactor           = 1e-3;
+                double observationDifferenceBearingFactor   = 0.2;
+                double observationDifferenceElevationFactor = 0.2;
+            } cfg_;
 
-        utility::math::matrix::Rotation3D currentImuOrientation;
+            utility::math::matrix::Rotation3D currentImuOrientation;
 
-        // Eigen::Matrix3d getRobotToWorldTransform(const Eigen::Matrix<double, RobotModel::size, 1>& state);
-        // Eigen::Matrix3d getWorldToRobotTransform(const Eigen::Matrix<double, RobotModel::size, 1>& state);
-    };
-}
+            // Eigen::Matrix3d getRobotToWorldTransform(const Eigen::Matrix<double, RobotModel::size, 1>& state);
+            // Eigen::Matrix3d getWorldToRobotTransform(const Eigen::Matrix<double, RobotModel::size, 1>& state);
+        };
+    }
 }
 }
 #endif

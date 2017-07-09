@@ -20,10 +20,10 @@
 #ifndef MODULES_MOTION_WALKENGINE_H
 #define MODULES_MOTION_WALKENGINE_H
 
-#include <nuclear>
 #include <algorithm>
 #include <chrono>
 #include <cmath>
+#include <nuclear>
 
 #include <yaml-cpp/yaml.h>
 
@@ -35,13 +35,13 @@
 
 #include "message/input/PostureRecognition.h"
 
-#include "message/motion/KinematicsModels.h"
-#include "message/motion/WalkCommand.h"
 #include "message/motion/BalanceCommand.h"
-#include "message/motion/TorsoMotionCommand.h"
-#include "message/motion/FootPlacementCommand.h"
 #include "message/motion/FootMotionCommand.h"
+#include "message/motion/FootPlacementCommand.h"
+#include "message/motion/KinematicsModels.h"
 #include "message/motion/ServoTarget.h"
+#include "message/motion/TorsoMotionCommand.h"
+#include "message/motion/WalkCommand.h"
 
 #include "message/localisation/FieldObject.h"
 
@@ -53,23 +53,20 @@
 #include "utility/support/yaml_expression.h"
 
 #include "utility/math/angle.h"
-#include "utility/math/matrix/Rotation3D.h"
 #include "utility/math/geometry/UnitQuaternion.h"
+#include "utility/math/matrix/Rotation3D.h"
 #include "utility/math/matrix/Transform2D.h"
 #include "utility/math/matrix/Transform3D.h"
 
 #include "utility/motion/Balance.h"
-#include "utility/motion/InverseKinematics.h"
 #include "utility/motion/ForwardKinematics.h"
+#include "utility/motion/InverseKinematics.h"
 
 #include "utility/nubugger/NUhelpers.h"
 
-namespace module
-{
-namespace motion
-{
-    class WalkEngine : public NUClear::Reactor
-    {
+namespace module {
+namespace motion {
+    class WalkEngine : public NUClear::Reactor {
     public:
         /**
          * The number of servo updates performnced per second
@@ -82,6 +79,7 @@ namespace motion
         static constexpr const char* ONTRIGGER_BODY_INF = "Walk Engine - Received update (Balanced Robot Posture) Info";
 
         explicit WalkEngine(std::unique_ptr<NUClear::Environment> environment);
+
     private:
         using ServoCommand   = message::behaviour::ServoCommand;
         using LimbID         = utility::input::LimbID;
@@ -93,79 +91,82 @@ namespace motion
         /**
          * Temporary debugging variables for local output logging...
          */
-        bool DEBUG;                 //
-        int  DEBUG_ITER;            //
+        bool DEBUG;      //
+        int DEBUG_ITER;  //
 
         /**
          * NUsight feedback initialized from configuration script, see config file for documentation...
          */
-        bool newPostureReceived;    // Identifies the instance of valid posture data for waypoint emission.
+        bool newPostureReceived;  // Identifies the instance of valid posture data for waypoint emission.
 
         /**
          * Resource abstractions for id and handler instances...
          */
-        ReactionHandle handleUpdate;                    // handle(updateWaypoints), disabling when not moving will save unnecessary CPU resources
-        ReactionHandle handleStandScript;               // handle(generateStandAndSaveScript), disabling when not required for capturing standing phase
-        size_t subsumptionId;                           // subsumption ID key to access motors
+        ReactionHandle
+            handleUpdate;  // handle(updateWaypoints), disabling when not moving will save unnecessary CPU resources
+        ReactionHandle handleStandScript;  // handle(generateStandAndSaveScript), disabling when not required for
+                                           // capturing standing phase
+        size_t subsumptionId;              // subsumption ID key to access motors
 
         /**
          * Anthropomorphic metrics for relevant humanoid joints & actuators...
          */
-        Transform3D leftFootPositionTransform;          // Active left foot position
-        Transform3D rightFootPositionTransform;         // Active right foot position
+        Transform3D leftFootPositionTransform;   // Active left foot position
+        Transform3D rightFootPositionTransform;  // Active right foot position
 
         /**
          * Anthropomorphic metrics initialized from configuration script, see config file for documentation...
          */
-        float  gainRArm;                                //
-        float  gainRLeg;                                //
-        float  gainLArm;                                //
-        float  gainLLeg;                                //
-        float  gainHead;                                //
+        float gainRArm;  //
+        float gainRLeg;  //
+        float gainLArm;  //
+        float gainLLeg;  //
+        float gainHead;  //
 
         /**
          * Arm Position vectors initialized from configuration script, see config file for documentation...
          */
-        Eigen::Vector3d armLPostureTransform;                //
-        Eigen::Vector3d armRPostureTransform;                //
+        Eigen::Vector3d armLPostureTransform;  //
+        Eigen::Vector3d armRPostureTransform;  //
 
         /**
          * Internal timing reference variables...
          */
-        double STAND_SCRIPT_DURATION;                           //
+        double STAND_SCRIPT_DURATION;  //
 
         /**
          * Motion data for relevant humanoid actuators...
          */
-        double velocityHigh;                            //
-        double accelerationTurningFactor;               //
-        Eigen::Matrix<double, 3, 2> velocityLimits;           //
-        Eigen::Vector3d accelerationLimits;                  //
-        Eigen::Vector3d accelerationLimitsHigh;              //
-        Transform2D velocityCurrent;                    // Current robot velocity
-        Transform2D velocityCommand;                    // Current velocity command
+        double velocityHigh;                         //
+        double accelerationTurningFactor;            //
+        Eigen::Matrix<double, 3, 2> velocityLimits;  //
+        Eigen::Vector3d accelerationLimits;          //
+        Eigen::Vector3d accelerationLimitsHigh;      //
+        Transform2D velocityCurrent;                 // Current robot velocity
+        Transform2D velocityCommand;                 // Current velocity command
 
         /**
          * Motion data initialized from configuration script, see config file for documentation...
          */
-        double velFastForward;                          //
-        double velFastTurn;                             //
+        double velFastForward;  //
+        double velFastTurn;     //
         /**
          * Balance & Kinematics module initialization...
          */
-        message::motion::KinematicsModel kinematicsModel;   //
+        message::motion::KinematicsModel kinematicsModel;  //
 
         /**
          * Actuator servo gains...
          */
-        std::map<ServoID, float> jointGains;            // current gains sent to the servos
-        std::map<ServoID, float> servoControlPGains;    // proportionality constants relating jointGains to humanoid stability
+        std::map<ServoID, float> jointGains;  // current gains sent to the servos
+        std::map<ServoID, float>
+            servoControlPGains;  // proportionality constants relating jointGains to humanoid stability
 
         /**
          * The last foot goal rotation...
          */
-        UnitQuaternion lastFootGoalRotation;            //
-        UnitQuaternion footGoalErrorSum;                //
+        UnitQuaternion lastFootGoalRotation;  //
+        UnitQuaternion footGoalErrorSum;      //
 
         /**
          * @brief [brief description]
@@ -368,4 +369,3 @@ namespace motion
 }  // modules
 
 #endif  // MODULES_MOTION_WALKENGINE_H
-

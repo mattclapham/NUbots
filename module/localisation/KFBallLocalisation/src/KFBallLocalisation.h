@@ -38,8 +38,6 @@ namespace localisation {
         /// @brief Called by the powerplant to build and setup the KFBallLocalisation reactor.
         explicit KFBallLocalisation(std::unique_ptr<NUClear::Environment> environment);
     };
-
 }
 }
 #endif
-

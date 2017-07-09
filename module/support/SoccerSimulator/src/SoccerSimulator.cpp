@@ -235,8 +235,6 @@ namespace support {
                                   KickCommand lastKickCommand = kickQueue.back();
                                   // Empty queue
                                   std::queue<KickCommand>().swap(kickQueue);
-                                  // Check if kick worked:
-                                  Transform2D relativeBallPose = world.robotPose.worldToLocal(world.ball.position);
 
                                   world.ball.position.head<2>() +=
                                       world.robotPose.rotation() * lastKickCommand.direction.head<2>().normalized();

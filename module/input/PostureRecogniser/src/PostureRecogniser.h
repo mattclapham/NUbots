@@ -20,14 +20,14 @@
 #ifndef MODULES_INPUT_POSTURERECOGNISER_H
 #define MODULES_INPUT_POSTURERECOGNISER_H
 
-#include <nuclear>
-#include <chrono>
 #include <yaml-cpp/yaml.h>
+#include <chrono>
+#include <nuclear>
 
 #include "extension/Configuration.h"
 
-#include "message/input/Sensors.h"
 #include "message/input/PostureRecognition.h"
+#include "message/input/Sensors.h"
 
 #include "utility/input/ServoLoadModel.h"
 
@@ -37,12 +37,9 @@
 
 #include "utility/nubugger/NUhelpers.h"
 
-namespace module
-{
-namespace input
-{
-    class PostureRecogniser : public NUClear::Reactor
-    {
+namespace module {
+namespace input {
+    class PostureRecogniser : public NUClear::Reactor {
 
     public:
         /// @brief Called by the powerplant to build and setup the PostureRecogniser reactor.
@@ -55,8 +52,8 @@ namespace input
         /**
          * Temporary debugging variables for local output logging...
          */
-        bool DEBUG;                 //
-        int  DEBUG_ITER;            //
+        bool DEBUG;      //
+        int DEBUG_ITER;  //
 
         /**
          * NUsight feedback initialized from configuration script, see config file for documentation...
@@ -73,7 +70,6 @@ namespace input
          */
         void configure(const YAML::Node& config);
     };
-
 }
 }
 

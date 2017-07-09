@@ -20,57 +20,58 @@
 #ifndef MODULES_LOCALISATION_BALLMODEL_H
 #define MODULES_LOCALISATION_BALLMODEL_H
 
+#include <Eigen/Core>
+
 #include "message/localisation/FieldObject.h"
 
 namespace module {
 namespace localisation {
-namespace ball {
-    // Number of dimensions
-    // The state consists of 3 components:
-    //    1. The x position in robot space
-    //    2. The y position in robot space
-    //    3. The x component of velocity
-    //    4. The y component of velocity
-    enum BallModelStateComponents {
-        kX = 0,
-        kY = 1,
-        kVx = 2,
-        kVy = 3,
-    };
+    namespace ball {
+        // Number of dimensions
+        // The state consists of 3 components:
+        //    1. The x position in robot space
+        //    2. The y position in robot space
+        //    3. The x component of velocity
+        //    4. The y component of velocity
+        enum BallModelStateComponents {
+            kX  = 0,
+            kY  = 1,
+            kVx = 2,
+            kVy = 3,
+        };
 
-    class BallModel {
-    public:
-        static constexpr size_t size = 4;
+        class BallModel {
+        public:
+            static constexpr size_t size = 4;
 
-        BallModel() : cfg_() {}
+            BallModel() : cfg_() {}
 
-        // Eigen::Matrix<double, size, 1> timeUpdate(
-        //     const Eigen::Matrix<double, size, 1>& state, double deltaT,
-        //     const message::localisation::FakeOdometry& odom);
+            // Eigen::Matrix<double, size, 1> timeUpdate(
+            //     const Eigen::Matrix<double, size, 1>& state, double deltaT,
+            //     const message::localisation::FakeOdometry& odom);
 
-        Eigen::Matrix<double, size, 1> timeUpdate(
-            const Eigen::Matrix<double, size, 1>& state, double deltaT);
+            Eigen::Matrix<double, size, 1> timeUpdate(const Eigen::Matrix<double, size, 1>& state, double deltaT);
 
-        Eigen::VectorXd predictedObservation(const Eigen::Matrix<double, size, 1>& state, double ballAngle);
+            Eigen::VectorXd predictedObservation(const Eigen::Matrix<double, size, 1>& state, double ballAngle);
 
-        Eigen::VectorXd observationDifference(const arma::vec& a, const arma::vec& b);
+            Eigen::VectorXd observationDifference(const Eigen::VectorXd& a, const Eigen::VectorXd& b);
 
-        Eigen::Matrix<double, size, 1> limitState(const Eigen::Matrix<double, size, 1>& state);
+            Eigen::Matrix<double, size, 1> limitState(const Eigen::Matrix<double, size, 1>& state);
 
-        Eigen::Matrix<double, size, size> processNoise();
+            Eigen::Matrix<double, size, size> processNoise();
 
-        Eigen::Matrix<double, BallModel::size, 1> ApplyVelocity(
-            const Eigen::Matrix<double, BallModel::size, 1>& state,
-            double deltaT);
+            Eigen::Matrix<double, BallModel::size, 1> ApplyVelocity(
+                const Eigen::Matrix<double, BallModel::size, 1>& state,
+                double deltaT);
 
-        struct Config {
-            double ballDragCoefficient = 0.1;
-            double processNoisePositionFactor = 1e-3;
-            double processNoiseVelocityFactor = 1e-3;
-            double ballHeight = 0.05;
-        } cfg_;
-    };
-}
+            struct Config {
+                double ballDragCoefficient        = 0.1;
+                double processNoisePositionFactor = 1e-3;
+                double processNoiseVelocityFactor = 1e-3;
+                double ballHeight                 = 0.05;
+            } cfg_;
+        };
+    }
 }
 }
 #endif

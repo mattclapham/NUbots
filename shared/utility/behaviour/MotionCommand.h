@@ -39,21 +39,21 @@ namespace behaviour {
 
     inline MotionCommand WalkToState(Transform2D goalState_) {
         MotionCommand cmd;
-        cmd.type = MotionCommand::Type::Value::WalkToState;
+        cmd.type      = MotionCommand::Type::Value::WalkToState;
         cmd.goalState = goalState_;
         return cmd;
     }
 
     inline MotionCommand BallApproach(Eigen::Vector2d kickTarget_) {
         MotionCommand cmd;
-        cmd.type = MotionCommand::Type::Value::BallApproach;
+        cmd.type       = MotionCommand::Type::Value::BallApproach;
         cmd.kickTarget = kickTarget_;
         return cmd;
     }
 
     inline MotionCommand DirectCommand(Transform2D walkCommand_) {
         MotionCommand cmd;
-        cmd.type = MotionCommand::Type::Value::DirectCommand;
+        cmd.type        = MotionCommand::Type::Value::DirectCommand;
         cmd.walkCommand = walkCommand_;
         return cmd;
     }

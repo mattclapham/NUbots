@@ -134,9 +134,7 @@ namespace localisation {
         return prediction;
     }
 
-    template <typename Scalar, int Rows>
-    Eigen::Matrix<Scalar, Rows, 1> FieldModel::observationDifference(const Eigen::Matrix<Scalar, Rows, 1>& a,
-                                                                     const Eigen::Matrix<Scalar, Rows, 1>& b) const {
+    Eigen::VectorXd FieldModel::observationDifference(const Eigen::VectorXd& a, const Eigen::VectorXd& b) const {
         // std::cerr << (a-b) << std::endl << a << std::endl << b << std::endl << std::endl;
         return (a - b);
     }

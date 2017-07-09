@@ -56,9 +56,7 @@ namespace localisation {
             const message::input::Sensors& sensors,
             const MeasurementType::GOAL&);
 
-        template <typename Scalar, int Rows>
-        Eigen::Matrix<Scalar, Rows, 1> observationDifference(const Eigen::Matrix<Scalar, Rows, 1>& a,
-                                                             const Eigen::Matrix<Scalar, Rows, 1>& b) const;
+        Eigen::VectorXd observationDifference(const Eigen::VectorXd& a, const Eigen::VectorXd& b) const;
 
         Eigen::Matrix<double, size, 1> limitState(const Eigen::Matrix<double, size, 1>& state) const;
 

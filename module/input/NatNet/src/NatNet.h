@@ -20,8 +20,8 @@
 #ifndef MODULES_INPUT_NATNET_H
 #define MODULES_INPUT_NATNET_H
 
-#include <nuclear>
 #include <Eigen/Core>
+#include <nuclear>
 
 namespace module {
 namespace input {
@@ -75,11 +75,11 @@ namespace input {
         std::map<uint32_t, SkeletonModel> skeletonModels;
 
         // The version of NatNet we are running with
-        uint32_t remote = 0;
+        uint32_t remote  = 0;
         uint32_t version = 0;
 
-        uint16_t commandPort = 0;
-        uint16_t dataPort = 0;
+        uint16_t commandPort         = 0;
+        uint16_t dataPort            = 0;
         std::string multicastAddress = "";
         ReactionHandle commandHandle;
         ReactionHandle dataHandle;
@@ -96,7 +96,6 @@ namespace input {
         /// @brief Called by the powerplant to build and setup the NatNet reactor.
         explicit NatNet(std::unique_ptr<NUClear::Environment> environment);
     };
-
 }
 }
 
