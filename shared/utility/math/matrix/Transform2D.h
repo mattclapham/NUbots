@@ -14,7 +14,7 @@
  * You should have received a copy of the GNU General Public License
  * along with the Autocalibration Codebase.  If not, see <http://www.gnu.org/licenses/>.
  *
- * Copyright 2013 NUBots <nubots@nubots.net>
+ * Copyright 2013 NUbots <nubots@nubots.net>
  */
 
 #ifndef UTILITY_MATH_MATRIX_TRANSFORM2D_H
@@ -127,8 +127,8 @@ namespace math {
             }
         };
 
-    }  // matrix
-}  // math
-}  // utility
+    }  // namespace matrix
+}  // namespace math
+}  // namespace utility
 
 #endif  // UTILITY_MATH_MATRIX_TRANSFORM2D_H

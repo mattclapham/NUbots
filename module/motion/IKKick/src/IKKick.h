@@ -14,7 +14,7 @@
  * You should have received a copy of the GNU General Public License
  * along with the NUbots Codebase.  If not, see <http://www.gnu.org/licenses/>.
  *
- * Copyright 2013 NUBots <nubots@nubots.net>
+ * Copyright 2013 NUbots <nubots@nubots.net>
  */
 
 #ifndef MODULES_MOTION_IKKICK_H
@@ -74,8 +74,7 @@ namespace motion {
         /// @brief Called by the powerplant to build and setup the IKKick reactor.
         explicit IKKick(std::unique_ptr<NUClear::Environment> environment);
     };
-}
-}
-
+}  // namespace motion
+}  // namespace module
 
 #endif

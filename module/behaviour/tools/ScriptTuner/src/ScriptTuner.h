@@ -14,7 +14,7 @@
  * You should have received a copy of the GNU General Public License
  * along with the NUbots Codebase.  If not, see <http://www.gnu.org/licenses/>.
  *
- * Copyright 2013 NUBots <nubots@nubots.net>
+ * Copyright 2013 NUbots <nubots@nubots.net>
  */
 
 #ifndef MODULES_BEHAVIOUR_TOOLS_SCRIPTTUNER_H
@@ -76,8 +76,8 @@ namespace behaviour {
             explicit ScriptTuner(std::unique_ptr<NUClear::Environment> environment);
         };
 
-    }  // tools
-}  // behaviours
-}  // modules
+    }  // namespace tools
+}  // namespace behaviour
+}  // namespace module
 
 #endif  // MODULES_BEHAVIOURS_UTILITY_SCRIPTTUNER_H

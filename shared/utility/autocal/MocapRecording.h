@@ -42,5 +42,5 @@ public:
     std::map<std::string, StreamStats> stats;
     bool performStats;
 };
-}
+}  // namespace autocal
 #endif

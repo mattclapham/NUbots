@@ -14,12 +14,13 @@
  * You should have received a copy of the GNU General Public License
  * along with the NUbots Codebase.  If not, see <http://www.gnu.org/licenses/>.
  *
- * Copyright 2013 NUBots <nubots@nubots.net>
+ * Copyright 2013 NUbots <nubots@nubots.net>
  */
 
 #ifndef UTILITY_MATH_ANGLE_H
 #define UTILITY_MATH_ANGLE_H
 
+#include <armadillo>
 #include <cmath>
 
 #include <Eigen/Core>
@@ -121,7 +122,7 @@ namespace math {
             // Hence the equation becomes $\cos(\alpha)\cos(x)+\sin(\alpha)\sin(x) = cos(x-\alpha) = c\_$
             return alpha + acos_clamped(c_);
         }
-    }
-}
-}
+    }  // namespace angle
+}  // namespace math
+}  // namespace utility
 #endif

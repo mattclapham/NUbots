@@ -14,7 +14,7 @@
  * You should have received a copy of the GNU General Public License
  * along with the NUbots Codebase.  If not, see <http://www.gnu.org/licenses/>.
  *
- * Copyright 2015 NUBots <nubots@nubots.net>
+ * Copyright 2015 NUbots <nubots@nubots.net>
  */
 
 #ifndef UTILITY_MATH_OPTIMISATION_CHOLESKYSAMPLER_H
@@ -25,6 +25,7 @@
 #include <cmath>
 
 #include "message/support/optimisation/OptimiserTypes.h"
+#include "utility/support/eigen_armadillo.h"
 
 #include "utility/support/eigen.h"
 
@@ -114,8 +115,8 @@ namespace math {
                 return samples.middleCols(sampleCount - numSamples, numSamples);
             }
         };
-    }
-}
-}
+    }  // namespace optimisation
+}  // namespace math
+}  // namespace utility
 
 #endif  // UTILITY_MATH_OPTIMISATION_CHOLESKYSAMPLER_H

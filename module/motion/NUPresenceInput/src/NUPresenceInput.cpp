@@ -313,5 +313,5 @@ namespace motion {
         pose.rotation() = Rotation3D::createFromEulerAngles(eulerAngles);
         // std::cout << "check = " << pose.rotation() - R << std::endl;
     }
-}
-}
+}  // namespace motion
+}  // namespace module

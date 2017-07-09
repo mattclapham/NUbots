@@ -14,7 +14,7 @@
  * You should have received a copy of the GNU General Public License
  * along with the NUbots Codebase.  If not, see <http://www.gnu.org/licenses/>.
  *
- * Copyright 2013 NUBots <nubots@nubots.net>
+ * Copyright 2013 NUbots <nubots@nubots.net>
  */
 
 #ifndef MODULES_BEHAVIOUR_REFLEX_HEADCONTROLLER_H
@@ -52,7 +52,12 @@ namespace motion {
         bool goalRobotSpace = true;
     };
 
-}  // motion
-}  // modules
 
+        arma::vec2 currentAngles;
+        arma::vec2 goalAngles;
+        bool goalRobotSpace = true;
+    };
+
+}  // namespace motion
+}  // namespace module
 #endif  // MODULES_BEHAVIOURS_REFLEX_HEADCONTROLLER_H

@@ -30,8 +30,8 @@ namespace support {
 
             on<Configuration>("NetworkConfiguration.yaml").then([this](const Configuration& config) {
                 auto netConfig             = std::make_unique<NUClear::message::NetworkConfiguration>();
-                netConfig->name            = config["name"].as<std::string>();
-                netConfig->multicast_group = config["address"].as<std::string>();
+                netConfig->name            = config["name"];
+                netConfig->multicast_group = config["address"];
                 netConfig->multicast_port  = config["port"];
                 emit<Scope::DIRECT>(netConfig);
             });
@@ -78,6 +78,6 @@ namespace support {
                 log<NUClear::INFO>("Disconnected from", event.name, "on", addr + ":" + std::to_string(port));
             });
         }
-    }
-}
-}
+    }  // namespace configuration
+}  // namespace support
+}  // namespace module

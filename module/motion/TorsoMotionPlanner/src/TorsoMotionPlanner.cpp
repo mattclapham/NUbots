@@ -487,5 +487,5 @@ namespace motion {
             log<NUClear::TRACE>("Configure TorsoMotionPlanner - Finish");
         }
     }
-}  // motion
-}  // modules
+}  // namespace motion
+}  // namespace module

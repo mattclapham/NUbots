@@ -14,7 +14,7 @@
  * You should have received a copy of the GNU General Public License
  * along with the NUbots Codebase.  If not, see <http://www.gnu.org/licenses/>.
  *
- * Copyright 2013 NUBots <nubots@nubots.net>
+ * Copyright 2013 NUbots <nubots@nubots.net>
  */
 
 #include "GoalSaver.h"
@@ -70,7 +70,7 @@ namespace behaviour {
             });
 
             on<Trigger<ExecuteDive>>().then([this] {
-                Eigen::VectorXd direction = diveCommand.direction;
+                Eigen::Vector2d direction = diveCommand.direction;
 
                 int quadrant = getDirectionalQuadrant(direction[0], direction[1]);
                 // assume valid at this point as this is checked on the walkcommand trigger

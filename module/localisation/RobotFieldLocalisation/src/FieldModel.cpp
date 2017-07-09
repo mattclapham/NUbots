@@ -147,5 +147,5 @@ namespace localisation {
     Eigen::Matrix<double, FieldModel::size, FieldModel::size> FieldModel::processNoise() const {
         return processNoiseDiagonal.asDiagonal();
     }
-}
-}
+}  // namespace localisation
+}  // namespace module

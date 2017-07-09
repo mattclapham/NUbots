@@ -14,7 +14,7 @@
  * You should have received a copy of the GNU General Public License
  * along with the Autocalibration Codebase.  If not, see <http://www.gnu.org/licenses/>.
  *
- * Copyright 2013 NUBots <nubots@nubots.net>
+ * Copyright 2013 NUbots <nubots@nubots.net>
  */
 
 #ifndef UTILITY_MATH_MATRIX_TRANSFORM3D_H
@@ -50,6 +50,7 @@ namespace math {
          */
         template <>
         class Transform<3> : public Eigen::Matrix4d {
+
         public:
             using Eigen::Matrix4d::Matrix;
 
@@ -302,11 +303,12 @@ namespace math {
              * @brief Construct transform from a transform 3D assuming the angle is around the yawAxis
              * and the translation is projected onto the plane normal to yawAxis
              */
+
             Transform2D projectTo2D(const Eigen::Vector3d& yawAxis, const Eigen::Vector3d& forwardAxis) const;
         };
 
-    }  // matrix
-}  // math
-}  // utility
+    }  // namespace matrix
+}  // namespace math
+}  // namespace utility
 
 #endif  // UTILITY_MATH_MATRIX_TRANSFORM3D_H

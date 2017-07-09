@@ -1,16 +1,58 @@
+# Need sudo to use the puppet installs
+sudo: required
+
+# C++ code on trusty
 language: cpp
+os: linux
+dist: trusty
+
+# Don't spam people with emails but do spam slack!
+notifications:
+  email: false
+  slack:
+    secure: BNNFwBsGwKxamyxH6OTtZLfOH9541zr3keNQ0U1rdE2eJpOL11h5gFCd2DHc4OhK596cHFmZrg6mryLXapqHEFCcrfx4CpLyJVxwXc/16rjE838sa4AoBV14ZzMoRiFsNdBOQOVBRu+0SR3kiJMRtJxOTPELnrHWOKmSuVGHjVg=
+
+# Build for each of our platforms
+env:
+  # Build for native
+  - PLATFORM=native
+    INSTALL_COMMAND=".travis/install_toolchain.sh"
+    SCRIPT_COMMAND=".travis/build_code.sh"
+
+  # Build for nuc7i7bnh
+  - PLATFORM=nuc7i7bnh
+    INSTALL_COMMAND=".travis/install_toolchain.sh"
+    SCRIPT_COMMAND=".travis/build_code.sh"
+
+  # Build for fitpc2i
+  - PLATFORM=fitpc2i
+    INSTALL_COMMAND=".travis/install_toolchain.sh"
+    SCRIPT_COMMAND=".travis/build_code.sh"
+
+  # Test with clang-format
+  - PLATFORM=clang-format
+    INSTALL_COMMAND=".travis/install_clang-format.sh"
+    SCRIPT_COMMAND=".travis/validate_format.sh"
+
+# Most modern travis image
+group: edge
+
+# ccache makes things waaaaay faster
+cache:
+  ccache: true
+  directories:
+    # This cache is used for deb files so we don't smash nubots.net
+    - toolchain
+
+# Only do branch builds on master
+branches:
+  only:
+    - 'master'
 
 install:
-  - wget http://apt.puppetlabs.com/puppetlabs-release-precise.deb
-  - sudo dpkg -i puppetlabs-release-precise.deb
-  - sudo apt-get update
-  - sudo apt-get install puppet
-  - sudo apt-get install git
+  # Run the install command
+  - (eval "$INSTALL_COMMAND")
 
 script:
-  - sudo puppet apply --modulepath=puppet/modules puppet/manifests/travis.pp
-  - mkdir build
-  - cd build
-  - cmake ..
-  - make
-  - make test
+  # Run our script command
+  - (eval "$SCRIPT_COMMAND")

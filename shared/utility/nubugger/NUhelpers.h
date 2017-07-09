@@ -14,7 +14,7 @@
  * You should have received a copy of the GNU General Public License
  * along with the NUbots Codebase.  If not, see <http://www.gnu.org/licenses/>.
  *
- * Copyright 2013 NUBots <nubots@nubots.net>
+ * Copyright 2013 NUbots <nubots@nubots.net>
  */
 
 #ifndef NUHELPERS_H
@@ -91,7 +91,7 @@ namespace nubugger {
             }
             buildGraph(dataPoint, remainder...);
         }
-    }
+    }  // namespace
 
     template <typename... Values>
     inline std::unique_ptr<message::support::nubugger::DataPoint> graph(std::string label, Values... values) {
@@ -547,7 +547,7 @@ namespace nubugger {
 
         return drawVisionLines({std::make_tuple(start, end, colour)});
     }
-}
-}
+}  // namespace nubugger
+}  // namespace utility
 
 #endif

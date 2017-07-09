@@ -14,10 +14,11 @@
  * You should have received a copy of the GNU General Public License
  * along with the Autocalibration Codebase.  If not, see <http://www.gnu.org/licenses/>.
  *
- * Copyright 2013 NUBots <nubots@nubots.net>
+ * Copyright 2013 NUbots <nubots@nubots.net>
  */
 
 #include "Transform2D.h"
+#include "Rotation2D.h"
 
 #include "utility/math/angle.h"
 
@@ -70,6 +71,6 @@ namespace math {
             Eigen::Vector2d newDisplacement = -worldToLocal(*this).xy();
             return Transform2D(newDisplacement, -this->angle());
         }
-    }
-}
-}
+    }  // namespace matrix
+}  // namespace math
+}  // namespace utility

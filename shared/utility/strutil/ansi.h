@@ -14,7 +14,7 @@
  * You should have received a copy of the GNU General Public License
  * along with the NUbots Codebase.  If not, see <http://www.gnu.org/licenses/>.
  *
- * Copyright 2013 NUBots <nubots@nubots.net>
+ * Copyright 2013 NUbots <nubots@nubots.net>
  */
 
 #ifndef UTILITY_STRUTIL_ANSI_H
@@ -126,6 +126,6 @@ namespace strutil {
         static constexpr ANSISGR<ANSICode::BRIGHT, ANSICode::GRAY> brightgray =
             ANSISGR<ANSICode::BRIGHT, ANSICode::GRAY>();
     };
-}
-}
+}  // namespace strutil
+}  // namespace utility
 #endif

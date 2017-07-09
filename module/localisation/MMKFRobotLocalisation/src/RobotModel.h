@@ -14,7 +14,7 @@
  * You should have received a copy of the GNU General Public License
  * along with the NUbots Codebase.  If not, see <http://www.gnu.org/licenses/>.
  *
- * Copyright 2013 NUBots <nubots@nubots.net>
+ * Copyright 2013 NUbots <nubots@nubots.net>
  */
 
 #ifndef MODULES_LOCALISATION_ROBOTMODEL_H
@@ -92,7 +92,7 @@ namespace localisation {
             // Eigen::Matrix3d getRobotToWorldTransform(const Eigen::Matrix<double, RobotModel::size, 1>& state);
             // Eigen::Matrix3d getWorldToRobotTransform(const Eigen::Matrix<double, RobotModel::size, 1>& state);
         };
-    }
-}
-}
+    }  // namespace robot
+}  // namespace localisation
+}  // namespace module
 #endif

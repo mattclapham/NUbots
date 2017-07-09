@@ -163,5 +163,5 @@ namespace motion {
             model.massModel.masses.push_back(static_cast<Eigen::Vector4d>(mass));
         }
     }
-}
-}
+}  // namespace motion
+}  // namespace module

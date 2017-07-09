@@ -434,4 +434,4 @@ CalibrationTools::solveClosedForm_Dornaika1998(const std::vector<utility::math::
 
     return result;
 }
-}
+}  // namespace autocal

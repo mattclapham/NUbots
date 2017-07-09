@@ -14,7 +14,7 @@
  * You should have received a copy of the GNU General Public License
  * along with the Autocalibration Codebase.  If not, see <http://www.gnu.org/licenses/>.
  *
- * Copyright 2013 NUBots <nubots@nubots.net>
+ * Copyright 2013 NUbots <nubots@nubots.net>
  */
 
 #ifndef UTILITY_MATH_GEOMETRY_UNITQUATERNION_H
@@ -77,11 +77,11 @@ namespace math {
             UnitQuaternion(const Eigen::Vector3d& axis, double angle);
 
             /*! @brief Swaps quat to -quat if kW < 0
-            */
+             */
             void rectify();
 
             /*! @brief Gets the inverse of the quaternion
-            */
+             */
             UnitQuaternion i() const;
 
             Eigen::Vector3d rotateVector(const Eigen::Vector3d& v) const;
@@ -160,8 +160,8 @@ namespace math {
                 return (Eigen::Vector4d(1.0, 0.0, 0.0, 0.0));
             }
         };
-    }
-}
-}
+    }  // namespace geometry
+}  // namespace math
+}  // namespace utility
 
 #endif

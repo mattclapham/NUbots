@@ -112,5 +112,5 @@ namespace input {
         V4L2FrameRateHandle.disable();
         V4L2Cameras.clear();
     }
-}
-}
+}  // namespace input
+}  // namespace module

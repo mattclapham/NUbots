@@ -14,7 +14,7 @@
  * You should have received a copy of the GNU General Public License
  * along with the NUbots Codebase.  If not, see <http://www.gnu.org/licenses/>.
  *
- * Copyright 2013 NUBots <nubots@nubots.net>
+ * Copyright 2013 NUbots <nubots@nubots.net>
  */
 
 #include "NUbugger.h"
@@ -122,5 +122,5 @@ namespace support {
         handles["lookup_table_diff"].push_back(on<Trigger<LookUpTableDiff>, Single, Priority::LOW>().then(
             [this](const LookUpTableDiff& tableDiff) { send(tableDiff, 0, true, NUClear::clock::now()); }));
     }
-}
-}
+}  // namespace support
+}  // namespace module

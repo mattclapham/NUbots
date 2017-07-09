@@ -15,7 +15,7 @@
  * You should have received a copy of the GNU General Public License
  * along with the NUbots Codebase.  If not, see <http://www.gnu.org/licenses/>.
  *
- * Copyright 2013 NUBots <nubots@nubots.net>
+ * Copyright 2013 NUbots <nubots@nubots.net>
  */
 
 #include "MotionModel.h"
@@ -127,3 +127,11 @@ namespace platform {
     }
 }
 }
+
+        const arma::mat::fixed<MotionModel::size, MotionModel::size>& MotionModel::processNoise() {
+            // Return our process noise matrix
+            return processNoiseMatrix;
+        }
+    }  // namespace darwin
+}  // namespace platform
+}  // namespace module

@@ -14,7 +14,7 @@
  * You should have received a copy of the GNU General Public License
  * along with the NUbots Codebase.  If not, see <http://www.gnu.org/licenses/>.
  *
- * Copyright 2013 NUBots <nubots@nubots.net>
+ * Copyright 2013 NUbots <nubots@nubots.net>
  */
 
 #include "InverseKinematics.h"
@@ -448,7 +448,6 @@ namespace motion {
             pitch = std::acos(std::fmax(std::fmin(cosPitAngle, 1), -1))
                     + std::atan2(-handFromShoulder[2], handFromShoulder[0]);
             // SHOULDER ROLL
-            Eigen::Vector3d pitchlessHandFromShoulder =
                 utility::math::matrix::Rotation3D::createRotationY(-pitch) * handFromShoulder;
             roll = std::atan2(pitchlessHandFromShoulder[1], pitchlessHandFromShoulder[0]);
 
@@ -463,6 +462,6 @@ namespace motion {
         }
 
 
-    }  // kinematics
-}  // motion
-}  // utility
+    }  // namespace kinematics
+}  // namespace motion
+}  // namespace utility

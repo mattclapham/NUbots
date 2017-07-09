@@ -14,7 +14,7 @@
  * You should have received a copy of the GNU General Public License
  * along with the NUbots Codebase.  If not, see <http://www.gnu.org/licenses/>.
  *
- * Copyright 2013 NUBots <nubots@nubots.net>
+ * Copyright 2013 NUbots <nubots@nubots.net>
  */
 
 #ifndef MODULES_SUPPORT_OPTIMISATION_WALK_OPTIMISER_H
@@ -77,8 +77,8 @@ namespace support {
             explicit WalkOptimiser(std::unique_ptr<NUClear::Environment> environment);
         };
 
-    }  // optimisation
-}  // support
-}  // modules
+    }  // namespace optimisation
+}  // namespace support
+}  // namespace module
 
 #endif  // MODULES_SUPPORT_NUBUGGER_H

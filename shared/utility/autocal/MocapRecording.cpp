@@ -56,4 +56,4 @@ void MocapRecording::addStats(const std::string& name,
     Eigen::VectorXd measurement = arma::join_cols(rotMeas, pos);
     stats[name][rigidBodyId](measurement);
 }
-}
+}  // namespace autocal

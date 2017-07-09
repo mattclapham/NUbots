@@ -362,7 +362,7 @@ namespace motion {
         void setActiveLimbDestination(const Transform2D& inActiveLimbDestination);
     };
 
-}  // motion
-}  // modules
+}  // namespace motion
+}  // namespace module
 
 #endif  // MODULE_MOTION_FOOTMOTIONPLANNER_H

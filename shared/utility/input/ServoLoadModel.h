@@ -52,7 +52,7 @@ namespace input {
             return Eigen::Matrix<double, ServoLoadModel::size, ServoLoadModel::size>::Identity() * 0.001;
         }
     };
-}
-}
+}  // namespace input
+}  // namespace utility
 
 #endif  // MODULES_INPUT_SERVOLOADMODEL_H

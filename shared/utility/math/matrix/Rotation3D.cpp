@@ -14,7 +14,7 @@
  * You should have received a copy of the GNU General Public License
  * along with the Autocalibration Codebase.  If not, see <http://www.gnu.org/licenses/>.
  *
- * Copyright 2013 NUBots <nubots@nubots.net>
+ * Copyright 2013 NUbots <nubots@nubots.net>
  */
 
 #include "Rotation3D.h"
@@ -248,6 +248,6 @@ namespace math {
             return Rotation3D::createRotationZ(a[2]) * Rotation3D::createRotationY(a[1])
                    * Rotation3D::createRotationX(a[0]);
         }
-    }
-}
-}
+    }  // namespace matrix
+}  // namespace math
+}  // namespace utility

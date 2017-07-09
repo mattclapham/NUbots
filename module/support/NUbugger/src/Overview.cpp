@@ -14,7 +14,7 @@
  * You should have received a copy of the GNU General Public License
  * along with the NUbots Codebase.  If not, see <http://www.gnu.org/licenses/>.
  *
- * Copyright 2015 NUBots <nubots@nubots.net>
+ * Copyright 2015 NUbots <nubots@nubots.net>
  */
 
 #include "NUbugger.h"
@@ -179,5 +179,5 @@ namespace support {
         handles["overview"].push_back(on<Trigger<WalkCommand>, Single, Priority::LOW>().then(
             [this](const WalkCommand& walkCommand) { overview.walk_command = walkCommand.command; }));
     }
-}
-}
+}  // namespace support
+}  // namespace module

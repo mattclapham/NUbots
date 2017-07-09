@@ -1,7 +1,9 @@
 #include "Camera.h"
 
+#include <armadillo>
 #include <cmath>
 
+#include "utility/support/yaml_armadillo.h"
 #include "utility/support/yaml_expression.h"
 #include "utility/vision/Spinnaker.h"
 
@@ -337,5 +339,5 @@ namespace input {
             SpinnakerSystem->ReleaseInstance();
         }
     }
-}
-}
+}  // namespace input
+}  // namespace module

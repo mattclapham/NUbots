@@ -3,6 +3,9 @@
 ADD_COMPILE_OPTIONS(-Wall
                     -Wpedantic
                     -Wextra
+                    # -Werror
+                    # Because Eigen
+                    -Wno-int-in-bool-context
                     -fnon-call-exceptions)
 
 LIST(APPEND CMAKE_INSTALL_RPATH toolchain/)

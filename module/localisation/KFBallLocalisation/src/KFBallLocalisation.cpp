@@ -14,7 +14,7 @@
  * You should have received a copy of the GNU General Public License
  * along with the NUbots Codebase.  If not, see <http://www.gnu.org/licenses/>.
  *
- * Copyright 2013 NUBots <nubots@nubots.net>
+ * Copyright 2013 NUbots <nubots@nubots.net>
  */
 
 #include "KFBallLocalisation.h"
@@ -67,7 +67,7 @@ namespace localisation {
                 .then("NUbugger Output", [this](const Sensors& sensors, const std::vector<Self>& robots) {
 
                     Eigen::VectorXd model_state = engine_.ball_filter_.get();
-                    arma::mat model_cov         = engine_.ball_filter_.getCovariance();
+                    Eigen::MatrixXd model_cov   = engine_.ball_filter_.getCovariance();
 
                     Eigen::Matrix2d imu_to_robot         = sensors.robotToIMU.transpose();
                     Eigen::Vector2d robot_space_ball_pos = imu_to_robot * model_state.rows(0, 1);
@@ -136,5 +136,5 @@ namespace localisation {
                 }
             });
     }
-}
-}
+}  // namespace localisation
+}  // namespace module

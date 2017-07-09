@@ -100,6 +100,6 @@ namespace debug {
             req->nSamples = 1;
             emit<Scope::INITIALIZE>(req);
         }
-    }
-}
-}
+    }  // namespace optimisation
+}  // namespace debug
+}  // namespace module

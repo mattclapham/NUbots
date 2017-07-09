@@ -81,5 +81,5 @@ namespace localisation {
     Eigen::Matrix<double, BallModel::size, BallModel::size> BallModel::processNoise() const {
         return processNoiseDiagonal.asDiagonal();
     }
-}
-}
+}  // namespace localisation
+}  // namespace module

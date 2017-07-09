@@ -14,7 +14,7 @@
  * You should have received a copy of the GNU General Public License
  * along with the Autocalibration Codebase.  If not, see <http://www.gnu.org/licenses/>.
  *
- * Copyright 2013 NUBots <nubots@nubots.net>
+ * Copyright 2013 NUbots <nubots@nubots.net>
  */
 
 #include "Transform3D.h"
@@ -101,7 +101,6 @@ namespace math {
             // http://en.wikipedia.org/wiki/Change_of_basis
             return reference * (*this);
         }
-
 
         Eigen::Vector3d Transform3D::transformPoint(const Eigen::Vector3d& p) {
             Eigen::Vector4d p4;
@@ -230,7 +229,6 @@ namespace math {
             return TResult;
         }
 
-
         Transform2D Transform3D::projectTo2D(const Eigen::Vector3d& yawAxis, const Eigen::Vector3d& forwardAxis) const {
             Transform2D result;
 
@@ -256,6 +254,6 @@ namespace math {
             // std::cerr << "out = \n" << result << std::endl;
             return result;
         }
-    }
-}
-}
+    }  // namespace matrix
+}  // namespace math
+}  // namespace utility

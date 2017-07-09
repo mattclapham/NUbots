@@ -14,7 +14,7 @@
  * You should have received a copy of the GNU General Public License
  * along with the Autocalibration Codebase.  If not, see <http://www.gnu.org/licenses/>.
  *
- * Copyright 2014 NUBots <nubots@nubots.net>
+ * Copyright 2014 NUbots <nubots@nubots.net>
  */
 
 #ifndef UTILITY_MATH_PGAOPTIMISER_H
@@ -85,10 +85,9 @@ namespace math {
                            .cwiseProduct(sigmaWeights.replicate(1, numSamples).transpose())
                        + bestEstimate.replicate(1, numSamples).transpose();
             }
-        }
-    }
-}
-}
-
+        }  // namespace PGA
+    }      // namespace optimisation
+}  // namespace math
+}  // namespace utility
 
 #endif  // UTILITY_MATH_COORDINATES_H

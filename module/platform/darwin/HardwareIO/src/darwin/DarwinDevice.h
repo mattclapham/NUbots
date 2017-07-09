@@ -14,7 +14,7 @@
  * You should have received a copy of the GNU General Public License
  * along with the NUbots Codebase.  If not, see <http://www.gnu.org/licenses/>.
  *
- * Copyright 2013 NUBots <nubots@nubots.net>
+ * Copyright 2013 NUbots <nubots@nubots.net>
  */
 
 #ifndef DARWIN_DARWINDEVICE_H
@@ -225,6 +225,35 @@ public:
 
         // Write our data over the UART
         coms.executeWrite(WriteCommand<TType>(id, address, data));
+    }
+
+    /**
+     * @brief Reads a specified number of bytes from this device.
+     *
+     * @param data Vector to store the read data in. Vector will be resized to hold the requested data.
+     *       Contents of the vector will be overwritten.
+     *
+     * @param count Number of bytes to read from this device.
+     *
+     * @return the number of bytes.
+     */
+    size_t readBytes(std::vector<uint8_t>& data, size_t count) {
+
+        // Make sure the vector has enough space in it.
+        data.resize(count);
+        return coms.readBytes(data.data(), count);
+    }
+
+    /**
+     * @brief Writes a specified number of bytes to this device.
+     *
+     * @param data Vector of bytes to send.
+     *
+     * @return the number of bytes.
+     */
+    size_t writeBytes(const std::vector<uint8_t>& data) {
+
+        return coms.writeBytes(data.data(), data.size());
     }
 
     /**

@@ -21,6 +21,8 @@ namespace localisation {
         on<Configuration>("BallLocalisation.yaml").then([this](const Configuration&) {
             auto message = std::make_unique<std::vector<Ball>>();
             emit(message);
+            emit(std::make_unique<Ball>());
+
             // Use configuration here from file BallLocalisation.yaml
         });
 
@@ -30,9 +32,10 @@ namespace localisation {
                 message->push_back(Ball());
                 message->back().locObject.last_measurement_time = NUClear::clock::now();
                 message->back().locObject.position              = balls[0].torsoSpacePosition.head<2>();
+                emit(std::make_unique<Ball>(message->back()));
                 emit(message);
             }
         });
     }
-}
-}
+}  // namespace localisation
+}  // namespace module

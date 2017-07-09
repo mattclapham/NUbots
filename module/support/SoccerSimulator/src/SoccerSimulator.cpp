@@ -14,7 +14,7 @@
  * You should have received a copy of the GNU General Public License
  * along with the NUbots Codebase.  If not, see <http://www.gnu.org/licenses/>.
  *
- * Copyright 2013 NUBots <nubots@nubots.net>
+ * Copyright 2013 NUbots <nubots@nubots.net>
  */
 
 #include "SoccerSimulator.h"
@@ -446,5 +446,5 @@ namespace support {
         Eigen::Vector3d goal_own_l = {fd->goalpost_own_l[0], fd->goalpost_own_l[1], 0};
         goalPosts.push_back(VirtualGoalPost(goal_own_l, 1.1, Goal::Side::LEFT, Goal::Team::OWN));
     }
-}
-}
+}  // namespace support
+}  // namespace module

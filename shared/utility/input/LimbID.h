@@ -14,7 +14,7 @@
  * You should have received a copy of the GNU General Public License
  * along with the NUbots Codebase.  If not, see <http://www.gnu.org/licenses/>.
  *
- * Copyright 2013 NUBots <nubots@nubots.net>
+ * Copyright 2013 NUbots <nubots@nubots.net>
  */
 
 #ifndef UTILITY_INPUT_LIMBID_H
@@ -104,7 +104,7 @@ namespace input {
 
         friend std::ostream& operator<<(std::ostream& out, const LimbID& val);
     };
-}
-}
+}  // namespace input
+}  // namespace utility
 
 #endif

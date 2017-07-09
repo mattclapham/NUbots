@@ -96,7 +96,7 @@ namespace input {
         /// @brief Called by the powerplant to build and setup the NatNet reactor.
         explicit NatNet(std::unique_ptr<NUClear::Environment> environment);
     };
-}
-}
+}  // namespace input
+}  // namespace module
 
 #endif  // MODULES_INPUT_NATNET_H

@@ -14,7 +14,7 @@
  * You should have received a copy of the GNU General Public License
  * along with the NUbots Codebase.  If not, see <http://www.gnu.org/licenses/>.
  *
- * Copyright 2013 NUBots <nubots@nubots.net>
+ * Copyright 2013 NUbots <nubots@nubots.net>
  */
 
 #ifndef DARWIN_UART_H
@@ -121,28 +121,6 @@ private:
      */
     void reconnect();
 
-    /**
-     * @brief Reads a specified number of bytes from the serial port.
-     *
-     * @param buf Pointer to a location to store the read data.
-     *
-     * @param count Number of bytes to read from the serial port.
-     *
-     * @return the number of bytes.
-     */
-    size_t readBytes(void* buf, size_t count);
-
-    /**
-     * @brief Writes a specified number of bytes to the serial port.
-     *
-     * @param buf Pointer to the data to write.
-     *
-     * @param count Number of bytes to write to the serial port.
-     *
-     * @return the number of bytes.
-     */
-    size_t writeBytes(const void* buf, size_t count);
-
 public:
     void setConfig(const extension::Configuration& config);
     /**
@@ -230,6 +208,28 @@ public:
      * @param command the command to execute
      */
     void executeBroadcast(const std::vector<uint8_t>& command);
+
+    /**
+     * @brief Reads a specified number of bytes from the serial port.
+     *
+     * @param buf Pointer to a location to store the read data.
+     *
+     * @param count Number of bytes to read from the serial port.
+     *
+     * @return the number of bytes.
+     */
+    size_t readBytes(void* buf, size_t count);
+
+    /**
+     * @brief Writes a specified number of bytes to the serial port.
+     *
+     * @param buf Pointer to the data to write.
+     *
+     * @param count Number of bytes to write to the serial port.
+     *
+     * @return the number of bytes.
+     */
+    size_t writeBytes(const void* buf, size_t count);
 };
 }  // namespace Darwin
 

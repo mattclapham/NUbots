@@ -14,7 +14,7 @@
  * You should have received a copy of the GNU General Public License
  * along with the NUbots Codebase.  If not, see <http://www.gnu.org/licenses/>.
  *
- * Copyright 2013 NUBots <nubots@nubots.net>
+ * Copyright 2013 NUbots <nubots@nubots.net>
  */
 
 #ifndef UTILITY_TIME_TIME_H
@@ -44,6 +44,6 @@ namespace time {
     inline NUClear::clock::duration durationFromSeconds(double seconds) {
         return NUClear::clock::duration(uint64_t(NUClear::clock::period::den * seconds));
     }
-}
-}
+}  // namespace time
+}  // namespace utility
 #endif

@@ -14,7 +14,7 @@
  * You should have received a copy of the GNU General Public License
  * along with the NUbots Codebase.  If not, see <http://www.gnu.org/licenses/>.
  *
- * Copyright 2013 NUBots <nubots@nubots.net>
+ * Copyright 2013 NUbots <nubots@nubots.net>
  */
 
 #include "HeadBehaviourSoccer.h"
@@ -488,6 +488,8 @@ namespace behaviour {
                 }
                 currentPos = getIMUSpaceDirection(kinematicsModel, currentPos, headToIMUSpace);
             }
+            return result;
+        }
 
             headSearcher.replaceSearchPoints(fixationPoints, currentPos);
         }
@@ -695,6 +697,8 @@ namespace behaviour {
                     ((1 - x) * (1 - y) * bl + (1 - x) * (1 + y) * tl + (1 + x) * (1 + y) * tr + (1 + x) * (1 - y) * br)
                     / 4);
             }
+            return Quad::getBoundingBox(boundingPoints);
+        }
 
             return searchPoints;
         }

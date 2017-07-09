@@ -6,7 +6,8 @@
 /**
  * @brief Functions to convert the transform classes
  */
-protobuf::message::Transform2D& operator<< (protobuf::message::Transform2D& proto, const utility::math::matrix::Transform2D& transform) {
+protobuf::message::Transform2D& operator<<(protobuf::message::Transform2D& proto,
+                                           const utility::math::matrix::Transform2D& transform) {
     *proto.mutable_transform() << static_cast<::message::math::vec3>(transform);
     return proto;
 }

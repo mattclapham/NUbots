@@ -14,7 +14,7 @@
  * You should have received a copy of the GNU General Public License
  * along with the NUbots Codebase.  If not, see <http://www.gnu.org/licenses/>.
  *
- * Copyright 2013 NUBots <nubots@nubots.net>
+ * Copyright 2013 NUbots <nubots@nubots.net>
  */
 
 #include <nuclear>
@@ -32,6 +32,6 @@ namespace behaviour {
             on<Every<30, std::chrono::seconds>>().then(
                 [this] { emit(std::make_unique<message::output::Say>("Bite Me")); });
         }
-    }
-}
-}
+    }  // namespace tools
+}  // namespace behaviour
+}  // namespace module

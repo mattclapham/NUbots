@@ -14,7 +14,7 @@
  * You should have received a copy of the GNU General Public License
  * along with the NUbots Codebase.  If not, see <http://www.gnu.org/licenses/>.
  *
- * Copyright 2013 NUBots <nubots@nubots.net>
+ * Copyright 2013 NUbots <nubots@nubots.net>
  */
 
 #ifndef UTILITY_MATH_FILTER_EKF_H
@@ -114,9 +114,9 @@ namespace math {
                 return processNoisePartial * processNoise;
             }
         };
-    }
-}
-}
+    }  // namespace filter
+}  // namespace math
+}  // namespace utility
 
 
 #endif

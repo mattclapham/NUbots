@@ -14,7 +14,7 @@
  * You should have received a copy of the GNU General Public License
  * along with the NUbots Codebase.  If not, see <http://www.gnu.org/licenses/>.
  *
- * Copyright 2013 NUBots <nubots@nubots.net>
+ * Copyright 2013 NUbots <nubots@nubots.net>
  */
 
 #include "DisplayTest.h"
@@ -26,13 +26,12 @@
 #include "message/input/MotionCapture.h"
 #include "message/input/Sensors.h"
 
-using utility::nubugger::graph;
-
 namespace module {
 namespace support {
 
     using message::input::MotionCapture;
     using message::input::Sensors;
+    using utility::nubugger::graph;
 
     DisplayTest::DisplayTest(std::unique_ptr<NUClear::Environment> environment) : Reactor(std::move(environment)) {
 
@@ -53,5 +52,5 @@ namespace support {
         on<Trigger<Sensors>, Single, Priority::HIGH>().then(
             [this](const Sensors& sensors) { emit(graph("world", sensors.world)); });
     }
-}
-}
+}  // namespace support
+}  // namespace module

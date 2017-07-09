@@ -20,6 +20,7 @@
 #ifndef MODULE_MOTION_BALANCEKINEMATICRESPONSE_H
 #define MODULE_MOTION_BALANCEKINEMATICRESPONSE_H
 
+#include <armadillo>
 #include <nuclear>
 
 #include <yaml-cpp/yaml.h>
@@ -277,11 +278,11 @@ namespace motion {
          */
         void configure(const YAML::Node& config);
         /**
- * @brief [brief description]
- * @details [long description]
- *
- * @param inTorsoPosition [description]
- */
+         * @brief [brief description]
+         * @details [long description]
+         *
+         * @param inTorsoPosition [description]
+         */
         void localise(Transform2D position);
         /**
          * @brief [brief description]
@@ -676,7 +677,7 @@ namespace motion {
          */
         void setRightFootPosition(const Transform3D& inRightFootPosition);
     };
-}  // motion
-}  // modules
+}  // namespace motion
+}  // namespace module
 
 #endif  // MODULE_MOTION_BALANCEKINEMATICRESPONSE_H

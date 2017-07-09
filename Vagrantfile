@@ -24,8 +24,8 @@ Vagrant.configure("2") do |config|
     override.vm.box = "bidski/xenial64"
 
     # See http://www.virtualbox.org/manual/ch08.html#vboxmanage-modifyvm
-    v.customize ["modifyvm", :id, "--cpus", `if [[ "x$(uname)" == "xDarwin" ]]; then sysctl -n hw.physicalcpu_max; else lscpu -p | egrep -v '^#' | sort -u -t, -k 2,4 | wc -l; fi`.chomp ]
-    v.customize ["modifyvm", :id, "--memory", `if [[ "x$(uname)" == "xDarwin" ]]; then echo "scale=0; $(sysctl -n hw.memsize)/2097152" | bc; else echo "scale=0; $(awk '/MemTotal/{print $2}' /proc/meminfo)/2048" | bc; fi`.chomp ]
+    v.customize ["modifyvm", :id, "--cpus", `if [ "x$(uname)" = "xDarwin" ]; then sysctl -n hw.physicalcpu_max; else lscpu -p | egrep -v '^#' | sort -u -t, -k 2,4 | wc -l; fi`.chomp ]
+    v.customize ["modifyvm", :id, "--memory", `if [ "x$(uname)" = "xDarwin" ]; then echo "scale=0; $(sysctl -n hw.memsize)/2097152" | bc; else echo "scale=0; $(awk '/MemTotal/{print $2}' /proc/meminfo)/2048" | bc; fi`.chomp ]
     v.customize ["modifyvm", :id, "--vram", 128]
     v.customize ["modifyvm", :id, "--ioapic", "on"]
     v.customize ["modifyvm", :id, "--accelerate3d", "on"]
@@ -37,6 +37,15 @@ Vagrant.configure("2") do |config|
   config.vm.provision "fix-no-tty", type: "shell" do |shell|
     shell.privileged = false
     shell.inline = "sudo sed -i '/tty/!s/mesg n/tty -s \\&\\& mesg n/' /root/.profile"
+  end
+
+  # Before anything else runs make sure dpkg isnt locked.
+  # Might as well do a quick update while we are here
+  config.vm.provision "unlock-dpkg", type: "shell", run: "always" do |shell|
+    shell.inline = "rm /var/lib/dpkg/lock;
+                    apt-get update;
+                    apt-get dist-upgrade -y;
+                    apt-get autoremove --purge;"
   end
 
   # Before the puppet provisioner runs
@@ -72,7 +81,7 @@ Vagrant.configure("2") do |config|
   # Define the NUbots development VM, and make it the primary VM
   # (meaning that a plain `vagrant up` will only create this machine)
   # This VM will install all dependencies using the NUbots deb file (faster, generally recommended)
-  config.vm.define "nubotsvm", autostart: false do |nubots|
+  config.vm.define "nubotsvm", autostart: true, primary: true do |nubots|
     nubots.vm.hostname = "nubotsvm.nubots.net"
 
     # Note: Use NFS for more predictable shared folder support.
@@ -90,10 +99,13 @@ Vagrant.configure("2") do |config|
     if File.directory?("../NUClear")
       nubots.vm.synced_folder "../NUClear", "/home/vagrant/NUClear"
     end
+    if File.directory?("../CM730")
+      nubots.vm.synced_folder "../CM730", "/home/vagrant/CM730"
+    end
   end
 
   # This VM will build all dependencies by source (use this to update old dependencies, or to generate a new deb file)
-  config.vm.define "nubotsvmbuild", primary: true do |nubots|
+  config.vm.define "nubotsvmbuild", autostart: false, primary: false do |nubots|
     nubots.vm.hostname = "nubotsvmbuild.nubots.net"
 
     # Note: Use NFS for more predictable shared folder support.
@@ -107,6 +119,9 @@ Vagrant.configure("2") do |config|
     end
     if File.directory?("../NUClear")
       nubots.vm.synced_folder "../NUClear", "/home/vagrant/NUClear"
+    end
+    if File.directory?("../CM730")
+      nubots.vm.synced_folder "../CM730", "/home/vagrant/CM730"
     end
   end
 end

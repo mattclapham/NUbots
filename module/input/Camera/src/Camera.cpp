@@ -66,5 +66,5 @@ namespace input {
             ShutdownSpinnakerCamera();
         });
     }
-}
-}
+}  // namespace input
+}  // namespace module

@@ -269,7 +269,7 @@ namespace input {
             return m;
         }
     };
-}
-}
+}  // namespace input
+}  // namespace module
 
 #endif  // MODULES_INPUT_NATNET_PARSE_H

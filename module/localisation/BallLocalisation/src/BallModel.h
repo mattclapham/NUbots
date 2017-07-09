@@ -61,6 +61,6 @@ namespace localisation {
 
         Eigen::Matrix<double, size, size> processNoise() const;
     };
-}
-}
+}  // namespace localisation
+}  // namespace module
 #endif  // MODULE_LOCALISATION_BALLMODEL_H

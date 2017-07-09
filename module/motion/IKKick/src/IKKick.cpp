@@ -14,7 +14,7 @@
  * You should have received a copy of the GNU General Public License
  * along with the NUbots Codebase.  If not, see <http://www.gnu.org/licenses/>.
  *
- * Copyright 2013 NUBots <nubots@nubots.net>
+ * Copyright 2013 NUbots <nubots@nubots.net>
  */
 
 #include "IKKick.h"
@@ -122,9 +122,9 @@ namespace motion {
         on<Trigger<ExecuteKick>, With<KickCommand, Sensors, KinematicsModel>>().then([this](
             const KickCommand& command, const Sensors& sensors, const KinematicsModel& kinematicsModel) {
 
-            // Enable our kick pather
-            updater.enable();
-            updatePriority(EXECUTION_PRIORITY);
+                // Enable our kick pather
+                updater.enable();
+                updatePriority(EXECUTION_PRIORITY);
 
 
             // 4x4 homogeneous transform matrices for left foot and right foot relative to torso
@@ -162,11 +162,11 @@ namespace motion {
             Eigen::Vector3d goalPosition = directionSupportFoot;
             goalPosition[2] = 0.0;  // TODO: figure out why ball height is unreliable
 
-            balancer.setKickParameters(supportFoot, ballPosition, goalPosition);
-            kicker.setKickParameters(supportFoot, ballPosition, goalPosition);
+                balancer.setKickParameters(supportFoot, ballPosition, goalPosition);
+                kicker.setKickParameters(supportFoot, ballPosition, goalPosition);
 
-            balancer.start(kinematicsModel, sensors);
-        });
+                balancer.start(kinematicsModel, sensors);
+            });
 
         updater = on<Every<UPDATE_FREQUENCY, Per<std::chrono::seconds>>, With<Sensors, KinematicsModel>, Single>().then(
             [this](const Sensors& sensors, const KinematicsModel& kinematicsModel) {
@@ -272,5 +272,5 @@ namespace motion {
     }
 
 
-}  // motion
-}  // modules
+}  // namespace motion
+}  // namespace module

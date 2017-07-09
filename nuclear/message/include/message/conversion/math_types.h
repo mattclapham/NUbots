@@ -42,8 +42,8 @@ namespace conversion {
         using fmat44 = Eigen::Matrix<float, 4, 4>;
         using imat44 = Eigen::Matrix<int, 4, 4>;
         using umat44 = Eigen::Matrix<unsigned int, 4, 4>;
-    }
-}
-}
+    }  // namespace math
+}  // namespace conversion
+}  // namespace message
 
 #endif  // MESSAGE_CONVERSION_MATRIX_TYPES_H

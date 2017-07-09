@@ -28,6 +28,7 @@
 
 #include <sys/types.h>
 #include <algorithm>
+#include <armadillo>
 #include <limits>
 #include <utility>
 #include <vector>
@@ -264,7 +265,7 @@ namespace kdtree {
             data = d;
         }
     };
-}
-}
+}  // namespace kdtree
+}  // namespace utility
 
 #endif

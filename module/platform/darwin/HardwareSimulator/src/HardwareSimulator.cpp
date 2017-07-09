@@ -14,11 +14,12 @@
  * You should have received a copy of the GNU General Public License
  * along with the NUbots Codebase.  If not, see <http://www.gnu.org/licenses/>.
  *
- * Copyright 2013 NUBots <nubots@nubots.net>
+ * Copyright 2013 NUbots <nubots@nubots.net>
  */
 
 #include "HardwareSimulator.h"
 
+#include <armadillo>
 #include <limits>
 #include <mutex>
 
@@ -348,6 +349,6 @@ namespace platform {
             sensors.fsr.left.centreX = down ? 1 : std::numeric_limits<double>::quiet_NaN();
             sensors.fsr.left.centreY = down ? 1 : std::numeric_limits<double>::quiet_NaN();
         }
-    }
-}
-}
+    }  // namespace darwin
+}  // namespace platform
+}  // namespace module

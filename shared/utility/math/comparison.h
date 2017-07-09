@@ -14,7 +14,7 @@
  * You should have received a copy of the GNU General Public License
  * along with the NUbots Codebase.  If not, see <http://www.gnu.org/licenses/>.
  *
- * Copyright 2013 NUBots <nubots@nubots.net>
+ * Copyright 2013 NUbots <nubots@nubots.net>
  */
 
 #ifndef UTILITY_MATH_COMPARISON_H
@@ -103,7 +103,7 @@ namespace math {
     inline constexpr typename std::enable_if<std::is_arithmetic<T>::value, T>::type clamp(T min, T val, T max) {
         return (std::min(std::max(val, min), max));
     }
-}
-}
+}  // namespace math
+}  // namespace utility
 
 #endif  // UTILITY_MATH_COMPARISON_H

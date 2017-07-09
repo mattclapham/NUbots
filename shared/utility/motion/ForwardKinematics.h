@@ -14,7 +14,7 @@
  * You should have received a copy of the GNU General Public License
  * along with the NUbots Codebase.  If not, see <http://www.gnu.org/licenses/>.
  *
- * Copyright 2013 NUBots <nubots@nubots.net>
+ * Copyright 2013 NUbots <nubots@nubots.net>
  */
 
 #ifndef UTILITY_MOTION_FORWARDKINEMATICS_H
@@ -528,8 +528,8 @@ namespace motion {
         }
 
 
-    }  // kinematics
-}  // motion
-}  // utility
+    }  // namespace kinematics
+}  // namespace motion
+}  // namespace utility
 
 #endif  // UTILITY_MOTION_FORWARDKINEMATICS_H

@@ -14,7 +14,7 @@
  * You should have received a copy of the GNU General Public License
  * along with the NUbots Codebase.  If not, see <http://www.gnu.org/licenses/>.
  *
- * Copyright 2013 NUBots <nubots@nubots.net>
+ * Copyright 2013 NUbots <nubots@nubots.net>
  */
 
 #ifndef MODULES_SUPPORT_LOGGING_CONSOLELOGHANDLER_H
@@ -40,8 +40,8 @@ namespace support {
             explicit ConsoleLogHandler(std::unique_ptr<NUClear::Environment> environment);
         };
 
-    }  // logging
-}  // support
-}  // modules
+    }  // namespace logging
+}  // namespace support
+}  // namespace module
 
 #endif  // MODULES_SUPPORT_LOGGING_CONSOLELOGHANDLER_H

@@ -14,7 +14,7 @@
  * You should have received a copy of the GNU General Public License
  * along with the NUbots Codebase.  If not, see <http://www.gnu.org/licenses/>.
  *
- * Copyright 2013 NUBots <nubots@nubots.net>
+ * Copyright 2013 NUbots <nubots@nubots.net>
  */
 
 
@@ -24,6 +24,8 @@
 #include <cmath>
 
 #include "extension/Configuration.h"
+
+#include <cmath>
 
 #include "message/behaviour/KickPlan.h"
 #include "message/behaviour/MotionCommand.h"
@@ -41,7 +43,13 @@
 #include "utility/localisation/transform.h"
 #include "utility/math/matrix/Transform2D.h"
 #include "utility/math/matrix/Transform3D.h"
+
 #include "utility/nubugger/NUhelpers.h"
+
+#include "utility/behaviour/Action.h"
+#include "utility/input/LimbID.h"
+#include "utility/input/ServoID.h"
+
 
 namespace module {
 namespace behaviour {
@@ -194,6 +202,17 @@ namespace behaviour {
                     // log("rBWw",rBWw.transpose());
                     // log("Htw\n",Htw);
 
+                        if (arma::norm(position) > slowdown_distance) {
+                            position = kick_point;
+                        }
+                        else {
+                            speedFactor   = slow_approach_factor;
+                            headingChange = std::atan2(ballToTarget[1], ballToTarget[0]);
+                            sideStep      = 1;
+                        }
+                    }
+                    // arma::vec2 ball_world_position = WorldToRobotTransform(selfs.front().position,
+                    // selfs.front().heading, position);
 
                     float angle = std::atan2(position[1], position[0]);
                     // log("ball bearing", angle);

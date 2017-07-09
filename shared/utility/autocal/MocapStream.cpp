@@ -362,4 +362,4 @@ void MocapStream::transformLHtoRH(Transform3D& T) {
         T             = L * T * L;  // last L is actually L.inverse() = L;
     }
 }
-}
+}  // namespace autocal

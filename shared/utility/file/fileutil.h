@@ -14,7 +14,7 @@
  * You should have received a copy of the GNU General Public License
  * along with the NUbots Codebase.  If not, see <http://www.gnu.org/licenses/>.
  *
- * Copyright 2013 NUBots <nubots@nubots.net>
+ * Copyright 2013 NUbots <nubots@nubots.net>
  */
 
 #ifndef UTILITY_FILEUTIL_H
@@ -74,6 +74,6 @@ namespace file {
     std::vector<std::string> listFiles(const std::string& directory, bool recursive = false);
 
     bool makeDirectory(const std::string& directory, bool parent = false);
-}
-}
+}  // namespace file
+}  // namespace utility
 #endif

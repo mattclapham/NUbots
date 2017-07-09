@@ -330,9 +330,9 @@ namespace behaviour {
         }
 
         WalkCommand WalkPathFollower::walkBetweenFar(const Transform2D& currentState, const Transform2D& targetState) {
-            auto diff      = Eigen::Vector2d(targetState.xy() - currentState.xy());
-            auto dir       = vectorToBearing(diff);
-            double wcAngle = utility::math::angle::signedDifference(dir, currentState.angle());
+            Eigen::Vector2d diff = Eigen::Vector2d(targetState.xy() - currentState.xy());
+            auto dir             = vectorToBearing(diff);
+            double wcAngle       = utility::math::angle::signedDifference(dir, currentState.angle());
             // TODO: Consider the heading of targetState in planning.
 
             WalkCommand command(subsumptionId, {cfg_.walk_to_far_forward_speed, 0, wcAngle});
@@ -394,8 +394,8 @@ namespace behaviour {
             }
             int stepNum = 0;
 
-            auto state = currentState;
-            auto path  = walkPath;
+            Transform2D state = currentState;
+            WalkPath path     = walkPath;
             WalkPath robotPath;
             robotPath.states.push_back(state);
 

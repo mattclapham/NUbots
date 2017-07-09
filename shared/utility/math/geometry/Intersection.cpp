@@ -14,7 +14,7 @@
  * You should have received a copy of the GNU General Public License
  * along with the NUbots Codebase.  If not, see <http://www.gnu.org/licenses/>.
  *
- * Copyright 2015 NUBots <nubots@nubots.net>
+ * Copyright 2015 NUbots <nubots@nubots.net>
  */
 
 #include "Intersection.h"
@@ -74,7 +74,7 @@ namespace math {
                 return cornerDiff.norm() < r;
                 // }
             }
-        }
-    }
-}
-}
+        }  // namespace intersection
+    }      // namespace geometry
+}  // namespace math
+}  // namespace utility
