@@ -28,6 +28,7 @@
 #include "message/vision/VisionObjects.h"
 #include "utility/math/geometry/Circle.h"
 #include "utility/math/geometry/RotatedRectangle.h"
+#include "utility/math/matrix/Rotation2D.h"
 #include "utility/math/matrix/Rotation3D.h"
 #include "utility/math/matrix/Transform2D.h"
 #include "utility/math/matrix/Transform3D.h"
@@ -37,15 +38,16 @@ namespace nubugger {
     using utility::math::geometry::RotatedRectangle;
 
     using utility::math::geometry::Circle;
+    using utility::math::matrix::Rotation2D;
+    using utility::math::matrix::Rotation3D;
     using utility::math::matrix::Transform2D;
     using utility::math::matrix::Transform3D;
+
+    using message::support::nubugger::DataPoint;
     using message::support::nubugger::DrawObject;
     using message::support::nubugger::DrawObjects;
 
     namespace {
-
-        using message::support::nubugger::DataPoint;
-        using utility::math::matrix::Rotation3D;
 
         constexpr float TIMEOUT = 2.5;
 
@@ -100,23 +102,78 @@ namespace nubugger {
         return dataPoint;
     }
 
+    template <typename T, std::enable_if_t<((T::RowsAtCompileTime == 2) && (T::ColsAtCompileTime == 2))>* = nullptr>
+    inline std::unique_ptr<message::support::nubugger::DataPoint> graph(std::string label, Rotation2D rotation) {
+        auto dataPoint   = std::make_unique<DataPoint>();
+        dataPoint->label = label;
+        dataPoint->type  = DataPoint::Type::Value::ROTATION_2D;
+        dataPoint->value.resize(rotation.size());
+        Eigen::Matrix2f::Map(dataPoint->value.data(), rotation.rows(), rotation.cols()) = rotation.cast<float>();
+        return dataPoint;
+    }
+
+    template <typename T, std::enable_if_t<((T::RowsAtCompileTime == 3) && (T::ColsAtCompileTime == 3))>* = nullptr>
     inline std::unique_ptr<message::support::nubugger::DataPoint> graph(std::string label, Rotation3D rotation) {
         auto dataPoint   = std::make_unique<DataPoint>();
         dataPoint->label = label;
         dataPoint->type  = DataPoint::Type::Value::ROTATION_3D;
-        for (Eigen::Index i = 0; i < rotation.size(); i++) {
-            dataPoint->value.push_back(rotation(i));
-        }
+        dataPoint->value.resize(rotation.size());
+        Eigen::Matrix3f::Map(dataPoint->value.data(), rotation.rows(), rotation.cols()) = rotation.cast<float>();
         return dataPoint;
     }
 
+    template <typename T, std::enable_if_t<((T::RowsAtCompileTime == 3) && (T::ColsAtCompileTime == 1))>* = nullptr>
+    inline std::unique_ptr<message::support::nubugger::DataPoint> graph(std::string label, Transform2D transform) {
+        auto dataPoint   = std::make_unique<DataPoint>();
+        dataPoint->label = label;
+        dataPoint->type  = DataPoint::Type::Value::TRANSFORM_2D;
+        dataPoint->value.resize(transform.size());
+        Eigen::Vector3f::Map(dataPoint->value.data(), transform.size()) = transform.cast<float>();
+        return dataPoint;
+    }
+
+    template <typename T, std::enable_if_t<((T::RowsAtCompileTime == 4) && (T::ColsAtCompileTime == 4))>* = nullptr>
     inline std::unique_ptr<message::support::nubugger::DataPoint> graph(std::string label, Transform3D transform) {
         auto dataPoint   = std::make_unique<DataPoint>();
         dataPoint->label = label;
         dataPoint->type  = DataPoint::Type::Value::TRANSFORM_3D;
-        for (Eigen::Index i = 0; i < transform.size(); i++) {
-            dataPoint->value.push_back(transform(i));
-        }
+        dataPoint->value.resize(transform.size());
+        Eigen::Matrix4f::Map(dataPoint->value.data(), transform.rows(), transform.cols()) = transform.cast<float>();
+        return dataPoint;
+    }
+
+    template <typename T, std::enable_if_t<((T::RowsAtCompileTime == 2) && (T::ColsAtCompileTime == 2))>* = nullptr>
+    inline std::unique_ptr<message::support::nubugger::DataPoint> graph(std::string label, T rotation) {
+        return graph(label, static_cast<Rotation2D>(rotation.template cast<double>()));
+    }
+
+    template <typename T, std::enable_if_t<((T::RowsAtCompileTime == 3) && (T::ColsAtCompileTime == 3))>* = nullptr>
+    inline std::unique_ptr<message::support::nubugger::DataPoint> graph(std::string label, T rotation) {
+        return graph(label, static_cast<Rotation3D>(rotation.template cast<double>()));
+    }
+
+    template <typename T, std::enable_if_t<((T::RowsAtCompileTime == 3) && (T::ColsAtCompileTime == 1))>* = nullptr>
+    inline std::unique_ptr<message::support::nubugger::DataPoint> graph(std::string label, T transform) {
+        return graph(label, static_cast<Transform2D>(transform.template cast<double>()));
+    }
+
+    template <typename T, std::enable_if_t<((T::RowsAtCompileTime == 4) && (T::ColsAtCompileTime == 4))>* = nullptr>
+    inline std::unique_ptr<message::support::nubugger::DataPoint> graph(std::string label, T transform) {
+        return graph(label, static_cast<Transform3D>(transform.template cast<double>()));
+    }
+
+    template <typename T,
+              std::enable_if_t<(((T::RowsAtCompileTime != 4) && (T::ColsAtCompileTime != 4))
+                                && ((T::RowsAtCompileTime != 3) && (T::ColsAtCompileTime != 1))
+                                && ((T::RowsAtCompileTime != 3) && (T::ColsAtCompileTime != 3))
+                                && ((T::RowsAtCompileTime != 2) && (T::ColsAtCompileTime != 2)))>* = nullptr>
+    inline std::unique_ptr<message::support::nubugger::DataPoint> graph(std::string label, T matrix) {
+        auto dataPoint   = std::make_unique<DataPoint>();
+        dataPoint->label = label;
+        dataPoint->type  = DataPoint::Type::Value::MATRIX;
+        dataPoint->value.resize(matrix.size());
+        Eigen::Matrix<float, T::RowsAtCompileTime, T::ColsAtCompileTime>::Map(
+            dataPoint->value.data(), matrix.rows(), matrix.cols()) = matrix.template cast<float>();
         return dataPoint;
     }
 
