@@ -125,7 +125,7 @@ namespace math {
              *
              * @return The inverse transform
              */
-            Rotation3D i() const;
+            Rotation3D inverse() const;
 
             /**
              * @return Pair containing the axis of the rotation as a unit vector followed by the rotation angle.

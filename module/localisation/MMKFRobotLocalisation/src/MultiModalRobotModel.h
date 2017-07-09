@@ -51,7 +51,8 @@ namespace localisation {
                       0.1)  // alpha
             , weight_(1)
             , obs_count_(0) {
-            arma::mat cov = Eigen::Matrix<double, robot::RobotModel::size, robot::RobotModel::size>::Identity() * 0.1;
+            Eigen::Matrix<double, robot::RobotModel::size, robot::RobotModel::size> cov =
+                Eigen::Matrix<double, robot::RobotModel::size, robot::RobotModel::size>::Identity() * 0.1;
             cov(2, 2) = 1;
             filter_.setState(Eigen::Matrix<double, robot::RobotModel::size, 1>({-4.5, 0, 0}), cov);
         }
@@ -59,17 +60,18 @@ namespace localisation {
         RobotHypothesis(const message::localisation::ResetRobotHypotheses::Self& reset_self,
                         const message::input::Sensors& sensors)
             : RobotHypothesis() {
-            Eigen::Vector2d imuDirection = sensors.world.col(0).rows(0, 1).normalize();
+            Eigen::Vector2d imuDirection = sensors.world.col(0).head<2>().normalized();
             double imuHeading            = std::atan2(imuDirection(1), imuDirection(0));
             double imuOffset             = reset_self.heading + imuHeading;
 
-            // Eigen::Vector3d mean = arma::joirows()(reset_self.position, arma::vec(imuOffset));
+            // Eigen::Vector3d mean;
+            // mean << reset_self.position, imuOffset;
             Eigen::Matrix<double, robot::RobotModel::size, 1> mean = Eigen::Matrix<double, robot::RobotModel::size, 1>(
                 {reset_self.position(0), reset_self.position(1), imuOffset});
             Eigen::Matrix<double, robot::RobotModel::size, robot::RobotModel::size> cov =
                 Eigen::Matrix<double, robot::RobotModel::size, robot::RobotModel::size>::Identity() * 0.1;
-            cov.submat(0, 0, 1, 1) = reset_self.position_cov;
-            cov(2, 2) = reset_self.heading_var;
+            cov.topLeftCorner<2, 2>() = reset_self.position_cov;
+            cov(2, 2)                 = reset_self.heading_var;
             filter_.setState(mean, cov);
         }
 

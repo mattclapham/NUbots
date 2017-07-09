@@ -19,6 +19,8 @@
 
 #include "FixedWalk.h"
 
+#include <Eigen/Core>
+
 #include "message/motion/GetupCommand.h"
 #include "utility/math/matrix/Rotation2D.h"
 

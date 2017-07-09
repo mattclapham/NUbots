@@ -71,8 +71,8 @@ namespace motion {
     IKKick::IKKick(std::unique_ptr<NUClear::Environment> environment)
         : Reactor(std::move(environment))
         , supportFoot()
-        , ballPosition(arma::fill::zeros)
-        , goalPosition(arma::fill::zeros)
+        , ballPosition(Eigen::Vector3d::Zero())
+        , goalPosition(Eigen::Vector3d::Zero())
         , subsumptionId(size_t(this) * size_t(this) - size_t(this))
         , leftFootIsSupport(false)
         , foot_separation(0.0f)
@@ -122,9 +122,9 @@ namespace motion {
         on<Trigger<ExecuteKick>, With<KickCommand, Sensors, KinematicsModel>>().then([this](
             const KickCommand& command, const Sensors& sensors, const KinematicsModel& kinematicsModel) {
 
-                // Enable our kick pather
-                updater.enable();
-                updatePriority(EXECUTION_PRIORITY);
+            // Enable our kick pather
+            updater.enable();
+            updatePriority(EXECUTION_PRIORITY);
 
 
             // 4x4 homogeneous transform matrices for left foot and right foot relative to torso
@@ -150,23 +150,22 @@ namespace motion {
             Eigen::Vector3d targetSupportFoot = torsoPose.transformPoint(targetTorso);
 
             // Put the goal from vision into torso coordinates
-            Eigen::Vector3d
-                directionTorso;  // =
-                                 // Transform3D(sensors.kinematicsBodyToGround).inverse().transformVector(command.direction);
-                                 // //TODO fix
+            Eigen::Vector3d directionTorso;  // =
+            // Transform3D(sensors.kinematicsBodyToGround).inverse().transformVector(command.direction);
+            // //TODO fix
             // Put the goal into support foot coordinates
             Eigen::Vector3d directionSupportFoot = torsoPose.transformVector(directionTorso);
 
             Eigen::Vector3d ballPosition = targetSupportFoot;
-            ballPosition[2] = 0.05;  // TODO: figure out why ball height is unreliable
+            ballPosition[2]              = 0.05;  // TODO: figure out why ball height is unreliable
             Eigen::Vector3d goalPosition = directionSupportFoot;
-            goalPosition[2] = 0.0;  // TODO: figure out why ball height is unreliable
+            goalPosition[2]              = 0.0;  // TODO: figure out why ball height is unreliable
 
-                balancer.setKickParameters(supportFoot, ballPosition, goalPosition);
-                kicker.setKickParameters(supportFoot, ballPosition, goalPosition);
+            balancer.setKickParameters(supportFoot, ballPosition, goalPosition);
+            kicker.setKickParameters(supportFoot, ballPosition, goalPosition);
 
-                balancer.start(kinematicsModel, sensors);
-            });
+            balancer.start(kinematicsModel, sensors);
+        });
 
         updater = on<Every<UPDATE_FREQUENCY, Per<std::chrono::seconds>>, With<Sensors, KinematicsModel>, Single>().then(
             [this](const Sensors& sensors, const KinematicsModel& kinematicsModel) {

@@ -248,7 +248,7 @@ namespace platform {
 
             //     Eigen::Matrix<double, MotionModel::size, 1>  newFilter = motionFilter.get();
             //     newFilter.middleRows<MotionModel::PZ - MotionModel::PX + 1>(MotionModel::PX) *= 0.;
-            //     motionFilter.setState(newFilter, arma::diagmat(covariance));
+            //     motionFilter.setState(newFilter, covariance.asDiagonal()));
             // });
 
             on<Last<20, Trigger<DarwinSensors>>, Single>().then(

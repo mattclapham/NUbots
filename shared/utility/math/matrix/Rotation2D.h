@@ -59,7 +59,7 @@ namespace math {
              *
              * @return The inverse transform
              */
-            Rotation2D i() const;
+            Rotation2D inverse() const;
 
             /**
              * @brief Creates a rotation matrix around the Z axis by the given radians

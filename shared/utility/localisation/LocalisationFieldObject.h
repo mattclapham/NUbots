@@ -20,7 +20,6 @@
 #ifndef UTILITY_LOCALISATION_LOCALISATIONFIELDOBJECT_H
 #define UTILITY_LOCALISATION_LOCALISATIONFIELDOBJECT_H
 
-#include <armadillo>
 #include <iomanip>
 
 namespace utility {

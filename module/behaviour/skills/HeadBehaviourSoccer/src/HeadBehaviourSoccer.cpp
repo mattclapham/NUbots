@@ -413,7 +413,6 @@ namespace behaviour {
                                           sensors.servo.at(ServoID::HEAD_PITCH).presentPosition};
 
             for (uint i = 0; i < fixationObjects.size(); i++) {
-                // TODO: fix arma meat errors here
                 // Should be vec2 (yaw,pitch)
                 fixationPoints.push_back(
                     {fixationObjects[i].visObject.screenAngular[0], fixationObjects[i].visObject.screenAngular[1]});
@@ -462,7 +461,6 @@ namespace behaviour {
             }
 
             for (uint i = 0; i < fixationObjects.size(); i++) {
-                // TODO: fix arma meat errors here
                 // Should be vec2 (yaw,pitch)
                 fixationPoints.push_back(
                     {fixationObjects[i].visObject.screenAngular[0], fixationObjects[i].visObject.screenAngular[1]});
@@ -491,271 +489,269 @@ namespace behaviour {
             return result;
         }
 
-            headSearcher.replaceSearchPoints(fixationPoints, currentPos);
+        headSearcher.replaceSearchPoints(fixationPoints, currentPos);
+    }
+
+    Eigen::Vector2d HeadBehaviourSoccer::getIMUSpaceDirection(const KinematicsModel& kinematicsModel,
+                                                              const Eigen::Vector2d& screenAngles,
+                                                              Rotation3D headToIMUSpace) {
+
+        // Eigen::Vector3d lookVectorFromHead = objectDirectionFromScreenAngular(screenAngles);
+        // This is an approximation relying on the robots small FOV
+        Eigen::Vector3d lookVectorFromHead = sphericalToCartesian({1, screenAngles[0], screenAngles[1]});
+        // Remove pitch from matrix if we are adjusting search points
+
+        // Rotate target angles to World space
+        Eigen::Vector3d lookVector = headToIMUSpace * lookVectorFromHead;
+        // Compute inverse kinematics for head direction angles
+        std::vector<std::pair<ServoID, float>> goalAngles = calculateCameraLookJoints(kinematicsModel, lookVector);
+
+        Eigen::Vector2d result;
+        for (auto& angle : goalAngles) {
+            if (angle.first == ServoID::HEAD_PITCH) {
+                result[1] = angle.second;
+            }
+            else if (angle.first == ServoID::HEAD_YAW) {
+                result[0] = angle.second;
+            }
+        }
+        return result;
+    }
+
+    /*! Get search points which keep everything in view.
+    Returns vector of Eigen::Vector2d
+    */
+    std::vector<Eigen::Vector2d> HeadBehaviourSoccer::getSearchPoints(const KinematicsModel&,
+                                                                      std::vector<Ball> fixationObjects,
+                                                                      SearchType sType,
+                                                                      const Sensors&) {
+        // If there is nothing of interest, we search fot points of interest
+        // log("getting search points");
+        if (fixationObjects.size() == 0) {
+            // log("getting search points 2");
+            // Lost searches are normalised in terms of the FOV
+            std::vector<Eigen::Vector2d> scaledResults;
+            // scaledResults.push_back(utility::motion::kinematics::headAnglesToSeeGroundPoint(kinematicsModel,
+            // lastLocBall.position,sensors));
+            for (auto& p : searches[sType]) {
+                // log("adding search point", p.transpose());
+                // old angles thing
+                // Interpolate between max and min allowed angles with -1 = min and 1 = max
+                // auto angles = Eigen::Vector2d(((max_yaw - min_yaw) * p[0] + max_yaw + min_yaw) / 2,
+                //                                    ((max_pitch - min_pitch) * p[1] + max_pitch + min_pitch) / 2);
+
+                // New absolute referencing
+                Eigen::Vector2d angles = p * M_PI / 180;
+                // if(std::fabs(sensors.world.rotation().pitch()) < pitch_plan_threshold){
+                // Eigen::Vector3d lookVectorFromHead = sphericalToCartesian({1,angles[0],angles[1]});//This is an
+                // approximation relying on the robots small FOV
+
+
+                // TODO: Fix trying to look underneath and behind self!!
+
+
+                // Eigen::Vector3d adjustedLookVector = lookVectorFromHead;
+                // TODO: fix:
+                // Eigen::Vector3d adjustedLookVector =
+                // Rotation3D::createRotationX(sensors.world.rotation().pitch()) * lookVectorFromHead;
+                // Eigen::Vector3d adjustedLookVector = Rotation3D::createRotationY(-pitch_plan_value) *
+                // lookVectorFromHead;
+                // std::vector< std::pair<ServoID, float> > goalAngles = calculateCameraLookJoints(kinematicsModel,
+                // adjustedLookVector);
+
+                // for(auto& angle : goalAngles){
+                //     if(angle.first == ServoID::HEAD_PITCH){
+                //         angles[1] = angle.second;
+                //     } else if(angle.first == ServoID::HEAD_YAW){
+                //         angles[0] = angle.second;
+                //     }
+                // }
+                // log("goalAngles",angles.transpose());
+                // }
+                // emit(graph("IMUSpace Head Lost Angles", angles));
+
+                scaledResults.push_back(angles);
+            }
+            return scaledResults;
         }
 
-        Eigen::Vector2d HeadBehaviourSoccer::getIMUSpaceDirection(const KinematicsModel& kinematicsModel,
-                                                                  const Eigen::Vector2d& screenAngles,
-                                                                  Rotation3D headToIMUSpace) {
+        Quad boundingBox = getScreenAngularBoundingBox(fixationObjects);
 
-            // Eigen::Vector3d lookVectorFromHead = objectDirectionFromScreenAngular(screenAngles);
-            // This is an approximation relying on the robots small FOV
-            Eigen::Vector3d lookVectorFromHead = sphericalToCartesian({1, screenAngles[0], screenAngles[1]});
-            // Remove pitch from matrix if we are adjusting search points
+        std::vector<Eigen::Vector2d> viewPoints;
+        if (cam.FOV.norm() == 0) {
+            log<NUClear::WARN>("NO CAMERA PARAMETERS LOADED!!");
+        }
+        // Get points which keep everything on screen with padding
+        float view_padding_radians = fractional_view_padding * std::fmax(cam.FOV[0], cam.FOV[1]);
+        // 1
+        Eigen::Vector2d padding = {view_padding_radians, view_padding_radians};
+        Eigen::Vector2d tr      = boundingBox.getBottomLeft() - padding + cam.FOV * 0.5;
+        // 2
+        padding            = {view_padding_radians, -view_padding_radians};
+        Eigen::Vector2d br = boundingBox.getTopLeft() - padding + Eigen::Vector2d{cam.FOV[0], -cam.FOV[1]} * 0.5;
+        // 3
+        padding            = {-view_padding_radians, -view_padding_radians};
+        Eigen::Vector2d bl = boundingBox.getTopRight() - padding - cam.FOV * 0.5;
+        // 4
+        padding            = {-view_padding_radians, view_padding_radians};
+        Eigen::Vector2d tl = boundingBox.getBottomRight() - padding + Eigen::Vector2d{-cam.FOV[0], cam.FOV[1]} * 0.5;
 
-            // Rotate target angles to World space
-            Eigen::Vector3d lookVector = headToIMUSpace * lookVectorFromHead;
-            // Compute inverse kinematics for head direction angles
-            std::vector<std::pair<ServoID, float>> goalAngles = calculateCameraLookJoints(kinematicsModel, lookVector);
-
-            Eigen::Vector2d result;
-            for (auto& angle : goalAngles) {
-                if (angle.first == ServoID::HEAD_PITCH) {
-                    result[1] = angle.second;
-                }
-                else if (angle.first == ServoID::HEAD_YAW) {
-                    result[0] = angle.second;
-                }
-            }
-            return result;
+        // Interpolate between max and min allowed angles with -1 = min and 1 = max
+        std::vector<Eigen::Vector2d> searchPoints;
+        for (auto& p : searches[SearchType::FIND_ADDITIONAL_OBJECTS]) {
+            float x = p[0];
+            float y = p[1];
+            searchPoints.push_back(
+                ((1 - x) * (1 - y) * bl + (1 - x) * (1 + y) * tl + (1 + x) * (1 + y) * tr + (1 + x) * (1 - y) * br)
+                / 4);
         }
 
-        /*! Get search points which keep everything in view.
-        Returns vector of Eigen::Vector2d
-        */
-        std::vector<Eigen::Vector2d> HeadBehaviourSoccer::getSearchPoints(const KinematicsModel&,
-                                                                          std::vector<Ball> fixationObjects,
-                                                                          SearchType sType,
-                                                                          const Sensors&) {
-            // If there is nothing of interest, we search fot points of interest
-            // log("getting search points");
-            if (fixationObjects.size() == 0) {
-                // log("getting search points 2");
-                // Lost searches are normalised in terms of the FOV
-                std::vector<Eigen::Vector2d> scaledResults;
-                // scaledResults.push_back(utility::motion::kinematics::headAnglesToSeeGroundPoint(kinematicsModel,
-                // lastLocBall.position,sensors));
-                for (auto& p : searches[sType]) {
-                    // log("adding search point", p.transpose());
-                    // old angles thing
-                    // Interpolate between max and min allowed angles with -1 = min and 1 = max
-                    // auto angles = Eigen::Vector2d(((max_yaw - min_yaw) * p[0] + max_yaw + min_yaw) / 2,
-                    //                                    ((max_pitch - min_pitch) * p[1] + max_pitch + min_pitch) / 2);
+        return searchPoints;
+    }
 
-                    // New absolute referencing
-                    Eigen::Vector2d angles = p * M_PI / 180;
-                    // if(std::fabs(sensors.world.rotation().pitch()) < pitch_plan_threshold){
-                    // Eigen::Vector3d lookVectorFromHead = sphericalToCartesian({1,angles[0],angles[1]});//This is an
-                    // approximation relying on the robots small FOV
+    std::vector<Eigen::Vector2d> HeadBehaviourSoccer::getSearchPoints(const KinematicsModel&,
+                                                                      std::vector<Goal> fixationObjects,
+                                                                      SearchType sType,
+                                                                      const Sensors&) {
+        // If there is nothing of interest, we search fot points of interest
+        // log("getting search points");
+        if (fixationObjects.size() == 0) {
+            // log("getting search points 2");
+            // Lost searches are normalised in terms of the FOV
+            std::vector<Eigen::Vector2d> scaledResults;
+            // scaledResults.push_back(utility::motion::kinematics::headAnglesToSeeGroundPoint(kinematicsModel,
+            // lastLocBall.position,sensors));
+            for (auto& p : searches[sType]) {
+                // log("adding search point", p.transpose());
+                // old angles thing
+                // Interpolate between max and min allowed angles with -1 = min and 1 = max
+                // auto angles = Eigen::Vector2d(((max_yaw - min_yaw) * p[0] + max_yaw + min_yaw) / 2,
+                //                                    ((max_pitch - min_pitch) * p[1] + max_pitch + min_pitch) / 2);
 
-
-                    // TODO: Fix trying to look underneath and behind self!!
+                // New absolute referencing
+                Eigen::Vector2d angles = p * M_PI / 180;
+                // if(std::fabs(sensors.world.rotation().pitch()) < pitch_plan_threshold){
+                // Eigen::Vector3d lookVectorFromHead = sphericalToCartesian({1,angles[0],angles[1]});//This is an
+                // approximation relying on the robots small FOV
 
 
-                    // Eigen::Vector3d adjustedLookVector = lookVectorFromHead;
-                    // TODO: fix:
-                    // Eigen::Vector3d adjustedLookVector =
-                    // Rotation3D::createRotationX(sensors.world.rotation().pitch()) * lookVectorFromHead;
-                    // Eigen::Vector3d adjustedLookVector = Rotation3D::createRotationY(-pitch_plan_value) *
-                    // lookVectorFromHead;
-                    // std::vector< std::pair<ServoID, float> > goalAngles = calculateCameraLookJoints(kinematicsModel,
-                    // adjustedLookVector);
+                // TODO: Fix trying to look underneath and behind self!!
 
-                    // for(auto& angle : goalAngles){
-                    //     if(angle.first == ServoID::HEAD_PITCH){
-                    //         angles[1] = angle.second;
-                    //     } else if(angle.first == ServoID::HEAD_YAW){
-                    //         angles[0] = angle.second;
-                    //     }
-                    // }
-                    // log("goalAngles",angles.transpose());
-                    // }
-                    // emit(graph("IMUSpace Head Lost Angles", angles));
 
-                    scaledResults.push_back(angles);
-                }
-                return scaledResults;
+                // Eigen::Vector3d adjustedLookVector = lookVectorFromHead;
+                // TODO: fix:
+                // Eigen::Vector3d adjustedLookVector =
+                // Rotation3D::createRotationX(sensors.world.rotation().pitch()) * lookVectorFromHead;
+                // Eigen::Vector3d adjustedLookVector = Rotation3D::createRotationY(-pitch_plan_value) *
+                // lookVectorFromHead;
+                // std::vector< std::pair<ServoID, float> > goalAngles = calculateCameraLookJoints(kinematicsModel,
+                // adjustedLookVector);
+
+                // for(auto& angle : goalAngles){
+                //     if(angle.first == ServoID::HEAD_PITCH){
+                //         angles[1] = angle.second;
+                //     } else if(angle.first == ServoID::HEAD_YAW){
+                //         angles[0] = angle.second;
+                //     }
+                // }
+                // log("goalAngles",angles.transpose());
+                // }
+                // emit(graph("IMUSpace Head Lost Angles", angles));
+
+                scaledResults.push_back(angles);
             }
-
-            Quad boundingBox = getScreenAngularBoundingBox(fixationObjects);
-
-            std::vector<Eigen::Vector2d> viewPoints;
-            if (cam.FOV.norm() == 0) {
-                log<NUClear::WARN>("NO CAMERA PARAMETERS LOADED!!");
-            }
-            // Get points which keep everything on screen with padding
-            float view_padding_radians = fractional_view_padding * std::fmax(cam.FOV[0], cam.FOV[1]);
-            // 1
-            Eigen::Vector2d padding = {view_padding_radians, view_padding_radians};
-            Eigen::Vector2d tr      = boundingBox.getBottomLeft() - padding + cam.FOV * 0.5;
-            // 2
-            padding            = {view_padding_radians, -view_padding_radians};
-            Eigen::Vector2d br = boundingBox.getTopLeft() - padding + Eigen::Vector2d{cam.FOV[0], -cam.FOV[1]} * 0.5;
-            // 3
-            padding            = {-view_padding_radians, -view_padding_radians};
-            Eigen::Vector2d bl = boundingBox.getTopRight() - padding - cam.FOV * 0.5;
-            // 4
-            padding = {-view_padding_radians, view_padding_radians};
-            Eigen::Vector2d tl =
-                boundingBox.getBottomRight() - padding + Eigen::Vector2d{-cam.FOV[0], cam.FOV[1]} * 0.5;
-
-            // Interpolate between max and min allowed angles with -1 = min and 1 = max
-            std::vector<Eigen::Vector2d> searchPoints;
-            for (auto& p : searches[SearchType::FIND_ADDITIONAL_OBJECTS]) {
-                float x = p[0];
-                float y = p[1];
-                searchPoints.push_back(
-                    ((1 - x) * (1 - y) * bl + (1 - x) * (1 + y) * tl + (1 + x) * (1 + y) * tr + (1 + x) * (1 - y) * br)
-                    / 4);
-            }
-
-            return searchPoints;
+            return scaledResults;
         }
 
-        std::vector<Eigen::Vector2d> HeadBehaviourSoccer::getSearchPoints(const KinematicsModel&,
-                                                                          std::vector<Goal> fixationObjects,
-                                                                          SearchType sType,
-                                                                          const Sensors&) {
-            // If there is nothing of interest, we search fot points of interest
-            // log("getting search points");
-            if (fixationObjects.size() == 0) {
-                // log("getting search points 2");
-                // Lost searches are normalised in terms of the FOV
-                std::vector<Eigen::Vector2d> scaledResults;
-                // scaledResults.push_back(utility::motion::kinematics::headAnglesToSeeGroundPoint(kinematicsModel,
-                // lastLocBall.position,sensors));
-                for (auto& p : searches[sType]) {
-                    // log("adding search point", p.transpose());
-                    // old angles thing
-                    // Interpolate between max and min allowed angles with -1 = min and 1 = max
-                    // auto angles = Eigen::Vector2d(((max_yaw - min_yaw) * p[0] + max_yaw + min_yaw) / 2,
-                    //                                    ((max_pitch - min_pitch) * p[1] + max_pitch + min_pitch) / 2);
+        Quad boundingBox = getScreenAngularBoundingBox(fixationObjects);
 
-                    // New absolute referencing
-                    Eigen::Vector2d angles = p * M_PI / 180;
-                    // if(std::fabs(sensors.world.rotation().pitch()) < pitch_plan_threshold){
-                    // Eigen::Vector3d lookVectorFromHead = sphericalToCartesian({1,angles[0],angles[1]});//This is an
-                    // approximation relying on the robots small FOV
-
-
-                    // TODO: Fix trying to look underneath and behind self!!
-
-
-                    // Eigen::Vector3d adjustedLookVector = lookVectorFromHead;
-                    // TODO: fix:
-                    // Eigen::Vector3d adjustedLookVector =
-                    // Rotation3D::createRotationX(sensors.world.rotation().pitch()) * lookVectorFromHead;
-                    // Eigen::Vector3d adjustedLookVector = Rotation3D::createRotationY(-pitch_plan_value) *
-                    // lookVectorFromHead;
-                    // std::vector< std::pair<ServoID, float> > goalAngles = calculateCameraLookJoints(kinematicsModel,
-                    // adjustedLookVector);
-
-                    // for(auto& angle : goalAngles){
-                    //     if(angle.first == ServoID::HEAD_PITCH){
-                    //         angles[1] = angle.second;
-                    //     } else if(angle.first == ServoID::HEAD_YAW){
-                    //         angles[0] = angle.second;
-                    //     }
-                    // }
-                    // log("goalAngles",angles.transpose());
-                    // }
-                    // emit(graph("IMUSpace Head Lost Angles", angles));
-
-                    scaledResults.push_back(angles);
-                }
-                return scaledResults;
-            }
-
-            Quad boundingBox = getScreenAngularBoundingBox(fixationObjects);
-
-            std::vector<Eigen::Vector2d> viewPoints;
-            if (cam.FOV.norm() == 0) {
-                log<NUClear::WARN>("NO CAMERA PARAMETERS LOADED!!");
-            }
-            // Get points which keep everything on screen with padding
-            float view_padding_radians = fractional_view_padding * std::fmax(cam.FOV[0], cam.FOV[1]);
-            // 1
-            Eigen::Vector2d padding = {view_padding_radians, view_padding_radians};
-            Eigen::Vector2d tr      = boundingBox.getBottomLeft() - padding + cam.FOV * 0.5;
-            //
-            padding            = {view_padding_radians, -view_padding_radians};
-            Eigen::Vector2d br = boundingBox.getTopLeft() - padding + Eigen::Vector2d{cam.FOV[0], -cam.FOV[1]} * 0.5;
-            // 3
-            padding            = {-view_padding_radians, -view_padding_radians};
-            Eigen::Vector2d bl = boundingBox.getTopRight() - padding - cam.FOV * 0.5;
-            // 4
-            padding = {-view_padding_radians, view_padding_radians};
-            Eigen::Vector2d tl =
-                boundingBox.getBottomRight() - padding + Eigen::Vector2d{-cam.FOV[0], cam.FOV[1]} * 0.5;
-
-            // Interpolate between max and min allowed angles with -1 = min and 1 = max
-            std::vector<Eigen::Vector2d> searchPoints;
-            for (auto& p : searches[SearchType::FIND_ADDITIONAL_OBJECTS]) {
-                float x = p[0];
-                float y = p[1];
-                searchPoints.push_back(
-                    ((1 - x) * (1 - y) * bl + (1 - x) * (1 + y) * tl + (1 + x) * (1 + y) * tr + (1 + x) * (1 - y) * br)
-                    / 4);
-            }
-            return Quad::getBoundingBox(boundingPoints);
+        std::vector<Eigen::Vector2d> viewPoints;
+        if (cam.FOV.norm() == 0) {
+            log<NUClear::WARN>("NO CAMERA PARAMETERS LOADED!!");
         }
+        // Get points which keep everything on screen with padding
+        float view_padding_radians = fractional_view_padding * std::fmax(cam.FOV[0], cam.FOV[1]);
+        // 1
+        Eigen::Vector2d padding = {view_padding_radians, view_padding_radians};
+        Eigen::Vector2d tr      = boundingBox.getBottomLeft() - padding + cam.FOV * 0.5;
+        //
+        padding            = {view_padding_radians, -view_padding_radians};
+        Eigen::Vector2d br = boundingBox.getTopLeft() - padding + Eigen::Vector2d{cam.FOV[0], -cam.FOV[1]} * 0.5;
+        // 3
+        padding            = {-view_padding_radians, -view_padding_radians};
+        Eigen::Vector2d bl = boundingBox.getTopRight() - padding - cam.FOV * 0.5;
+        // 4
+        padding            = {-view_padding_radians, view_padding_radians};
+        Eigen::Vector2d tl = boundingBox.getBottomRight() - padding + Eigen::Vector2d{-cam.FOV[0], cam.FOV[1]} * 0.5;
 
-            return searchPoints;
+        // Interpolate between max and min allowed angles with -1 = min and 1 = max
+        std::vector<Eigen::Vector2d> searchPoints;
+        for (auto& p : searches[SearchType::FIND_ADDITIONAL_OBJECTS]) {
+            float x = p[0];
+            float y = p[1];
+            searchPoints.push_back(
+                ((1 - x) * (1 - y) * bl + (1 - x) * (1 + y) * tl + (1 + x) * (1 + y) * tr + (1 + x) * (1 - y) * br)
+                / 4);
         }
+        return Quad::getBoundingBox(boundingPoints);
+    }
 
-        Ball HeadBehaviourSoccer::combineVisionObjects(const std::vector<Ball>& ob) {
-            if (ob.size() == 0) {
-                log<NUClear::WARN>(
-                    "HeadBehaviourSoccer::combineVisionBalls - Attempted to combine zero vision objects into one.");
-                return VisionObject();
-            }
-            Quad q                    = getScreenAngularBoundingBox(ob);
-            Ball v                    = ob[0];
-            v.visObject.screenAngular = q.getCentre();
-            v.visObject.angularSize   = q.getSize();
-            return v;
-        }
+    return searchPoints;
+}
 
-        Quad HeadBehaviourSoccer::getScreenAngularBoundingBox(const std::vector<Ball>& ob) {
-            std::vector<Eigen::Vector2d> boundingPoints;
-            for (uint i = 0; i < ob.size(); i++) {
-                boundingPoints.push_back(ob[i].visObject.screenAngular + ob[i].visObject.angularSize * 0.5);
-                boundingPoints.push_back(ob[i].visObject.screenAngular - ob[i].visObject.angularSize * 0.5);
-            }
-            return Quad::getBoundingBox(boundingPoints);
-        }
+Ball HeadBehaviourSoccer::combineVisionObjects(const std::vector<Ball>& ob) {
+    if (ob.size() == 0) {
+        log<NUClear::WARN>(
+            "HeadBehaviourSoccer::combineVisionBalls - Attempted to combine zero vision objects into one.");
+        return VisionObject();
+    }
+    Quad q                    = getScreenAngularBoundingBox(ob);
+    Ball v                    = ob[0];
+    v.visObject.screenAngular = q.getCentre();
+    v.visObject.angularSize   = q.getSize();
+    return v;
+}
 
-
-        Goal HeadBehaviourSoccer::combineVisionObjects(const std::vector<Goal>& ob) {
-            if (ob.size() == 0) {
-                log<NUClear::WARN>(
-                    "HeadBehaviourSoccer::combineVisionObjects - Attempted to combine zero vision objects into one.");
-                return VisionObject();
-            }
-            Quad q                    = getScreenAngularBoundingBox(ob);
-            Goal v                    = ob[0];
-            v.visObject.screenAngular = q.getCentre();
-            v.visObject.angularSize   = q.getSize();
-            return v;
-        }
-
-        Quad HeadBehaviourSoccer::getScreenAngularBoundingBox(const std::vector<Goal>& ob) {
-            std::vector<Eigen::Vector2d> boundingPoints;
-            for (uint i = 0; i < ob.size(); i++) {
-                boundingPoints.push_back(ob[i].visObject.screenAngular + ob[i].visObject.angularSize * 0.5);
-                boundingPoints.push_back(ob[i].visObject.screenAngular - ob[i].visObject.angularSize * 0.5);
-            }
-            return Quad::getBoundingBox(boundingPoints);
-        }
+Quad HeadBehaviourSoccer::getScreenAngularBoundingBox(const std::vector<Ball>& ob) {
+    std::vector<Eigen::Vector2d> boundingPoints;
+    for (uint i = 0; i < ob.size(); i++) {
+        boundingPoints.push_back(ob[i].visObject.screenAngular + ob[i].visObject.angularSize * 0.5);
+        boundingPoints.push_back(ob[i].visObject.screenAngular - ob[i].visObject.angularSize * 0.5);
+    }
+    return Quad::getBoundingBox(boundingPoints);
+}
 
 
-        bool HeadBehaviourSoccer::orientationHasChanged(const message::input::Sensors& sensors) {
-            Rotation3D diff     = Transform3D(sensors.world).rotation().inverse() * lastPlanOrientation;
-            UnitQuaternion quat = UnitQuaternion(diff);
-            float angle         = quat.getAngle();
-            return std::fabs(angle) > replan_angle_threshold;
-        }
+Goal HeadBehaviourSoccer::combineVisionObjects(const std::vector<Goal>& ob) {
+    if (ob.size() == 0) {
+        log<NUClear::WARN>(
+            "HeadBehaviourSoccer::combineVisionObjects - Attempted to combine zero vision objects into one.");
+        return VisionObject();
+    }
+    Quad q                    = getScreenAngularBoundingBox(ob);
+    Goal v                    = ob[0];
+    v.visObject.screenAngular = q.getCentre();
+    v.visObject.angularSize   = q.getSize();
+    return v;
+}
 
-    }  // motion
+Quad HeadBehaviourSoccer::getScreenAngularBoundingBox(const std::vector<Goal>& ob) {
+    std::vector<Eigen::Vector2d> boundingPoints;
+    for (uint i = 0; i < ob.size(); i++) {
+        boundingPoints.push_back(ob[i].visObject.screenAngular + ob[i].visObject.angularSize * 0.5);
+        boundingPoints.push_back(ob[i].visObject.screenAngular - ob[i].visObject.angularSize * 0.5);
+    }
+    return Quad::getBoundingBox(boundingPoints);
+}
+
+
+bool HeadBehaviourSoccer::orientationHasChanged(const message::input::Sensors& sensors) {
+    Rotation3D diff     = Transform3D(sensors.world).rotation().inverse() * lastPlanOrientation;
+    UnitQuaternion quat = UnitQuaternion(diff);
+    float angle         = quat.getAngle();
+    return std::fabs(angle) > replan_angle_threshold;
+}
+
+}  // motion
 }  // behaviour
 }  // modules

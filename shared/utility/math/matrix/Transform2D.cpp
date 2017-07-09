@@ -67,7 +67,7 @@ namespace math {
             return result;
         }
 
-        Transform2D Transform2D::i() const {
+        Transform2D Transform2D::inverse() const {
             Eigen::Vector2d newDisplacement = -worldToLocal(*this).xy();
             return Transform2D(newDisplacement, -this->angle());
         }

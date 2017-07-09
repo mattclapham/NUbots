@@ -86,15 +86,17 @@ namespace math {
 
             template <typename TMeasurement, typename... TMeasurementArgs>
             double measurementUpdate(const TMeasurement& measurement,
-                                     const arma::mat& measurementVariance,
+                                     const Eigen::MatrixXd& measurementVariance,
                                      const TMeasurementArgs&... measurementArgs) {
-                arma::mat measurementTransform = model.StateToMeasurementTransform(measurement, measurementArgs...);
+                Eigen::MatrixXd measurementTransform =
+                    model.StateToMeasurementTransform(measurement, measurementArgs...);
 
-                arma::mat kalmanGain = processNoise * measurementTransform
-                                       * (arma::trimatu(measurementTransform * processNoisePartial * processNoise
-                                                            * measurementTransform.transpose()
-                                                        + measurementVariance))
-                                             .inverse();
+                Eigen::MatrixXd kalmanGain =
+                    processNoise * measurementTransform
+                    * ((measurementTransform * processNoisePartial * processNoise * measurementTransform.transpose()
+                        + measurementVariance)
+                           .triangularView<Eigen::Upper>())
+                          .inverse();
 
                 state += kalmanGain * (measurement - measurementTransform * state);
 

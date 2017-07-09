@@ -67,22 +67,22 @@ namespace localisation {
         }
 
         // Angle between goals - NOTE: CURRENTLY UNUSED
-        Eigen::VectorXd RobotModel::predictedObservation(const Eigen::Matrix<double, RobotModel::size, 1>& state,
-                                                         const std::vector<arma::vec>& actual_positions,
-                                                         const Sensors& /*sensors*/) {
+        double RobotModel::predictedObservation(const Eigen::Matrix<double, RobotModel::size, 1>& state,
+                                                const std::vector<Eigen::Vector2d>& actual_positions,
+                                                const Sensors& /*sensors*/) {
 
             // TODO: needs to incorporate new motion model position data
-            Eigen::VectorXd diff_1   = actual_positions[0].rows(0, 1) - state.rows(kX, kY);
-            Eigen::VectorXd diff_2   = actual_positions[1].rows(0, 1) - state.rows(kX, kY);
-            Eigen::VectorXd radial_1 = cartesianToRadial(diff_1);
-            Eigen::VectorXd radial_2 = cartesianToRadial(diff_2);
+            Eigen::Vector2d diff_1   = actual_positions[0].head<2>() - state.middleRows<kY - kX + 1>(kX);
+            Eigen::Vector2d diff_2   = actual_positions[1].head<2>() - state.middleRows<kY - kX + 1>(kX);
+            Eigen::Vector2d radial_1 = cartesianToRadial(diff_1);
+            Eigen::Vector2d radial_2 = cartesianToRadial(diff_2);
 
-            auto angle_diff = utility::math::angle::difference(radial_1[1], radial_2[1]);
+            double angle_diff = utility::math::angle::difference(radial_1[1], radial_2[1]);
 
             return {std::abs(angle_diff)};
         }
 
-        Eigen::VectorXd RobotModel::observationDifference(const arma::vec& a, const arma::vec& b) {
+        Eigen::VectorXd RobotModel::observationDifference(const Eigen::VectorXd& a, const Eigen::VectorXd& b) {
             if (a.size() == 1) {
                 return a - b;
             }
@@ -117,6 +117,6 @@ namespace localisation {
             return noise;
         }
     }
-    }  // namespace robot
+}  // namespace robot
 }  // namespace localisation
 }  // namespace module

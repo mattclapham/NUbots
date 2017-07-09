@@ -100,7 +100,7 @@ namespace math {
             return reference * (*this);
         }
 
-        Rotation3D Rotation3D::i() const {
+        Rotation3D Rotation3D::inverse() const {
             // http://en.wikipedia.org/wiki/Rotation_matrix#Multiplication
             // The inverse of a rotation matrix is its transpose, which is also a rotation matrix.
             return transpose();

@@ -20,7 +20,6 @@
 #ifndef MODULES_VISION_BALLDETECTOR_H
 #define MODULES_VISION_BALLDETECTOR_H
 
-#include <armadillo>
 #include <nuclear>
 
 #include "message/input/Image.h"

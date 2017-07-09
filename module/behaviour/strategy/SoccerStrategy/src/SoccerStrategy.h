@@ -20,7 +20,6 @@
 #ifndef MODULES_BEHAVIOUR_STRATEGY_SOCCERSTRATEGGY_H
 #define MODULES_BEHAVIOUR_STRATEGY_SOCCERSTRATEGGY_H
 
-#include <armadillo>
 #include <nuclear>
 
 #include "message/behaviour/Behaviour.h"

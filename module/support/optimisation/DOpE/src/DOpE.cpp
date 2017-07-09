@@ -27,7 +27,6 @@
 #include "message/support/optimisation/DOpE.h"
 #include "message/support/optimisation/Episode.h"
 #include "message/support/optimisation/Estimate.h"
-#include "utility/support/eigen_armadillo.h"
 
 namespace module {
 namespace support {

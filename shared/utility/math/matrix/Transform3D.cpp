@@ -121,7 +121,7 @@ namespace math {
         }
 
 
-        Transform3D Transform3D::i() const {
+        Transform3D Transform3D::inverse() const {
             // Create a new transform
             Transform3D inverseTransform3D;
             // Transpose the rotation submatrix (top-left 3x3), this is equivalent to taking the inverse of the rotation

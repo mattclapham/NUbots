@@ -1,5 +1,5 @@
 //////////////////////////////////////////////////////////////////////////////
-//	  Author: Jake Fountain 2015
+//    Author: Jake Fountain 2015
 //
 /// \file CalibrationTools.cpp
 /// \brief CPP file for CalibrationTools.h
@@ -33,14 +33,16 @@ Returns matrix M(v) such that for any vector x, cross(v,x) = dot(M(v),x)
 */
 Eigen::Matrix3d CalibrationTools::crossMatrix(const Eigen::Vector3d& v) {
     Eigen::Matrix3d omega;
-    omega << 0 << -v[2] << v[1] << arma::endr << v[2] << 0 << -v[0] << arma::endr << -v[1] << v[0] << 0 << arma::endr;
+    omega << 0, -v[2], v[1],  // row 1
+        v[2], 0, -v[0],       // row 2
+        -v[1] << v[0] << 0;   // row 3
     return omega;
 }
 
 /*
  * Returns matrix of vectorised matrix v
 */
-arma::mat CalibrationTools::unvectorize(arma::mat v, int n_rows) {
+Eigen::MatrixXd CalibrationTools::unvectorize(Eigen::MatrixXd v, int n_rows) {
     int n_cols = 0;
     if (v.size() % n_rows != 0) {
         std::cout << "CalibrationTools::unvectorize - vector size is not divisible by number of rows: v.size() = "
@@ -49,36 +51,36 @@ arma::mat CalibrationTools::unvectorize(arma::mat v, int n_rows) {
     else {
         n_cols = v.size() / n_rows;
     }
-    arma::mat M = v;
-    M.reshape(n_rows, n_cols);
+    Eigen::MatrixXd M = Eigen::MatrixXd::Map(v, n_rows, n_cols);
     return M;
 }
 
 //
 // void CalibrationTools::checkOrthonormal(M){
 
-// 	if M.shape[0] == 4:
-// 		if numpy.linalg.norm(M[3,:3]) != 0:
-// 			print "\n\n\n\n\n\n\nBottom row of matrix non-zero ", numpy.linalg.norm(M[3,:3]), "\n\n\n\n\n\n\n"
-// 			return False
-// 	for i in range(3):
-// 		for j in range(3):
-// 			if not (numpy.allclose(dot(M[:3,i],M[:3,j]), kroneckerDelta(i,j))):
-// 				print "\n\n\n\n\n\n\nColumn ", i, " and Column ", j, " are not orthonormal: dotprod = ", dot(M[:3,i],M[:3,j]),
+//  if M.shape[0] == 4:
+//      if numpy.linalg.norm(M[3,:3]) != 0:
+//          print "\n\n\n\n\n\n\nBottom row of matrix non-zero ", numpy.linalg.norm(M[3,:3]), "\n\n\n\n\n\n\n"
+//          return False
+//  for i in range(3):
+//      for j in range(3):
+//          if not (numpy.allclose(dot(M[:3,i],M[:3,j]), kroneckerDelta(i,j))):
+//              print "\n\n\n\n\n\n\nColumn ", i, " and Column ", j, " are not orthonormal: dotprod = ",
+// dot(M[:3,i],M[:3,j]),
 // "\n\n\n\n\n\n\n"
-// 				return False
-// 	return True
+//              return False
+//  return True
 // }
 
 /*
     Computes least squares solution x to Ax = b using the psuedoinverse
 */
-bool CalibrationTools::solveWithSVD(const arma::mat& A, const arma::vec& b, arma::mat& x) {
+bool CalibrationTools::solveWithSVD(const Eigen::MatrixXd& A, const Eigen::VectorXd& b, Eigen::MatrixXd& x) {
     if (A.n_rows != b.n_rows) {
         throw("Problem badly formulated!");
     }
     // Compute pseudo inverse
-    arma::mat pinvA;
+    Eigen::MatrixXd pinvA;
     bool success = arma::pinv(pinvA, A);
     // Compute x in Ax=b
     if (success) x = pinvA * b;
@@ -95,7 +97,7 @@ std::pair<Eigen::Vector3d, Eigen::Vector3d> CalibrationTools::getTranslationComp
     const std::vector<Transform3D>& samplesB,
     const Rotation3D& Ry,
     bool& success) {
-    arma::mat combinedF;
+    Eigen::MatrixXd combinedF;
     Eigen::VectorXd combinedD;
 
     for (int i = 0; i < samplesA.size(); i++) {
@@ -103,7 +105,7 @@ std::pair<Eigen::Vector3d, Eigen::Vector3d> CalibrationTools::getTranslationComp
         Eigen::Vector3d pA = samplesA[i].translation();
         Eigen::Vector3d pB = samplesB[i].translation();
 
-        arma::mat F = arma::join_rows(RA, -Eigen::Matrix3d::Identity());
+        Eigen::MatrixXd F = arma::join_rows(RA, -Eigen::Matrix3d::Identity());
 
         Eigen::VectorXd D = Ry * pB - pA;
 
@@ -156,7 +158,7 @@ std::pair<Transform3D, Transform3D> CalibrationTools::solveZhuang1994(const std:
     }
     Transform3D X, Y;
 
-    arma::mat combinedG;
+    Eigen::MatrixXd combinedG;
     Eigen::VectorXd combinedC;
 
     float a0 = 0;
@@ -189,10 +191,10 @@ std::pair<Transform3D, Transform3D> CalibrationTools::solveZhuang1994(const std:
             return std::pair<Transform3D, Transform3D>();
         }
 
-        arma::mat G1 = a0 * Eigen::Matrix3d::Identity() + crossMatrix(a) + a * a.transpose() / a0;
-        arma::mat G2 = -b0 * Eigen::Matrix3d::Identity() + crossMatrix(b) - a * b.transpose() / a0;
+        Eigen::MatrixXd G1 = a0 * Eigen::Matrix3d::Identity() + crossMatrix(a) + a * a.transpose() / a0;
+        Eigen::MatrixXd G2 = -b0 * Eigen::Matrix3d::Identity() + crossMatrix(b) - a * b.transpose() / a0;
 
-        arma::mat G = arma::join_rows(G1, G2);
+        Eigen::MatrixXd G = arma::join_rows(G1, G2);
 
         // Compute C in Gw = C
         Eigen::VectorXd C = b - (b0 / a0) * a;
@@ -263,25 +265,25 @@ std::pair<Transform3D, Transform3D> CalibrationTools::solveZhuang1994(const std:
 
 
 // @article{shah_solving_2013,
-// 	title = {Solving the {Robot}-{World}/{Hand}-{Eye} {Calibration} {Problem} {Using} the {Kronecker} {Product}},
-// 	volume = {5},
-// 	issn = {1942-4302},
-// 	url = {http://dx.doi.org/10.1115/1.4024473},
-// 	doi = {10.1115/1.4024473},
-// 	abstract = {This paper constructs a separable closed-form solution to the robot-world/hand-eye calibration problem
+//  title = {Solving the {Robot}-{World}/{Hand}-{Eye} {Calibration} {Problem} {Using} the {Kronecker} {Product}},
+//  volume = {5},
+//  issn = {1942-4302},
+//  url = {http://dx.doi.org/10.1115/1.4024473},
+//  doi = {10.1115/1.4024473},
+//  abstract = {This paper constructs a separable closed-form solution to the robot-world/hand-eye calibration problem
 // AX = YB. Qualifications and properties that determine the uniqueness of X and Y as well as error metrics that measure
 // the accuracy of a given X and Y are given. The formulation of the solution involves the Kronecker product and the
 // singular value decomposition. The method is compared with existing solutions on simulated data and real data. It is
 // shown that the Kronecker method that is presented in this paper is a reliable and accurate method for solving the
 // robot-world/hand-eye calibration problem.},
-// 	number = {3},
-// 	urldate = {2015-10-12},
-// 	journal = {Journal of Mechanisms and Robotics},
-// 	author = {Shah, Mili},
-// 	month = jun,
-// 	year = {2013},
-// 	pages = {031007--031007},
-// 	file = {Full Text PDF:/Users/jake/Library/Application
+//  number = {3},
+//  urldate = {2015-10-12},
+//  journal = {Journal of Mechanisms and Robotics},
+//  author = {Shah, Mili},
+//  month = jun,
+//  year = {2013},
+//  pages = {031007--031007},
+//  file = {Full Text PDF:/Users/jake/Library/Application
 // Support/Zotero/Profiles/3jsx8rgb.default/zotero/storage/ZBI8MGZA/Shah - 2013 - Solving the Robot-WorldHand-Eye
 // Calibration Probl.pdf:application/pdf}
 // }
@@ -300,8 +302,8 @@ CalibrationTools::solveKronecker_Shah2013(const std::vector<utility::math::matri
     // Rotation part
 
     // Create kronecker matrix K
-    int n       = samplesA.size();
-    arma::mat K = Eigen::Matrix<double, 9, 9>::Zero();
+    int n             = samplesA.size();
+    Eigen::MatrixXd K = Eigen::Matrix<double, 9, 9>::Zero();
     for (int i = 0; i < n; i++) {
         const Transform3D& A = samplesA[i];
         const Transform3D& B = samplesB[i];
@@ -310,7 +312,7 @@ CalibrationTools::solveKronecker_Shah2013(const std::vector<utility::math::matri
     }
 
     // Take singular value decomposition of K
-    arma::mat U, V;
+    Eigen::MatrixXd U, V;
     Eigen::VectorXd s;
     arma::svd(U, s, V, K);
 
@@ -332,8 +334,8 @@ CalibrationTools::solveKronecker_Shah2013(const std::vector<utility::math::matri
     // std::cout << "s(index)  = \n" << s(index) << std::endl;
     // std::cout << "v = \n" << v << std::endl;
 
-    arma::mat V_x = unvectorize(u, 3);
-    arma::mat V_y = unvectorize(v, 3);
+    Eigen::MatrixXd V_x = unvectorize(u, 3);
+    Eigen::MatrixXd V_y = unvectorize(v, 3);
 
     float detV_x = arma::det(V_x);
     float detV_y = arma::det(V_y);
@@ -391,7 +393,7 @@ CalibrationTools::solveClosedForm_Dornaika1998(const std::vector<utility::math::
     Eigen::Matrix4d CTC = C.transpose() * C;
 
     Eigen::VectorXd eigval;
-    arma::mat eigvec;
+    Eigen::MatrixXd eigvec;
     arma::eig_sym(eigval, eigvec, CTC);
     std::cout << "eigval = " << eigval << std::endl;
     std::cout << "eigvec = " << eigvec << std::endl;

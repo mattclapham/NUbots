@@ -150,7 +150,7 @@ namespace motion {
                 limitPose(goalCamPose);
 
                 // pose << user.head_pose();
-                // goalCamPose = Transform3D(arma::conv_to<arma::mat>::from(pose));
+                // goalCamPose = Transform3D(pose.cast<double>());
                 // std::cout << "goalCamPose = \n" << goalCamPose << std::endl;
                 // std::cout << "robotCamPos = " << user.head_pose().transpose().x() << " "<<
                 // user.head_pose().transpose().y() << " "<<  user.head_pose().transpose().z() << std::endl;

@@ -53,10 +53,10 @@ namespace motion {
     };
 
 
-        arma::vec2 currentAngles;
-        arma::vec2 goalAngles;
-        bool goalRobotSpace = true;
-    };
+    Eigen::Vector2d currentAngles;
+    Eigen::Vector2d goalAngles;
+    bool goalRobotSpace = true;
+};
 
 }  // namespace motion
 }  // namespace module

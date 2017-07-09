@@ -1,7 +1,7 @@
 #ifndef UTILITY_MATH_STATISTICS_STATISTICS_H
 #define UTILITY_MATH_STATISTICS_STATISTICS_H
 
-#include <armadillo>
+#include <Eigen/Core>
 #include <cmath>
 #include <vector>
 

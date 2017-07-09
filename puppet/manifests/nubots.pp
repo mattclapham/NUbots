@@ -211,17 +211,6 @@ node nubotsvmbuild {
     method    => 'wget',
   }
 
-  # Perform any complicated postbuild instructions here.
-  $archs.each |String $arch, Hash $params| {
-    # Update the armadillo config header file for all archs.
-    file { "armadillo_${arch}_config":
-      path    => "/nubots/toolchain/${arch}/include/armadillo_bits/config.hpp",
-      source  => 'puppet:///modules/files/nubots/toolchain/include/armadillo_bits/config.hpp',
-      ensure  => present,
-      require => [ Installer['armadillo'], ],
-    }
-  }
-
   archive { "Spinnaker_nuc7i7bnh":
     url              => "http://nubots.net/tarballs/spinnaker_1_0_0_295_amd64.tar.gz",
     target           => "/nubots/toolchain/nuc7i7bnh/src/Spinnaker",

@@ -20,7 +20,6 @@
 #ifndef UTILITY_MATH_ANGLE_H
 #define UTILITY_MATH_ANGLE_H
 
-#include <armadillo>
 #include <cmath>
 
 #include <Eigen/Core>

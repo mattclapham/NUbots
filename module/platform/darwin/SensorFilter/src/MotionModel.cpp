@@ -124,14 +124,6 @@ namespace platform {
             // Return our process noise matrix
             return processNoiseMatrix;
         }
-    }
-}
-}
-
-        const arma::mat::fixed<MotionModel::size, MotionModel::size>& MotionModel::processNoise() {
-            // Return our process noise matrix
-            return processNoiseMatrix;
-        }
     }  // namespace darwin
 }  // namespace platform
 }  // namespace module

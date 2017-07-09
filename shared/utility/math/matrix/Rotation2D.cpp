@@ -27,7 +27,7 @@ namespace math {
             return *this * createRotation(radians);
         }
 
-        Rotation2D Rotation2D::i() const {
+        Rotation2D Rotation2D::inverse() const {
             // http://en.wikipedia.org/wiki/Rotation_matrix#Multiplication
             // The inverse of a rotation matrix is its transpose, which is also a rotation matrix.
             return transpose();

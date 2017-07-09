@@ -28,6 +28,7 @@
 #include "message/input/Sensors.h"
 #include "message/motion/WalkCommand.h"
 
+#include "utility/math/matrix/Rotation3D.h"
 
 namespace module {
 namespace behaviour {
@@ -49,7 +50,7 @@ namespace behaviour {
             NUClear::clock::time_point segmentStart;
             NUClear::clock::duration segmentElapsedTimeBeforeFall;
 
-            arma::mat beginningOrientation;
+            utility::math::matrix::Rotation3D beginningOrientation;
             bool active = false;
             bool fallen = false;
 
@@ -61,7 +62,7 @@ namespace behaviour {
 }  // behaviours
 }  // modules
 
-    }  // namespace planning
+}  // namespace planning
 }  // namespace behaviour
 }  // namespace module
 

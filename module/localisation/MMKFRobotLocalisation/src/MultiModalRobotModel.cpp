@@ -105,8 +105,8 @@ namespace localisation {
         // auto& lfo_a = actual_objects[0];
         // auto& lfo_b = actual_objects[1];
 
-        // std::vector<arma::vec> actual_positions = {
-        //     arma::vec(lfo_a.location()), arma::vec(lfo_b.location())
+        // std::vector<Eigen::VectorXd> actual_positions = {
+        //     Eigen::VectorXd(lfo_a.location()), Eigen::VectorXd(lfo_b.location())
         // };
 
         // // Use a dot product to calculate heading distance:
@@ -115,7 +115,8 @@ namespace localisation {
         // double heading_diff = utility::math::angle::acos_clamped(unit_a.dot(unit_b));
 
         // Eigen::VectorXd measurement = { std::abs(heading_diff) };
-        // arma::mat cov = Eigen::Matrix<double, 1, 1>::Identity() * 0.1; // TODO: Calculate correct covariance
+        // Eigen::Matrix<double, 1, 1> cov = Eigen::Matrix<double, 1, 1>::Identity() * 0.1; // TODO: Calculate correct
+        // covariance
 
         // double quality = filter_.measurementUpdate(measurement, cov, actual_positions, *(obv_a.sensors));
 

@@ -174,7 +174,7 @@ namespace support {
             return state;
         }
 
-        void WalkOptimiser::printState(const arma::vec& state) {
+        void WalkOptimiser::printState(const Eigen::VectorXd& state) {
             std::cerr << "[";
             for (uint i = 0; i < parameter_names.size(); ++i) {
                 std::cerr << parameter_names[i] << ": " << state[i] << ", ";
@@ -182,7 +182,7 @@ namespace support {
             std::cerr << std::endl;
         }
 
-        YAML::Node WalkOptimiser::getWalkConfig(const arma::vec& state) {
+        YAML::Node WalkOptimiser::getWalkConfig(const Eigen::VectorXd& state) {
             YAML::Node config(initialConfig.config);
             for (uint i = 0; i < state.size(); ++i) {
                 config[parameter_names[i]] = state[i];

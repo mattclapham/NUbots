@@ -20,7 +20,6 @@
 #ifndef MODULES_MOTION_OLDWALKENGINE_H
 #define MODULES_MOTION_OLDWALKENGINE_H
 
-#include <armadillo>
 #include <nuclear>
 
 #include <yaml-cpp/yaml.h>

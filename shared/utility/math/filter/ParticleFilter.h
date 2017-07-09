@@ -55,7 +55,7 @@ namespace math {
                            StateMat initialCovariance = StateMat::Identity() * 0.1,
                            int number_of_particles_   = 100,
                            StateVec sigma_sq_         = 0.1 * StateMat::Ones()) {
-                sigma_sq = arma::abs(sigma_sq_);
+                sigma_sq = sigma_sq_.cwiseAbs();
                 reset(initialMean, initialCovariance, number_of_particles_);
             }
 

@@ -92,7 +92,7 @@ namespace math {
              */
             Transform2D interpolate(double t, const Transform2D& target) const;
 
-            Transform2D i() const;
+            Transform2D inverse() const;
 
             inline double x() const {
                 return operator[](0);

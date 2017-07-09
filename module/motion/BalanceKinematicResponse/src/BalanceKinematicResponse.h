@@ -20,7 +20,6 @@
 #ifndef MODULE_MOTION_BALANCEKINEMATICRESPONSE_H
 #define MODULE_MOTION_BALANCEKINEMATICRESPONSE_H
 
-#include <armadillo>
 #include <nuclear>
 
 #include <yaml-cpp/yaml.h>

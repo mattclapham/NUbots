@@ -25,7 +25,6 @@
 #include <cmath>
 
 #include "message/support/optimisation/OptimiserTypes.h"
-#include "utility/support/eigen_armadillo.h"
 
 #include "utility/support/eigen.h"
 

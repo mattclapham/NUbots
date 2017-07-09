@@ -40,8 +40,8 @@ namespace motion {
 
     class SixDOFFrame {
         // enum InterpolationType {
-        // 	LINEAR = 0,
-        // 	SERVO = 1
+        //  LINEAR = 0,
+        //  SERVO = 1
         // TODO:
         // };
         // InterpolationType interpolation = LINEAR;
@@ -122,8 +122,8 @@ namespace motion {
             , forward_duration(0.0f)
             , return_duration(0.0f)
             , anim()
-            , ballPosition(arma::fill::zeros)
-            , goalPosition(arma::fill::zeros)
+            , ballPosition(Eigen::Vector3d::Zero())
+            , goalPosition(Eigen::Vector3d::Zero())
             , motionStartTime() {}
         virtual ~SixDOFFootController() = default;
 

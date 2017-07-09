@@ -69,11 +69,11 @@ namespace localisation {
             //    const Eigen::Matrix<double, RobotModel::size, 1>& state,
             //    const message::input::Sensors& sensors);
 
-            Eigen::VectorXd predictedObservation(const Eigen::Matrix<double, RobotModel::size, 1>& state,
-                                                 const std::vector<arma::vec>& actual_positions,
-                                                 const message::input::Sensors& sensors);
+            double predictedObservation(const Eigen::Matrix<double, RobotModel::size, 1>& state,
+                                        const std::vector<Eigen::Vector2d>& actual_positions,
+                                        const message::input::Sensors& sensors);
 
-            Eigen::VectorXd observationDifference(const arma::vec& a, const arma::vec& b);
+            Eigen::VectorXd observationDifference(const Eigen::VectorXd& a, const Eigen::VectorXd& b);
 
             Eigen::Matrix<double, size, 1> limitState(const Eigen::Matrix<double, size, 1>& state);
 

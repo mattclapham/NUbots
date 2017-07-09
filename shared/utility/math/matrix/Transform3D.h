@@ -188,7 +188,7 @@ namespace math {
              *
              * @return The inverse transform
              */
-            Transform3D i() const;
+            Transform3D inverse() const;
 
             /**
              * @return The 3x3 rotation matrix
