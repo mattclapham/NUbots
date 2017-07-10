@@ -81,7 +81,7 @@ namespace motion {
         UnitQuaternion errorQuaternion(errorOrientation);
 
         // Calculate our D error and I error
-        UnitQuaternion differential = lastErrorQuaternion.i() * errorQuaternion;
+        UnitQuaternion differential = lastErrorQuaternion.inverse() * errorQuaternion;
 
         // TODO: LEARN HOW TO COMPUTE THE INTEGRAL TERM CORRECTLY
         // footGoalErrorSum = footGoalErrorSum.slerp(goalQuaternion * footGoalErrorSum, 1.0/90.0);

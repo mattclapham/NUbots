@@ -348,12 +348,9 @@ namespace conversion {
         template <typename... Args>
         inline void z(const Args&...) {}
 
-            template <typename Proto, typename Vector>
-            inline auto t(Proto& proto, const Vector& vector) -> decltype(proto.transpose(), void()) {
-                proto.set_t(vector[3]);
-            }
-            template <typename... Args>
-            inline void t(const Args&...) {}
+        template <typename Proto, typename Vector>
+        inline auto t(Proto& proto, const Vector& vector) -> decltype(proto.transpose(), void()) {
+            proto.set_t(vector[3]);
         }
         template <typename... Args>
         inline void t(const Args&...) {}
@@ -384,12 +381,9 @@ namespace conversion {
         template <typename... Args>
         inline void z(const Args&...) {}
 
-            template <typename Proto, typename Vector>
-            inline auto t(Vector&& vector, const Proto& proto) -> decltype(proto.transpose(), void()) {
-                vector[3] = proto.transpose();
-            }
-            template <typename... Args>
-            inline void t(const Args&...) {}
+        template <typename Proto, typename Vector>
+        inline auto t(Vector&& vector, const Proto& proto) -> decltype(proto.transpose(), void()) {
+            vector[3] = proto.transpose();
         }
         template <typename... Args>
         inline void t(const Args&...) {}
@@ -429,15 +423,12 @@ namespace conversion {
         template <typename... Args>
         inline void z(const Args&...) {}
 
-            template <typename Proto, typename Matrix>
-            inline auto t(Proto& proto, const Matrix& matrix) -> decltype(proto.transpose(), void()) {
-                set_protobuf_from_vector::x(*proto.mutable_t(), matrix.col(3));
-                set_protobuf_from_vector::y(*proto.mutable_t(), matrix.col(3));
-                set_protobuf_from_vector::z(*proto.mutable_t(), matrix.col(3));
-                set_protobuf_from_vector::t(*proto.mutable_t(), matrix.col(3));
-            }
-            template <typename... Args>
-            inline void t(const Args&...) {}
+        template <typename Proto, typename Matrix>
+        inline auto t(Proto& proto, const Matrix& matrix) -> decltype(proto.transpose(), void()) {
+            set_protobuf_from_vector::x(*proto.mutable_t(), matrix.col(3));
+            set_protobuf_from_vector::y(*proto.mutable_t(), matrix.col(3));
+            set_protobuf_from_vector::z(*proto.mutable_t(), matrix.col(3));
+            set_protobuf_from_vector::t(*proto.mutable_t(), matrix.col(3));
         }
         template <typename... Args>
         inline void t(const Args&...) {}
@@ -477,15 +468,12 @@ namespace conversion {
         template <typename... Args>
         inline void z(Args&...) {}
 
-            template <typename Proto, typename Matrix>
-            inline auto t(Matrix& matrix, const Proto& proto) -> decltype(proto.transpose(), void()) {
-                set_vector_from_protobuf::x(matrix.col(3), proto.transpose());
-                set_vector_from_protobuf::y(matrix.col(3), proto.transpose());
-                set_vector_from_protobuf::z(matrix.col(3), proto.transpose());
-                set_vector_from_protobuf::t(matrix.col(3), proto.transpose());
-            }
-            template <typename... Args>
-            inline void t(Args&...) {}
+        template <typename Proto, typename Matrix>
+        inline auto t(Matrix& matrix, const Proto& proto) -> decltype(proto.transpose(), void()) {
+            set_vector_from_protobuf::x(matrix.col(3), proto.transpose());
+            set_vector_from_protobuf::y(matrix.col(3), proto.transpose());
+            set_vector_from_protobuf::z(matrix.col(3), proto.transpose());
+            set_vector_from_protobuf::t(matrix.col(3), proto.transpose());
         }
         template <typename... Args>
         inline void t(Args&...) {}

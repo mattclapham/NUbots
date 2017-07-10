@@ -30,9 +30,9 @@ namespace support {
 
             on<Configuration>("NetworkConfiguration.yaml").then([this](const Configuration& config) {
                 auto netConfig             = std::make_unique<NUClear::message::NetworkConfiguration>();
-                netConfig->name            = config["name"];
-                netConfig->multicast_group = config["address"];
-                netConfig->multicast_port  = config["port"];
+                netConfig->name            = config["name"].as<std::string>();
+                netConfig->multicast_group = config["address"].as<std::string>();
+                netConfig->multicast_port  = config["port"].as<uint16_t>();
                 emit<Scope::DIRECT>(netConfig);
             });
 

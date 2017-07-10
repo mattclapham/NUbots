@@ -129,10 +129,6 @@ namespace behaviour {
     public:
         explicit Controller(std::unique_ptr<NUClear::Environment> environment);
     };
-
-}  // behaviours
-}  // modules
-
 }  // namespace behaviour
 }  // namespace module
 

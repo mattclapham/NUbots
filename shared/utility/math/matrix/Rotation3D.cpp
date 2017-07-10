@@ -67,7 +67,7 @@ namespace math {
 
         Rotation3D::Rotation(const Eigen::Vector3d& axis, double angle) : Rotation(axis) {
             // Rotate by angle
-            *this *= Rotation3D::createRotationX(angle) * i();
+            *this *= Rotation3D::createRotationX(angle) * inverse();
         }
 
         Rotation3D Rotation3D::orthogonalise() const {

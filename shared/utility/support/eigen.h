@@ -208,6 +208,49 @@ namespace support {
         T out(rows, cols);
         return out.unaryExpr([&](typename T::Scalar) -> typename T::Scalar { return d(gen); });
     }
+
+    // https://gist.github.com/javidcf/25066cf85e71105d57b6
+    template <typename T>
+    T pseudoinverse(const T& mat, typename T::Scalar tolerance = static_cast<typename T::Scalar>(1e-6)) {
+        auto svd                   = mat.jacobiSvd(Eigen::ComputeFullU | Eigen::ComputeFullV);
+        const auto& singularValues = svd.singularValues();
+        T singularValuesInv        = T::Zero(mat.cols(), mat.rows());
+
+        for (ssize_t i = 0; i < singularValues.size(); ++i) {
+            if (singularValues(i) > tolerance) {
+                singularValuesInv(i, i) = static_cast<typename T::Scalar>(1) / singularValues(i);
+            }
+            else {
+                singularValuesInv(i, i) = static_cast<typename T::Scalar>(0);
+            }
+        }
+
+        return svd.matrixV() * singularValuesInv * svd.matrixU().adjoint();
+    }
+
+    template <typename T>
+    void SVD(Eigen::Matrix<typename T::Scalar, Eigen::Dynamic, Eigen::Dynamic>& U,
+             Eigen::Matrix<typename T::Scalar, Eigen::Dynamic, 1>& s,
+             Eigen::Matrix<typename T::Scalar, Eigen::Dynamic, Eigen::Dynamic>& V,
+             const T& A) {
+        auto svd = A.jacobiSvd(Eigen::ComputeFullU | Eigen::ComputeFullV);
+        U        = svd.matrixU();
+        s        = svd.singularValues();
+        V        = svd.matrixV();
+    }
+
+    template <typename T1, typename T2>
+    Eigen::MatrixXd kronecker(const T1& m1, const T2& m2) {
+        Eigen::MatrixXd m3(m1.rows() * m2.rows(), m1.cols() * m2.cols());
+
+        for (ssize_t i = 0; i < m1.rows(); i++) {
+            for (ssize_t j = 0; j < m1.cols(); j++) {
+                m3.block(i * m2.rows(), j * m2.cols(), m2.rows(), m2.cols()) = m1(i, j) * m2;
+            }
+        }
+
+        return m3;
+    }
 }
 }
 

@@ -51,13 +51,7 @@ namespace motion {
         Eigen::Vector2d goalAngles;
         bool goalRobotSpace = true;
     };
-
-
-    Eigen::Vector2d currentAngles;
-    Eigen::Vector2d goalAngles;
-    bool goalRobotSpace = true;
-};
-
 }  // namespace motion
 }  // namespace module
+
 #endif  // MODULES_BEHAVIOURS_REFLEX_HEADCONTROLLER_H

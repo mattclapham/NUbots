@@ -304,7 +304,8 @@ namespace math {
              * and the translation is projected onto the plane normal to yawAxis
              */
 
-            Transform2D projectTo2D(const Eigen::Vector3d& yawAxis, const Eigen::Vector3d& forwardAxis) const;
+            Transform2D projectTo2D(const Eigen::Vector3d& yawAxis     = Eigen::Vector3d{0, 0, 1},
+                                    const Eigen::Vector3d& forwardAxis = Eigen::Vector3d{1, 0, 0}) const;
         };
 
     }  // namespace matrix

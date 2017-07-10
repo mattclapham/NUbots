@@ -105,7 +105,7 @@ namespace math {
         inline Eigen::Vector2d projectWorldPointToScreen(const Eigen::Vector4d& point,
                                                          const utility::math::matrix::Transform3D& camToGround,
                                                          const double& camFocalLengthPixels) {
-            Eigen::Vector4d camSpacePoint = camToGround.i() * point;
+            Eigen::Vector4d camSpacePoint = camToGround.inverse() * point;
             return projectCamSpaceToScreen(camSpacePoint.head<3>(), camFocalLengthPixels);
         }
         inline Eigen::Vector2d projectWorldPointToScreen(const Eigen::Vector3d& point,
@@ -212,7 +212,7 @@ namespace math {
 
             utility::math::matrix::Transform3D Htf = utility::math::matrix::Transform3D(Tft).inverse();
 
-            return Htc.i() * Htf;
+            return Htc.inverse() * Htf;
         }
 
         // camtoground is either camera to ground or camera to world, depending on application

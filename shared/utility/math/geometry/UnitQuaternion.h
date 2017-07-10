@@ -82,7 +82,7 @@ namespace math {
 
             /*! @brief Gets the inverse of the quaternion
              */
-            UnitQuaternion i() const;
+            UnitQuaternion inverse() const;
 
             Eigen::Vector3d rotateVector(const Eigen::Vector3d& v) const;
 

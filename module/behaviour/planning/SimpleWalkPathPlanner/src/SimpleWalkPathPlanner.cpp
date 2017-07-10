@@ -78,6 +78,7 @@ namespace behaviour {
         using message::vision::Ball;
 
         using utility::localisation::transform::RobotToWorldTransform;
+        using utility::localisation::transform::WorldToRobotTransform;
 
         using utility::behaviour::RegisterAction;
         using utility::behaviour::ActionPriorites;
@@ -98,13 +99,19 @@ namespace behaviour {
             // do a little configurating
             on<Configuration>("SimpleWalkPathPlanner.yaml").then([this](const Configuration& file) {
 
-                turnSpeed          = file.config["turnSpeed"].as<float>();
-                forwardSpeed       = file.config["forwardSpeed"].as<float>();
-                a                  = file.config["a"].as<float>();
-                b                  = file.config["b"].as<float>();
-                search_timeout     = file.config["search_timeout"].as<float>();
-                robot_ground_space = file.config["robot_ground_space"].as<bool>();
+                turnSpeed            = file.config["turnSpeed"].as<float>();
+                forwardSpeed         = file.config["forwardSpeed"].as<float>();
+                sideSpeed            = file.config["sideSpeed"].as<float>();
+                a                    = file.config["a"].as<float>();
+                b                    = file.config["b"].as<float>();
+                search_timeout       = file.config["search_timeout"].as<float>();
+                robot_ground_space   = file.config["robot_ground_space"].as<bool>();
+                ball_approach_dist   = file.config["ball_approach_dist"].as<float>();
+                slowdown_distance    = file.config["slowdown_distance"].as<float>();
+                useLocalisation      = file.config["useLocalisation"].as<bool>();
+                slow_approach_factor = file.config["slow_approach_factor"].as<float>();
 
+                emit(std::make_unique<WantsToKick>(false));
             });
 
             emit<Scope::INITIALIZE>(std::make_unique<RegisterAction>(RegisterAction{
@@ -140,128 +147,147 @@ namespace behaviour {
                With<std::vector<Self>>,
                With<Sensors>,
                With<WantsToKick>,
+               With<KickPlan>,
                Sync<SimpleWalkPathPlanner>>()
                 .then([this](const std::vector<Ball>& ball,
                              const std::vector<Self>& selfs,
                              const Sensors& sensors,
-                             const WantsToKick& wantsTo) {
+                             const WantsToKick& wantsTo,
+                             const KickPlan& kickPlan) {
+                    if (wantsTo.kick) {
+                        emit(std::make_unique<StopCommand>(subsumptionId));
+                        return;
+                    }
 
-                if (wantsTo.kick) {
-                    emit(std::make_unique<StopCommand>(subsumptionId));
-                    return;
-                }
-
-                if (latestCommand.type == message::behaviour::MotionCommand::Type::StandStill) {
+                    if (latestCommand.type == message::behaviour::MotionCommand::Type::StandStill) {
 
 
-                    emit(std::make_unique<StopCommand>(subsumptionId));
-                    // emit(std::make_unique<ActionPriorites>(ActionPriorites { subsumptionId, { 40, 11 }}));
+                        emit(std::make_unique<StopCommand>(subsumptionId));
+                        // emit(std::make_unique<ActionPriorites>(ActionPriorites { subsumptionId, { 40, 11 }}));
 
-                    return;
-                }
-                else if (latestCommand.type == message::behaviour::MotionCommand::Type::DirectCommand) {
-                    // TO DO, change to Bezier stuff
-                    std::unique_ptr<WalkCommand> command =
-                        std::make_unique<WalkCommand>(subsumptionId, latestCommand.walkCommand);
-                    emit(std::move(command));
-                    emit(std::make_unique<ActionPriorites>(ActionPriorites{subsumptionId, {40, 11}}));
-                    return;
-                }
+                        return;
+                    }
+                    else if (latestCommand.type == message::behaviour::MotionCommand::Type::DirectCommand) {
+                        // TO DO, change to Bezier stuff
+                        std::unique_ptr<WalkCommand> command =
+                            std::make_unique<WalkCommand>(subsumptionId, latestCommand.walkCommand);
+                        emit(std::move(command));
+                        emit(std::make_unique<ActionPriorites>(ActionPriorites{subsumptionId, {40, 11}}));
+                        return;
+                    }
 
-                Transform3D Htw = sensors.world;
-                auto now        = NUClear::clock::now();
-                float timeSinceBallSeen =
-                    std::chrono::duration_cast<std::chrono::nanoseconds>(now - timeBallLastSeen).count()
-                    * (1 / std::nano::den);
+                    Transform3D Htw = sensors.world;
+                    auto now        = NUClear::clock::now();
+                    float timeSinceBallSeen =
+                        std::chrono::duration_cast<std::chrono::nanoseconds>(now - timeBallLastSeen).count()
+                        * (1 / std::nano::den);
 
-                // position = {1,0,0};
-                // TODO: support non-ball targets
-                if (!robot_ground_space) {
-                    if (ball.size() > 0) {
-                        rBWw.head<2>()   = ball[0].position.head<2>();
-                        timeBallLastSeen = now;
-                        // log("ball seen");
+                    // TODO: support non-ball targets
+                    if (!robot_ground_space) {
+                        if (ball.size() > 0) {
+                            Eigen::Vector2d rBWw_vec2 = ball[0].position.head<2>();
+                            rBWw[0]                   = rBWw_vec2[0];
+                            rBWw[1]                   = rBWw_vec2[1];
+
+                            timeBallLastSeen = now;
+                            // log("ball seen");
+                        }
+                        else {
+                            rBWw = timeSinceBallSeen < search_timeout ? rBWw :  // Place last seen
+                                       Htw.x() + Htw.translation();             // In front of the robot
+                        }
+                        Eigen::Vector3d position3d = Htw.transformPoint(rBWw);
+                        position[0]                = position3d[0];
+                        position[1]                = position3d[1];
                     }
                     else {
-                        rBWw = timeSinceBallSeen < search_timeout ? rBWw :  // Place last seen
-                                   Htw.x() + Htw.translation();             // In front of the robot
+                        if (ball.size() > 0) {
+                            position         = ball[0].torsoSpacePosition;
+                            timeBallLastSeen = now;
+                        }
+                        else {
+                            position.head<2>() = timeSinceBallSeen < search_timeout
+                                                     ? position.head<2>()        // Place last seen
+                                                     : Eigen::Vector2d({1, 0});  // In front of the robot
+                        }
                     }
-                    position = Htw.transformPoint(rBWw);
-                }
-                else {
-                    if (ball.size() > 0) {
-                        position         = ball[0].torsoSpacePosition;
-                        timeBallLastSeen = now;
-                    }
-                    else {
-                        position = timeSinceBallSeen < search_timeout ? position :  // Place last seen
-                                       Eigen::Vector3d{1, 0, 0};                    // In front of the robot
-                    }
-                }
 
-                // log("rBWw",rBWw.transpose());
-                // log("Htw\n",Htw);
+                    // Hack Planner:
+                    float headingChange = 0;
+                    float sideStep      = 0;
+                    float speedFactor   = 1;
+                    if (useLocalisation) {
+                        Eigen::Vector2d kick_target = WorldToRobotTransform(
+                            selfs.front().locObject.position, selfs.front().heading, kickPlan.target);
+                        // //approach point:
+                        Eigen::Vector2d ballToTarget = (kick_target - position.head<2>()).normalized();
+                        Eigen::Vector2d kick_point   = position.head<2>() - ballToTarget * ball_approach_dist;
 
-                if (position.norm() > slowdown_distance) {
-                    position = kick_point;
-                }
-                else {
-                    speedFactor   = slow_approach_factor;
-                    headingChange = std::atan2(ballToTarget[1], ballToTarget[0]);
-                    sideStep      = 1;
-                }
+                        if (position.norm() > slowdown_distance) {
+                            position.head<2>() = kick_point;
+                        }
+                        else {
+                            speedFactor   = slow_approach_factor;
+                            headingChange = std::atan2(ballToTarget[1], ballToTarget[0]);
+                            sideStep      = 1;
+                        }
                     }
                     // Eigen::Vector2d ball_world_position = WorldToRobotTransform(selfs.front().position,
                     // selfs.front().heading, position);
 
-                    float angle = std::atan2(position[1], position[0]);
+
+                    float angle = std::atan2(position[1], position[0]) + headingChange;
                     // log("ball bearing", angle);
                     angle = std::min(turnSpeed, std::max(angle, -turnSpeed));
                     // log("turnSpeed", turnSpeed);
                     // log("ball bearing", angle);
                     // log("ball position", position);
-                    // log("loc position", selfs.front().position.transpose());
+                    // log("loc position", selfs.front().position.t());
                     // log("loc heading", selfs.front().heading);
 
                     // Euclidean distance to ball
-                    float distanceToBall    = position.head<2>().norm();
-                    float scale             = 2.0 / (1.0 + std::exp(-a * distanceToBall + b)) - 1.0;
-                    float scale2            = angle / M_PI;
-                    float finalForwardSpeed = forwardSpeed * scale * (1.0 - scale2);
+                    float scaleF            = 2.0 / (1.0 + std::exp(-a * std::fabs(position[0]) + b)) - 1.0;
+                    float scaleF2           = angle / M_PI;
+                    float finalForwardSpeed = speedFactor * forwardSpeed * scaleF * (1.0 - scaleF2);
+
+                    float scaleS         = 2.0 / (1.0 + std::exp(-a * std::fabs(position[1]) + b)) - 1.0;
+                    float scaleS2        = angle / M_PI;
+                    float finalSideSpeed = -speedFactor * ((0 < position[1]) - (position[1] < 0)) * sideStep * sideSpeed
+                                           * scaleS * (1.0 - scaleS2);
                     // log("forwardSpeed1", forwardSpeed);
                     // log("scale", scale);
                     // log("distanceToBall", distanceToBall);
                     // log("forwardSpeed2", finalForwardSpeed);
 
+
                     std::unique_ptr<WalkCommand> command =
                         std::make_unique<WalkCommand>(subsumptionId, Transform2D({0, 0, 0}));
-                    command->command = Transform2D({finalForwardSpeed, 0, angle});
+                    command->command = Transform2D({finalForwardSpeed, finalSideSpeed, angle});
 
+                    // TODO: delete this?!?!?
                     Eigen::Vector2d ball_world_position = RobotToWorldTransform(
                         selfs.front().locObject.position, selfs.front().heading, position.head<2>());
                     Eigen::Vector2d kick_target = 2 * ball_world_position - selfs.front().locObject.position;
                     emit(drawSphere("kick_target",
-                                    Eigen::Vector3d{kick_target[0], kick_target[1], 0.0},
+                                    Eigen::Vector3d({kick_target[0], kick_target[1], 0.0}),
                                     0.1,
-                                    Eigen::Vector3d{1, 0, 0},
+                                    Eigen::Vector3d({1, 0, 0}),
                                     0));
-                    // log("walkcommand",command->command[0],command->command[1]);
-                    // log("anglewalkcommand",command->command[2]);
-                    // log("ballPos: ",position.transpose());
+                    // log("kick_target", kick_target[0], kick_target[1]);
 
                     emit(std::make_unique<KickPlan>(KickPlan(kick_target, KickPlan::KickType::SCRIPTED)));
 
                     emit(std::move(command));
                     emit(std::make_unique<ActionPriorites>(ActionPriorites{subsumptionId, {40, 11}}));
-        });
+                });
 
-        on<Trigger<MotionCommand>, Sync<SimpleWalkPathPlanner>>().then([this](const MotionCommand& cmd) {
-            // save the plan
-            latestCommand = cmd;
+            on<Trigger<MotionCommand>, Sync<SimpleWalkPathPlanner>>().then([this](const MotionCommand& cmd) {
+                // save the plan
+                latestCommand = cmd;
 
-        });
-    }
+            });
+        }
 
-}  // planning
+    }  // planning
 }  // behaviours
 }  // modules

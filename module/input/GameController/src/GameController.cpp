@@ -565,8 +565,6 @@ namespace input {
             case gamecontroller::PenaltyState::ILLEGAL_DEFENSE: return PenaltyReason::ILLEGAL_DEFENSE;
             case gamecontroller::PenaltyState::REQUEST_FOR_PICKUP: return PenaltyReason::REQUEST_FOR_PICKUP;
             case gamecontroller::PenaltyState::REQUEST_FOR_SERVICE: return PenaltyReason::REQUEST_FOR_SERVICE;
-            case gamecontroller::PenaltyState::REQUEST_FOR_PICKUP_TO_SERVICE:
-                return PenaltyReason::REQUEST_FOR_PICKUP_TO_SERVICE;
             case gamecontroller::PenaltyState::SUBSTITUTE: return PenaltyReason::SUBSTITUTE;
             case gamecontroller::PenaltyState::MANUAL: return PenaltyReason::MANUAL;
             default: throw std::runtime_error("Invalid Penalty State");

@@ -70,7 +70,7 @@ namespace math {
             }
         }
 
-        UnitQuaternion UnitQuaternion::i() const {
+        UnitQuaternion UnitQuaternion::inverse() const {
             UnitQuaternion qi = *this;
             // take the congugate, as it is equal to the inverse when a unit vector
             qi.imaginary() *= -1;

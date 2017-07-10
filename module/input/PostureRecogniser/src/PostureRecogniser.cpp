@@ -76,30 +76,24 @@ namespace input {
 
             // Gyroscope (in radians/second)
             // Capture axis differences in gyroscope data...
-            Eigen::Vector3d gyroDiff   = sensors[0]->gyroscope - sensors[1]->gyroscope;
-            Eigen::Vector2d xzGyroDiff = {gyroDiff(0), gyroDiff(2)};
-            Eigen::Vector2d yzGyroDiff = {gyroDiff(1), gyroDiff(2)};
-            Eigen::Vector2d xyGyroDiff = {gyroDiff(0), gyroDiff(1)};
+            Eigen::Vector3d gyroDiff = sensors[0]->gyroscope - sensors[1]->gyroscope;
 
             // DEBUG: Accelerometer data...
             if (emitAccelerometer) {
-                emit(graph("xyGyroDiff", xyGyroDiff));
-                emit(graph("xzGyroDiff", xzGyroDiff));
-                emit(graph("yzGyroDiff", yzGyroDiff));
+                emit(graph("xyGyroDiff", gyroDiff(0), gyroDiff(1)));
+                emit(graph("xzGyroDiff", gyroDiff(0), gyroDiff(2)));
+                emit(graph("yzGyroDiff", gyroDiff(1), gyroDiff(2)));
             }
 
             // Accelerometer (in m/s^2)
             // Capture axis differences in accelerometer data...
-            Eigen::Vector3d accelDiff   = sensors[0]->accelerometer - sensors[1]->accelerometer;
-            Eigen::Vector2d xzAccelDiff = {accelDiff(0), accelDiff(2)};
-            Eigen::Vector2d yzAccelDiff = {accelDiff(1), accelDiff(2)};
-            Eigen::Vector2d xyAccelDiff = {accelDiff(0), accelDiff(1)};
+            Eigen::Vector3d accelDiff = sensors[0]->accelerometer - sensors[1]->accelerometer;
 
             // DEBUG: Gyroscope data...
             if (emitGyroscope) {
-                emit(graph("xyAccelDiff", xyAccelDiff));
-                emit(graph("xzAccelDiff", xzAccelDiff));
-                emit(graph("yzAccelDiff", yzAccelDiff));
+                emit(graph("xyAccelDiff", accelDiff(0), accelDiff(1)));
+                emit(graph("xzAccelDiff", accelDiff(0), accelDiff(2)));
+                emit(graph("yzAccelDiff", accelDiff(1), accelDiff(2)));
             }
 
             // Robot Orientation (cosine of torso anglular position)

@@ -79,7 +79,7 @@ namespace localisation {
 
         inline Eigen::Vector2d ImuToWorldHeadingTransform(double imuOffset, math::matrix::Rotation3D orientation) {
             math::matrix::Rotation3D imuRotation = math::matrix::Rotation3D::createRotationZ(imuOffset);
-            Eigen::Vector3d worldRobotHeading    = imuRotation * orientation.i().leftCols<1>();
+            Eigen::Vector3d worldRobotHeading    = imuRotation * orientation.inverse().leftCols<1>();
             return worldRobotHeading.head<2>().normalized();
         }
 

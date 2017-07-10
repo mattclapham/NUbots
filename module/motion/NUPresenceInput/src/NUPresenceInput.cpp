@@ -144,7 +144,7 @@ namespace motion {
 
                 // Rotate to robot coordinate system
                 goalCamPose = user.head_pose.cast<double>();
-                goalCamPose = camera_to_robot * goalCamPose.i() * camera_to_robot.transpose();
+                goalCamPose = camera_to_robot * goalCamPose.inverse() * camera_to_robot.transpose();
                 goalCamPose.translation() *= oculus_to_robot_scale;
 
                 limitPose(goalCamPose);

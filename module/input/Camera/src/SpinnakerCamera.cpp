@@ -260,10 +260,11 @@ namespace input {
         // int64_t to be (trivially) type compatible with Spinnaker libray.
         Eigen::Matrix<int64_t, Eigen::Dynamic, 1> whiteBalance = config["settings"]["white_balance"].as<Expression>();
 
-        if (!utility::vision::setEnumParam(nodeMap, "BalanceWhiteAuto", (arma::all(whiteBalance) ? "Off" :
+        if (!utility::vision::setEnumParam(nodeMap, "BalanceWhiteAuto", (whiteBalance.cwiseNotEqual(0).all() ? "Off" :
         "Continuous")))
         {
-            log("Failed to set auto white balance for camera", camera->first, "to", (arma::all(whiteBalance) ? "'Off'" :
+            log("Failed to set auto white balance for camera", camera->first, "to", (whiteBalance.cwiseNotEqual(0).all()
+        ? "'Off'" :
         "'Continuous'"));
 
             Spinnaker::GenApi::CEnumerationPtr enumName = nodeMap.GetNode("BalanceWhiteAuto");
@@ -288,7 +289,7 @@ namespace input {
         }
 
         // If both elements of the vector are non-zero then we are setting a manual value.
-        if (arma::all(whiteBalance))
+        if (whiteBalance.cwiseNotEqual(0).all())
         {
             if (!utility::vision::setEnumParam(nodeMap, "BalanceRatioSelector", "Red"))
             {

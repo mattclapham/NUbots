@@ -46,11 +46,13 @@ namespace behaviour {
         private:
             message::behaviour::MotionCommand latestCommand;
             const size_t subsumptionId;
-            float turnSpeed      = 0.8;
-            float forwardSpeed   = 1;
-            float a              = 7;
-            float b              = 0;
-            float search_timeout = 3;
+            float turnSpeed            = 0.8;
+            float forwardSpeed         = 1;
+            float sideSpeed            = 1;
+            float slow_approach_factor = 0.5;
+            float a                    = 7;
+            float b                    = 0;
+            float search_timeout       = 3;
 
             //-----------non-config variables (not defined in WalkPathPlanner.yaml)-----------
 
@@ -64,18 +66,13 @@ namespace behaviour {
             Eigen::Vector3d rBWw     = {10, 0, 0};
             bool robot_ground_space  = true;
             Eigen::Vector3d position = {1, 0, 0};  // ball pos rel to robot
-        public:
-            explicit SimpleWalkPathPlanner(std::unique_ptr<NUClear::Environment> environment);
-        };
-
-    }  // planning
-}  // behaviours
-}  // modules
+            float ball_approach_dist = 0.2;
+            float slowdown_distance  = 0.2;
+            bool useLocalisation     = true;
 
         public:
             explicit SimpleWalkPathPlanner(std::unique_ptr<NUClear::Environment> environment);
         };
-
     }  // namespace planning
 }  // namespace behaviour
 }  // namespace module

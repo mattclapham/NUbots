@@ -101,7 +101,7 @@ namespace motion {
         Eigen::Vector3d goalFromKickFoot = supportToKickFoot.transformPoint(goalPosition);
 
         // Compute follow through:
-        Eigen::Vector3d ballToGoalUnit = (goalFromKickFoot - ballFromKickFoot).normalize();
+        Eigen::Vector3d ballToGoalUnit = (goalFromKickFoot - ballFromKickFoot).normalized();
         Eigen::Vector3d followThrough  = follow_through * ballToGoalUnit;
         Eigen::Vector3d windUp         = -wind_up * ballToGoalUnit;
 
@@ -123,13 +123,13 @@ namespace motion {
         float liftClipDistance = (liftGoal[1] - clippingPlaneY);
         if (signSupportFootPosY * liftClipDistance > 0) {
             // Clip
-            liftGoal.rows(0, 1) = liftGoal.rows(0, 1) * clippingPlaneY / liftGoal[1];
+            liftGoal.head<2>() *= clippingPlaneY / liftGoal[1];
         }
 
         float kickClipDistance = (kickGoal[1] - clippingPlaneY);
         if (signSupportFootPosY * kickClipDistance > 0) {
             // Clip
-            kickGoal.rows(0, 1) = kickGoal.rows(0, 1) * clippingPlaneY / kickGoal[1];
+            kickGoal.head<2>() *= clippingPlaneY / kickGoal[1];
         }
 
         kick.pose.translation()      = kickGoal;

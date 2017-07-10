@@ -410,11 +410,11 @@ namespace motion {
             groundToBody.block<3, 1>(0, 1) = groundMatrixY;
             groundToBody.block<3, 1>(0, 2) = groundNormal_body;
             groundToBody.topRightCorner<3, 1>() << 0, 0, -bodyHeight;
-            return groundToBody.i();
+            return groundToBody.inverse();
         }
 
         inline Eigen::Matrix2d calculateRobotToIMU(math::matrix::Rotation3D orientation) {
-            Eigen::Vector3d xRobotImu  = orientation.i().col(0);
+            Eigen::Vector3d xRobotImu  = orientation.inverse().col(0);
             Eigen::Vector2d projXRobot = (xRobotImu.head<2>().normalized());
             Eigen::Vector2d projYRobot{-projXRobot(1), projXRobot(0)};
 

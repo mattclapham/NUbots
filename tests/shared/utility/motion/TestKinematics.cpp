@@ -63,7 +63,7 @@ TEST_CASE("Test the Head kinematics", "[utility][motion][kinematics][head]") {
         }
 
         // Do our forward kinematics
-        arma::mat44 fKin = utility::motion::kinematics::calculatePosition(
+        Eigen::Matrix4d fKin = utility::motion::kinematics::calculatePosition(
             KinematicsModel(), sensors, ServoID::HEAD_PITCH)[ServoID::HEAD_PITCH];
 
         // Check that our vector that forward kinematics finds is close to what is expected

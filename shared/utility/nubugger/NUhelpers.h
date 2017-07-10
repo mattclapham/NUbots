@@ -93,15 +93,6 @@ namespace nubugger {
         }
     }  // namespace
 
-    template <typename... Values>
-    inline std::unique_ptr<message::support::nubugger::DataPoint> graph(std::string label, Values... values) {
-        auto dataPoint   = std::make_unique<DataPoint>();
-        dataPoint->label = label;
-        dataPoint->type  = DataPoint::Type::Value::FLOAT_LIST;
-        buildGraph(*dataPoint, values...);
-        return dataPoint;
-    }
-
     template <typename T, std::enable_if_t<((T::RowsAtCompileTime == 2) && (T::ColsAtCompileTime == 2))>* = nullptr>
     inline std::unique_ptr<message::support::nubugger::DataPoint> graph(std::string label, Rotation2D rotation) {
         auto dataPoint   = std::make_unique<DataPoint>();
@@ -162,18 +153,12 @@ namespace nubugger {
         return graph(label, static_cast<Transform3D>(transform.template cast<double>()));
     }
 
-    template <typename T,
-              std::enable_if_t<(((T::RowsAtCompileTime != 4) && (T::ColsAtCompileTime != 4))
-                                && ((T::RowsAtCompileTime != 3) && (T::ColsAtCompileTime != 1))
-                                && ((T::RowsAtCompileTime != 3) && (T::ColsAtCompileTime != 3))
-                                && ((T::RowsAtCompileTime != 2) && (T::ColsAtCompileTime != 2)))>* = nullptr>
-    inline std::unique_ptr<message::support::nubugger::DataPoint> graph(std::string label, T matrix) {
+    template <typename... Values>
+    inline std::unique_ptr<message::support::nubugger::DataPoint> graph(std::string label, Values... values) {
         auto dataPoint   = std::make_unique<DataPoint>();
         dataPoint->label = label;
-        dataPoint->type  = DataPoint::Type::Value::MATRIX;
-        dataPoint->value.resize(matrix.size());
-        Eigen::Matrix<float, T::RowsAtCompileTime, T::ColsAtCompileTime>::Map(
-            dataPoint->value.data(), matrix.rows(), matrix.cols()) = matrix.template cast<float>();
+        dataPoint->type  = DataPoint::Type::Value::FLOAT_LIST;
+        buildGraph(*dataPoint, values...);
         return dataPoint;
     }
 

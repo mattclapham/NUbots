@@ -326,7 +326,7 @@ namespace motion {
             Transform3D cameraToBody = headPoses[ServoID::HEAD_PITCH];
 
             // Compute foot poses
-            utility::math::matrix::Transform3D F_c = cameraToBody * cameraToFeet.i();
+            utility::math::matrix::Transform3D F_c = cameraToBody * cameraToFeet.inverse();
             utility::math::matrix::Transform3D F_l = F_c.translateY(footSeparation * 0.5);
             utility::math::matrix::Transform3D F_r = F_c.translateY(-footSeparation * 0.5);
 
@@ -448,6 +448,7 @@ namespace motion {
             pitch = std::acos(std::fmax(std::fmin(cosPitAngle, 1), -1))
                     + std::atan2(-handFromShoulder[2], handFromShoulder[0]);
             // SHOULDER ROLL
+            Eigen::Vector3d pitchlessHandFromShoulder =
                 utility::math::matrix::Rotation3D::createRotationY(-pitch) * handFromShoulder;
             roll = std::atan2(pitchlessHandFromShoulder[1], pitchlessHandFromShoulder[0]);
 

@@ -36,7 +36,6 @@ message DataPoint {
         TRANSFORM_3D = 4; // A column-major float list representing a 4x4 transformation marix
         // SCATTER_2D = 5;
         // SCATTER_3D = 6;
-        MATRIX = 7;  // A column-major float list representing a generic matrix
     }
 
     string label = 1;

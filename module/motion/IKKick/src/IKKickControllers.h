@@ -52,8 +52,8 @@ namespace motion {
         SixDOFFrame(utility::math::matrix::Transform3D pose_, float duration_) : pose(pose_), duration(duration_) {}
         SixDOFFrame(const YAML::Node& config) : SixDOFFrame() {
             duration                    = config["duration"].as<float>();
-            Eigen::Vector3d pos         = config["pos"].as<Expression>();
-            Eigen::Vector3d orientation = (180.0 / M_PI) * config["orientation"].as<Expression>();
+            Eigen::Vector3d pos         = config["pos"].as<utility::support::Expression>();
+            Eigen::Vector3d orientation = config["orientation"].as<utility::support::Expression>();
             pose                        = utility::math::matrix::Transform3D();
             pose.rotateX(orientation[0]);
             pose.rotateY(orientation[1]);
