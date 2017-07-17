@@ -12,7 +12,6 @@ namespace localisation {
         /// @brief Called by the powerplant to build and setup the NetworkLocalisation reactor.
         explicit NetworkLocalisation(std::unique_ptr<NUClear::Environment> environment);
     };
-
 }
 }
 
