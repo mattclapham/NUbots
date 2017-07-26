@@ -35,6 +35,7 @@
 
 #include "utility/math/coordinates.h"
 #include "utility/math/ransac/NPartiteRansac.h"
+#include "utility/math/ransac/Ransac.h"
 #include "utility/math/vision.h"
 
 #include "utility/vision/ClassifiedImage.h"
@@ -59,7 +60,6 @@ namespace vision {
     using Plane = utility::math::geometry::Plane<3>;
     using utility::math::geometry::Quad;
 
-    using utility::math::ransac::NPartiteRansac;
 
     using utility::math::vision::widthBasedDistanceToCircle;
     using utility::math::vision::projectCamToPlane;
@@ -71,6 +71,9 @@ namespace vision {
     using utility::math::vision::getCamFromImage;
     using utility::math::vision::getImageFromCam;
     using utility::math::vision::getImageFromCamCts;
+    using utility::math::ransac::RansacResult;
+    using utility::math::ransac::NPartiteRansac;
+    using utility::math::ransac::Ransac;
     using utility::nubugger::drawVisionLines;
 
     using message::vision::LookUpTable;
@@ -184,14 +187,34 @@ namespace vision {
                 std::array<std::vector<RansacGoalModel::GoalSegment>::iterator, RansacGoalModel::REQUIRED_POINTS + 1>
                     points = {segments.begin(), split, segments.end()};
 
-                // Ransac for goals
-                auto models = NPartiteRansac<RansacGoalModel>::fitModels(points,
-                                                                         MINIMUM_POINTS_FOR_CONSENSUS,
-                                                                         MAXIMUM_ITERATIONS_PER_FITTING,
-                                                                         MAXIMUM_FITTED_MODELS,
-                                                                         CONSENSUS_ERROR_THRESHOLD);
+                std::vector<RansacResult<std::vector<RansacGoalModel::GoalSegment>::iterator, RansacGoalModel>> models;
+                // If looking below the horizon just do regular ransac.
+                // Otherwise do bipartite
+                if (split == segments.begin()) {
 
-                if (DEBUG_GOAL_RANSAC) log("Ransac results ", models.size(), "from ", segments.size());
+                    // Ransac for goals
+                    models = Ransac<RansacGoalModel>::fitModels(segments.begin(),
+                                                                segments.end(),
+                                                                MINIMUM_POINTS_FOR_CONSENSUS,
+                                                                MAXIMUM_ITERATIONS_PER_FITTING,
+                                                                MAXIMUM_FITTED_MODELS,
+                                                                CONSENSUS_ERROR_THRESHOLD);
+                }
+                else {
+
+                    // Ransac for goals
+                    models = NPartiteRansac<RansacGoalModel>::fitModels(points,
+                                                                        MINIMUM_POINTS_FOR_CONSENSUS,
+                                                                        MAXIMUM_ITERATIONS_PER_FITTING,
+                                                                        MAXIMUM_FITTED_MODELS,
+                                                                        CONSENSUS_ERROR_THRESHOLD);
+                }
+
+                if (DEBUG_GOAL_RANSAC) {
+                    log("horizon ", convert<double, 3>(image.horizon_normal).t());
+                    log("Ransac results ", models.size(), "/", MAXIMUM_FITTED_MODELS, " from ", segments.size());
+                }
+                log("Split = ", std::distance(segments.begin(), split), std::distance(split, segments.end()));
                 std::vector<std::tuple<Eigen::Vector2i, Eigen::Vector2i, Eigen::Vector4d>,
                             Eigen::aligned_allocator<std::tuple<Eigen::Vector2i, Eigen::Vector2i, Eigen::Vector4d>>>
                     debug;
@@ -409,8 +432,8 @@ namespace vision {
 
                     // horizon is off the screen
 
-                    bool aboveHorizon = (arma::dot(convert<double, 3>(image.horizon_normal), ctr) > 0)
-                                        || (arma::dot(convert<double, 3>(image.horizon_normal), ctl) > 0);
+                    // bool aboveHorizon = (arma::dot(convert<double, 3>(image.horizon_normal), ctr) > 0)
+                    //                     || (arma::dot(convert<double, 3>(image.horizon_normal), ctl) > 0);
 
                     // Check that our two goal lines are perpendicular with the horizon must use greater than rather
                     // then less than because of the cos
@@ -424,7 +447,7 @@ namespace vision {
                     bool goalsParallel =
                         std::abs(arma::dot(arma::cross(cbr, ctr), arma::cross(cbl, ctl))) < MAXIMUM_ANGLE_BETWEEN_SIDES;
 
-                    valid = valid && aspectRatioGood && shapeConsistent && closeToVisualHorizon && aboveHorizon
+                    valid = valid && aspectRatioGood && shapeConsistent && closeToVisualHorizon
                             && goalsOrthogonalToHorizon && goalsParallel;
 
                     if (!valid) {
@@ -454,12 +477,12 @@ namespace vision {
                                         - VISUAL_HORIZON_BUFFER,
                                     ")");
                             }
-                            if (!aboveHorizon) {
-                                log("NOT TRUE : aboveHorizon");
-                                log("horizon_normal = ", convert<double, 3>(image.horizon_normal).t());
-                                log("ctr = ", ctr);
-                                log("ctl = ", ctl);
-                            }
+                            // if (!aboveHorizon) {
+                            //     log("NOT TRUE : aboveHorizon");
+                            //     log("horizon_normal = ", convert<double, 3>(image.horizon_normal).t());
+                            //     log("ctr = ", ctr);
+                            //     log("ctl = ", ctl);
+                            // }
                             if (!goalsOrthogonalToHorizon) {
                                 log("NOT TRUE : goalsOrthogonalToHorizon");
                                 log("angle right = ",
@@ -638,7 +661,6 @@ namespace vision {
                 }
 
                 emit(std::move(goals));
-
             });
     }
 }  // namespace vision
