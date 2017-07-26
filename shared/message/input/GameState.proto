@@ -25,10 +25,13 @@ import "google/protobuf/timestamp.proto";
 message GameState {
     message Data {
         enum Mode {
-            UNKNOWN_MODE     = 0;
-            NORMAL           = 1;
-            PENALTY_SHOOTOUT = 2;
-            OVERTIME         = 3;
+            UNKNOWN_MODE      = 0;
+            NORMAL            = 1;
+            PENALTY_SHOOTOUT  = 2;
+            OVERTIME          = 3;
+            DIRECT_FREEKICK   = 4;
+            INDIRECT_FREEKICK = 5;
+            PENALTYKICK       = 6;
         }
 
         enum Phase {
@@ -56,6 +59,12 @@ message GameState {
             PLAYER_PUSHING                = 11;
         }
 
+        enum Kick{
+            UNKOWN_KICK = 0;
+            READY = 1;
+            FREEZE = 2;
+        }
+
         message Robot {
             uint32                    id             = 1;
             PenaltyReason             penalty_reason = 2;
@@ -80,6 +89,7 @@ message GameState {
         Team team                                 = 9;
         Team opponent                             = 10;
         Robot self                                = 11;
+        Kick kick                                 = 12;
     }
 
     Data data = 1;

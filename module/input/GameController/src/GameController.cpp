@@ -134,17 +134,18 @@ namespace input {
         std::copy(std::begin(gamecontroller::RECEIVE_HEADER),
                   std::end(gamecontroller::RECEIVE_HEADER),
                   std::begin(packet.header));
-        packet.version        = SUPPORTED_VERSION;
-        packet.packetNumber   = 0;
-        packet.playersPerTeam = PLAYERS_PER_TEAM;
-        packet.state          = static_cast<gamecontroller::State>(-1);
-        packet.firstHalf      = true;
-        packet.kickOffTeam    = static_cast<gamecontroller::TeamColour>(-1);
-        packet.mode           = static_cast<gamecontroller::Mode>(-1);
-        packet.dropInTeam     = static_cast<gamecontroller::TeamColour>(-1);
-        packet.dropInTime     = -1;
-        packet.secsRemaining  = 0;
-        packet.secondaryTime  = 0;
+        packet.version            = SUPPORTED_VERSION;
+        packet.packetNumber       = 0;
+        packet.playersPerTeam     = PLAYERS_PER_TEAM;
+        packet.state              = static_cast<gamecontroller::State>(-1);
+        packet.firstHalf          = true;
+        packet.kickOffTeam        = static_cast<gamecontroller::TeamColour>(-1);
+        packet.mode               = static_cast<gamecontroller::Mode>(-1);
+        packet.secondaryStateInfo = 0;
+        packet.dropInTeam         = static_cast<gamecontroller::TeamColour>(-1);
+        packet.dropInTime         = -1;
+        packet.secsRemaining      = 0;
+        packet.secondaryTime      = 0;
         for (uint i = 0; i < NUM_TEAMS; i++) {
             auto& ownTeam       = packet.teams[i];
             ownTeam.teamId      = (i == 0 ? TEAM_ID : 0);
@@ -322,6 +323,21 @@ namespace input {
             }
         }
 
+        /*******************************************************************************************
+         * Process free kicks
+         ******************************************************************************************/
+        if (newPacket.secondaryStateInfo != newPacket.secondaryStateInfo) {
+            if (newPacket.secondaryStateInfo[0] == TEAM_ID && newPacket.secondaryStateInfo[1] == 0) {
+                // emit move
+            }
+            else if (newPacket.secondaryStateInfo[0] != 0) {
+                // emit freeze
+            }
+            else {
+                // emit move
+            }
+        }
+
 
         /*******************************************************************************************
          * Process coach messages
@@ -444,6 +460,21 @@ namespace input {
                     state->data.mode = GameState::Data::Mode::OVERTIME;
                     stateChanges.push_back(
                         [this] { emit(std::make_unique<GameMode>(GameState::Data::Mode::Value::OVERTIME)); });
+                    break;
+                case gamecontroller::Mode::DIRECT_FREEKICK:
+                    state->data.mode = GameState::Data::Mode::DIRECT_FREEKICK;
+                    stateChanges.push_back(
+                        [this] { emit(std::make_unique<GameMode>(GameState::Data::Mode::Value::DIRECT_FREEKICK)); });
+                    break;
+                case gamecontroller::Mode::INDIRECT_FREEKICK:
+                    state->data.mode = GameState::Data::Mode::INDIRECT_FREEKICK;
+                    stateChanges.push_back(
+                        [this] { emit(std::make_unique<GameMode>(GameState::Data::Mode::Value::INDIRECT_FREEKICK)); });
+                    break;
+                case gamecontroller::Mode::PENALTYKICK:
+                    state->data.mode = GameState::Data::Mode::PENALTYKICK;
+                    stateChanges.push_back(
+                        [this] { emit(std::make_unique<GameMode>(GameState::Data::Mode::Value::PENALTYKICK)); });
                     break;
                 default:
                     throw std::runtime_error("Invalid mode change");

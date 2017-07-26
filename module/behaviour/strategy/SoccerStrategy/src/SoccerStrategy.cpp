@@ -270,6 +270,20 @@ namespace behaviour {
                                     play(field, ball, fieldDescription, mode);
                                 }
                             }
+                            else if (mode == GameMode::DIRECT_FREEKICK || mode == GameMode::INDIRECT_FREEKICK
+                                     || mode == GameMode::PENALTYKICK) {
+                                if (GameState.data.kick == READY) {
+                                    // move towards ball but no kick
+                                }
+                                else if {
+                                    GameState.data.kick == FREEZE;
+                                    standStill();
+                                    find({FieldTarget(FieldTarget::Target::BALL)});
+                                }
+                                else {
+                                    walkTo(fieldDescription, FieldTarget::Target::BALL);
+                                }
+                            }
                         }
 
                         if (currentState != previousState) {

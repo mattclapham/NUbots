@@ -33,12 +33,13 @@ namespace input {
         enum class State : uint8_t { INITIAL = 0, READY = 1, SET = 2, PLAYING = 3, FINISHED = 4 };
 
         enum class Mode : uint8_t {
-            NORMAL           = 0,
-            PENALTY_SHOOTOUT = 1,
-            OVERTIME         = 2,
-            TIMEOUT          = 3,
-            FREEKICK         = 4,
-            PENALTYKICK      = 5
+            NORMAL            = 0,
+            PENALTY_SHOOTOUT  = 1,
+            OVERTIME          = 2,
+            TIMEOUT           = 3,
+            DIRECT_FREEKICK   = 4,
+            INDIRECT_FREEKICK = 5,
+            PENALTYKICK       = 6;
         };
 
         enum class GameType : uint8_t { ROUND_ROBIN = 0, PLAYOFF = 1, DROPIN = 2 };
