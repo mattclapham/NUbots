@@ -64,6 +64,7 @@ namespace behaviour {
         using Penalisation   = message::input::GameEvents::Penalisation;
         using Unpenalisation = message::input::GameEvents::Unpenalisation;
         using GameMode       = message::input::GameState::Data::Mode;
+        using KickPhase      = message::input::GameState::Data::KickPhase;
         using message::input::Sensors;
         using VisionBall = message::vision::Ball;
         using message::vision::Goal;
@@ -272,11 +273,11 @@ namespace behaviour {
                             }
                             else if (mode == GameMode::DIRECT_FREEKICK || mode == GameMode::INDIRECT_FREEKICK
                                      || mode == GameMode::PENALTYKICK) {
-                                if (GameState.data.kick == READY) {
+                                if (GameState.data.kick == KickPhase::KICK_READY) {
                                     // move towards ball but no kick
                                 }
                                 else if {
-                                    GameState.data.kick == FREEZE;
+                                    GameState.data.kick == KickPhase::FREEZE;
                                     standStill();
                                     find({FieldTarget(FieldTarget::Target::BALL)});
                                 }

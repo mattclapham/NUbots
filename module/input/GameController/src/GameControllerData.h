@@ -39,7 +39,7 @@ namespace input {
             TIMEOUT           = 3,
             DIRECT_FREEKICK   = 4,
             INDIRECT_FREEKICK = 5,
-            PENALTYKICK       = 6;
+            PENALTYKICK       = 6
         };
 
         enum class GameType : uint8_t { ROUND_ROBIN = 0, PLAYOFF = 1, DROPIN = 2 };
@@ -78,6 +78,8 @@ namespace input {
             // General??
             UNKNOWN = 255
         };
+
+        enum class KickPhase : uint8_t { KICK_READY = 0, FREEZE = 1 };
 
         struct Robot {
             PenaltyState penaltyState;  // penalty state of the player

@@ -141,7 +141,7 @@ namespace input {
         packet.firstHalf          = true;
         packet.kickOffTeam        = static_cast<gamecontroller::TeamColour>(-1);
         packet.mode               = static_cast<gamecontroller::Mode>(-1);
-        packet.secondaryStateInfo = 0;
+        packet.secondaryStateInfo = {0, 0, 0, 0};
         packet.dropInTeam         = static_cast<gamecontroller::TeamColour>(-1);
         packet.dropInTime         = -1;
         packet.secsRemaining      = 0;
@@ -326,15 +326,17 @@ namespace input {
         /*******************************************************************************************
          * Process free kicks
          ******************************************************************************************/
-        if (newPacket.secondaryStateInfo != newPacket.secondaryStateInfo) {
-            if (newPacket.secondaryStateInfo[0] == TEAM_ID && newPacket.secondaryStateInfo[1] == 0) {
-                // emit move
+        if (oldPacket.secondaryStateInfo != newPacket.secondaryStateInfo) {
+            uint kickingTeam = newPacket.secondaryStateInfo[0];
+            uint kickPhase   = newPacket.secondaryStateInfo[1];
+
+            if (kickingTeam == TEAM_ID && kickPhase == gamecontroller::KickPhase::KICK_READY) {
+                state->data.kick = gamecontroller::KickPhase::KICK_READY;
             }
             else if (newPacket.secondaryStateInfo[0] != 0) {
-                // emit freeze
+                state->data.kick = gamecontroller::KickPhase::FREEZE;
             }
             else {
-                // emit move
             }
         }
 
