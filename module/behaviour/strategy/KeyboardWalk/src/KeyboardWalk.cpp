@@ -23,25 +23,36 @@
 #include <ncurses.h>
 #include <csignal>
 #include <cstdio>
+#include "extension/Script.h"
 
 #include "message/behaviour/MotionCommand.h"
 #include "message/motion/HeadCommand.h"
 #include "message/motion/KickCommand.h"
+#include "utility/behaviour/Action.h"
 #include "utility/behaviour/MotionCommand.h"
+#include "utility/input/LimbID.h"
 #include "utility/math/matrix/Transform2D.h"
 
 namespace module {
 namespace behaviour {
     namespace strategy {
 
+        using extension::ExecuteScriptByName;
         using NUClear::message::LogMessage;
         using message::behaviour::MotionCommand;
         using message::motion::HeadCommand;
         using message::motion::KickCommand;
+        using utility::behaviour::RegisterAction;
         using utility::math::matrix::Transform2D;
 
+        using LimbID  = utility::input::LimbID;
+        using ServoID = utility::input::ServoID;
+
+
         KeyboardWalk::KeyboardWalk(std::unique_ptr<NUClear::Environment> environment)
-            : Reactor(std::move(environment)), velocity(arma::fill::zeros) {
+            : Reactor(std::move(environment))
+            , velocity(arma::fill::zeros)
+            , id(size_t(this) * size_t(this) - size_t(this)) {
 
             // Start curses mode
             initscr();
@@ -82,6 +93,15 @@ namespace behaviour {
                 printw((message.message + "\n").c_str());
                 refresh();
             });
+
+            emit<Scope::INITIALIZE>(std::make_unique<RegisterAction>(
+                RegisterAction{id,
+                               "Keyboardwalk Kick Script",
+                               {std::pair<float, std::set<LimbID>>(
+                                   0, {LimbID::LEFT_LEG, LimbID::RIGHT_LEG, LimbID::LEFT_ARM, LimbID::RIGHT_ARM})},
+                               [this](const std::set<LimbID>&) {},
+                               [this](const std::set<LimbID>&) {},
+                               [this](const std::set<ServoID>&) {}}));
 
             on<Shutdown>().then(endwin);
         }
@@ -135,10 +155,8 @@ namespace behaviour {
         }
 
         void KeyboardWalk::kickRightForward() {
-            /*emit(std::make_unique<KickCommand>(KickCommand{
-                {-0.05, 0, 0}, //Ball is right of centre for right kick
-                {1, 0, 0}
-            }));*/
+            emit(std::make_unique<ExecuteScriptByName>(
+                id, std::vector<std::string>({"Stand.yaml", "RightFootForwardKickNew.yaml", "Stand.yaml"})));
             log("right forward kick");
         }
 

@@ -29,6 +29,8 @@ namespace behaviour {
 
         class KeyboardWalk : public NUClear::Reactor {
         private:
+            const size_t id;
+
             static constexpr const double DIFF     = 0.10;
             static constexpr const double ROT_DIFF = 0.10;
 
