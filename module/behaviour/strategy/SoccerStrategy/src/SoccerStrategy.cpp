@@ -97,6 +97,7 @@ namespace behaviour {
 
                 cfg_.ball_last_seen_max_time = durationFromSeconds(config["ball_last_seen_max_time"].as<double>());
                 cfg_.goal_last_seen_max_time = durationFromSeconds(config["goal_last_seen_max_time"].as<double>());
+                cfg_.ball_last_seen_max_covariance = config["ball_last_seen_max_covariance"].as<float>();
 
                 cfg_.localisation_interval = durationFromSeconds(config["localisation_interval"].as<double>());
                 cfg_.localisation_duration = durationFromSeconds(config["localisation_duration"].as<double>());
@@ -302,8 +303,9 @@ namespace behaviour {
                 }
                 currentState = Behaviour::State::LOCALISING;
             }
-            else*/ if (NUClear::clock::now() - ballLastMeasured
-                       < cfg_.ball_last_seen_max_time) {  // ball has been seen recently
+            else*/ if (ball.covariance.trace() > cfg_.ball_last_seen_max_covariance
+                       || NUClear::clock::now() - ballLastMeasured
+                              < cfg_.ball_last_seen_max_time) {  // ball has been seen recently
                     find({FieldTarget(FieldTarget::Target::BALL)});
                     walkTo(fieldDescription, FieldTarget::Target::BALL);
                     currentState = Behaviour::State::WALK_TO_BALL;
@@ -312,10 +314,13 @@ namespace behaviour {
                     if (mode != GameMode::PENALTY_SHOOTOUT
                         && (Eigen::Vector2d(field.position[0], field.position[1]).norm()
                             > 1)) {  // a long way away from centre
-                        // walk to centre of field
-                        find({FieldTarget(FieldTarget::Target::BALL)});
-                        walkTo(fieldDescription, arma::vec2({0, 0}));
                         currentState = Behaviour::State::MOVE_TO_CENTRE;
+
+                        // TODO: Get rid of hacky code- fake ball in field centre
+                        auto fakeBall        = std::make_unique<Ball>();
+                        fakeBall->position   = Eigen::Vector2d({field.position[0], field.position[1]});
+                        fakeBall->covariance = Eigen::Matrix2d::Identity();
+                        emit(fakeBall);
                     }
                     else {
                         find({FieldTarget(FieldTarget::Target::BALL)});

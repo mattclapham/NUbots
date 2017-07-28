@@ -43,6 +43,7 @@ namespace behaviour {
                 Config()
                     : ball_last_seen_max_time()
                     , goal_last_seen_max_time()
+                    , ball_last_seen_max_covariance(0.0f)
                     , ball_search_walk_start_speed(0.0f)
                     , ball_search_walk_stop_speed(0.0f)
                     , ball_search_walk_slow_time(0.0f)
@@ -62,6 +63,8 @@ namespace behaviour {
                     , forcePenaltyShootout(false) {}
                 NUClear::clock::duration ball_last_seen_max_time;
                 NUClear::clock::duration goal_last_seen_max_time;
+
+                float ball_last_seen_max_covariance;
 
                 float ball_search_walk_start_speed;
                 float ball_search_walk_stop_speed;
