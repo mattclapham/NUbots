@@ -325,7 +325,7 @@ namespace behaviour {
                     else {
                         find({FieldTarget(FieldTarget::Target::BALL)});
                         walkTo(fieldDescription, FieldTarget::Target::BALL);
-                        // spinWalk();
+                        spinWalk();
 
                         currentState = Behaviour::State::SEARCH_FOR_BALL;
                     }
