@@ -48,7 +48,8 @@ public:
                         std::unique_ptr<std::priority_queue<MapEntry>>& matches,
                         unsigned int* seed,
                         int n,
-                        Eigen::MatrixXd* resultTable);
+                        Eigen::MatrixXd* resultTable,
+                        int queryGoalWidth);
 
 
 private:
@@ -77,4 +78,7 @@ private:
 
     float VALID_COSINE_SCORE = 0.40;  // 0.42f
     int VALID_INLIERS        = 0;     // 40 // 50
+
+    std::vector<int> goalWidth{162, 424, 172, 138, 187, 142, 106, 109, 123, 84, 91,
+                               88,  197, 338, 189, 146, 185, 141, 179, 119, 108};
 };

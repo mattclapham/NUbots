@@ -165,13 +165,14 @@ void Tfidf::searchDocument(Eigen::VectorXf tf_query,
                            std::unique_ptr<std::priority_queue<MapEntry>>& matches,
                            unsigned int* seed,
                            int num,
-                           Eigen::MatrixXd* resultTable) {
+                           Eigen::MatrixXd* resultTable,
+                           int queryGoalWidth) {
 
     NUClear::clock::time_point t = NUClear::clock::now();
     printf("tf_query.sum = %.1f, N = %d\n", tf_query.sum(), N);
     if (tf_query.sum() != 0 && N != 0) {  // checked the document is not empty and corpus not empty
         printf("Running Tfidf::searchDocument now.\n");
-        std::priority_queue<std::pair<MapEntry, std::vector<std::vector<float>>>> queue;
+        std::priority_queue<std::pair<MapEntry, std::pair<std::vector<std::vector<float>>, int>>> queue;
         Eigen::VectorXf tfidf_query = (tf_query / tf_query.sum()).array() * idf.array();
 
         int count = 0;
@@ -238,7 +239,7 @@ void Tfidf::searchDocument(Eigen::VectorXf tf_query,
             printf("%2d. map score: %.2f   ", i + 1, map[i].score);
             if (map.at(i).score > VALID_COSINE_SCORE) {
                 printf("This is a valid cosine score");
-                queue.push(std::make_pair(map.at(i), pixels.at(i)));
+                queue.push(std::make_pair(map.at(i), std::make_pair(pixels.at(i), goalWidth.at(i))));
                 /*
                 printf("tfidf_doc = [");
                 int count = 0;
@@ -260,11 +261,13 @@ void Tfidf::searchDocument(Eigen::VectorXf tf_query,
         }
         printf("Complete.\n");
 
+        auto start = std::chrono::system_clock::now();
         // Now do geometric validation on the best until we have enough or the queue is empty
         int counter = -1;
         while (!queue.empty() && matches->size() < (unsigned int) num) {
             MapEntry mapEntry = queue.top().first;
             printf("Validating Cos: %.2f ", mapEntry.score);
+
             counter++;
             (*resultTable)(counter, 0) = mapEntry.score;
             if ((mapEntry.position.theta() < M_PI / 2) && (mapEntry.position.theta() > -M_PI / 2)) {
@@ -277,10 +280,83 @@ void Tfidf::searchDocument(Eigen::VectorXf tf_query,
                 (*resultTable)(counter, 1) = -1.0;
                 (*resultTable)(0, 5)       = (*resultTable)(0, 5) + 1.0;
             }
-            std::vector<std::vector<float>> pixLoc = queue.top().second;
+
+            std::vector<std::vector<float>> pixLoc = queue.top().second.first;
+            int storedGoalWidth                    = queue.top().second.second;
             queue.pop();
 
-            // Do geometric validation - first build the points to run ransac
+            auto temp_start1 = std::chrono::system_clock::now();
+            // Do average xpos
+            // Average pixel location for stored matches (should be precalculated to save time)
+            std::vector<float> pixLocAvg(pixLoc.size(), 0.0);
+            for (int m = 0; m < pixLoc.size(); m++) {  // stepping along each feature
+                for (int n = 0; n < pixLoc.at(m).size(); n++) {
+                    pixLocAvg.at(m) += pixLoc.at(m).at(n);
+                }
+                if (pixLoc.at(m).size() >= 1) pixLocAvg.at(m) /= pixLoc.at(m).size();
+            }
+
+            // Average pixel location for query features
+            std::vector<float> query_pixLocAvg(query_pixLoc.size(), 0);
+            for (int m = 0; m < query_pixLoc.size(); m++) {  // stepping along each feature
+                for (int n = 0; n < query_pixLoc.at(m).size(); n++) {
+                    query_pixLocAvg.at(m) += query_pixLoc.at(m).at(n);
+                }
+                if (query_pixLoc.at(m).size() >= 1) query_pixLocAvg.at(m) /= query_pixLoc.at(m).size();
+            }
+            auto temp_end1   = std::chrono::system_clock::now();
+            auto temp_start2 = std::chrono::system_clock::now();
+
+            // Creating 2 matricies of distances between features, one for match, one for query
+            Eigen::MatrixXf pixLocDist;
+            Eigen::MatrixXf query_pixLocDist;
+            pixLocDist.setZero(pixLoc.size(), pixLoc.size());
+            query_pixLocDist.setZero(query_pixLoc.size(), query_pixLoc.size());
+
+            for (int m = 0; m < query_pixLoc.size(); m++) {
+                for (int n = m + 1; n < query_pixLoc.size(); n++) {
+                    if ((pixLoc.at(m).size() >= 1) && (pixLoc.at(n).size() >= 1)) {
+                        pixLocDist(m, n) = fabs(pixLocAvg.at(n) - pixLocAvg.at(m));
+                    }
+                    if ((query_pixLoc.at(m).size() >= 1) && (query_pixLoc.at(n).size() >= 1)) {
+                        query_pixLocDist(m, n) = fabs(query_pixLocAvg.at(n) - query_pixLocAvg.at(m));
+                    }
+                }
+            }
+            auto temp_end2   = std::chrono::system_clock::now();
+            auto temp_start3 = std::chrono::system_clock::now();
+            // Comparing the two distance matricies
+            float scalingFactor = (float) queryGoalWidth / storedGoalWidth;
+            Eigen::MatrixXf pixLocDiff;
+            pixLocDiff = (query_pixLocDist - scalingFactor * pixLocDist).array().abs();
+            for (int m = 0; m < query_pixLoc.size(); m++) {
+                if ((pixLoc.at(m).size() < 1)
+                    && (query_pixLoc.at(m).size() < 1)) {  // Removing distances for features neither have
+                    pixLocDiff.row(m).setZero();
+                    pixLocDiff.col(m).setZero();
+                }
+                else if ((pixLoc.at(m).size() < 1) && (query_pixLoc.at(m).size() >= 1)) {
+                    pixLocDiff.row(m).setZero();
+                    pixLocDiff.col(m).setZero();
+                }
+                else if ((pixLoc.at(m).size() >= 1) && (query_pixLoc.at(m).size() < 1)) {
+                    pixLocDiff.row(m).setZero();
+                    pixLocDiff.col(m).setZero();
+                }
+            }
+
+            float pixDistScore = pixLocDiff.sum();
+            auto temp_end3     = std::chrono::system_clock::now();
+            printf(" pixDistScore: %.0f, scaling factor: %.2f, ", pixDistScore, scalingFactor);
+            auto temptimecheck1 = std::chrono::duration_cast<std::chrono::microseconds>(temp_end1 - temp_start1);
+            auto temptimecheck2 = std::chrono::duration_cast<std::chrono::microseconds>(temp_end2 - temp_start2);
+            auto temptimecheck3 = std::chrono::duration_cast<std::chrono::microseconds>(temp_end3 - temp_start3);
+            std::cout << "Time to get avg xpos: " << temptimecheck1.count() << " ms, ";
+            std::cout << "Time to get internal xpos diffs: " << temptimecheck2.count() << " ms, ";
+            std::cout << "Time to get diff score: " << temptimecheck3.count() << " ms";
+
+            // /*
+            // Do RANSAC geometric validation - first build the points to run ransac
             std::vector<Point> matchpoints;
             for (int j = 0; j < T; j++) {
                 for (uint32_t m = 0; m < pixLoc[j].size(); m++) {
@@ -319,7 +395,7 @@ void Tfidf::searchDocument(Eigen::VectorXf tf_query,
                         inliers++;
                     }
                 }
-                printf(", found %d inliers, %d outliers, ", inliers, (int) matchpoints.size() - inliers);
+                printf(", RANSAC found %d inliers, %d outliers, ", inliers, (int) matchpoints.size() - inliers);
                 (*resultTable)(counter, 2) = (double) inliers;
                 (*resultTable)(counter, 3) = (double) matchpoints.size() - (double) inliers;
                 // printf("at (x,y,theta) loc: (%.1f, %.1f, %.1f)\n", mapEntry.position.x(), mapEntry.position.y(),
@@ -337,12 +413,16 @@ void Tfidf::searchDocument(Eigen::VectorXf tf_query,
                 }
             }
             else {
-                printf("SKIPPED INLIER COUNT SINCE ransacresult = %d\n", ransacresult);
+                // printf("SKIPPED INLIER COUNT SINCE ransacresult = %d\n",ransacresult);
                 num--;
                 if ((*resultTable)(counter, 1) > 0.5) (*resultTable)(0, 4)  = (*resultTable)(0, 4) - 1.0;
                 if ((*resultTable)(counter, 1) < -0.5) (*resultTable)(0, 5) = (*resultTable)(0, 5) - 1.0;
             }
+            //*/
         }
+        auto end               = std::chrono::system_clock::now();
+        auto spatialcheck_time = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+        std::cout << "Time to run RANSAC: " << spatialcheck_time.count() << " microseconds." << std::endl;
     }
     // printf("\nCalculating cosines over " << map.size() << " images, RANSAC geo validation & position adjustments took
     // ";

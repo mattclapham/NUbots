@@ -50,7 +50,8 @@ int GoalMatcher::classifyGoalArea(std::shared_ptr<const message::vision::Classif
                                   std::unique_ptr<Eigen::VectorXf>& landmark_tf,
                                   std::unique_ptr<std::vector<std::vector<float>>>& landmark_pixLoc,
                                   message::vision::Goal::Team& type,
-                                  Eigen::MatrixXd* resultTable) {
+                                  Eigen::MatrixXd* resultTable,
+                                  int queryGoalWidth) {
 
     // if ((!vocabLoaded) || (!frame.wordMapped)) return 0; // Check valid data
 
@@ -72,7 +73,7 @@ int GoalMatcher::classifyGoalArea(std::shared_ptr<const message::vision::Classif
 
     //}
 
-    tfidf.searchDocument(query, query_pixLoc, matches, &seed, SEARCH_POSITIONS, resultTable);
+    tfidf.searchDocument(query, query_pixLoc, matches, &seed, SEARCH_POSITIONS, resultTable, queryGoalWidth);
 
     num = (int) matches->size();
     printf("Number of matches = %d\n", num);
@@ -121,7 +122,8 @@ void GoalMatcher::process(std::shared_ptr<const message::vision::ClassifiedImage
                           const message::localisation::Field& field,
                           float& awayGoalProb,
                           std::string mapFile,
-                          Eigen::MatrixXd* resultTable) {
+                          Eigen::MatrixXd* resultTable,
+                          int queryGoalWidth) {
 
     // Adjust robotPos for head yaw
     AbsCoord position = {field.position[0], field.position[1], field.position[2]};
@@ -217,7 +219,7 @@ void GoalMatcher::process(std::shared_ptr<const message::vision::ClassifiedImage
     else {  // landmark retrieval and goal classification mode
         printf("Landmark retrieval mode\n");
         message::vision::Goal::Team type = message::vision::Goal::Team::UNKNOWN_TEAM;
-        classifyGoalArea(frame, landmarks, landmark_tf, landmark_pixLoc, type, resultTable);
+        classifyGoalArea(frame, landmarks, landmark_tf, landmark_pixLoc, type, resultTable, queryGoalWidth);
         // frame.goalArea = type;
 
         obs.insert(obs.begin(), type);

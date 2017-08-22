@@ -874,13 +874,21 @@ namespace vision {
                                             field,
                                             awayGoalProb,
                                             MapFileName,
-                                            &resultTable);
+                                            &resultTable,
+                                            0);
                     }
                     else {
                         printf("resultTable(%d:%d,:)\n", (imageNum - 23) * 8, (imageNum - 23) * 8 + 7);
                         Eigen::MatrixXd temp = resultTable.middleRows((imageNum - 23) * 8, 8);
-                        goalMatcher.process(
-                            rawImage, landmarks, landmark_tf, landmark_pixLoc, field, awayGoalProb, MapFileName, &temp);
+                        goalMatcher.process(rawImage,
+                                            landmarks,
+                                            landmark_tf,
+                                            landmark_pixLoc,
+                                            field,
+                                            awayGoalProb,
+                                            MapFileName,
+                                            &temp,
+                                            query_awayGoalWidth.at(imageNum - 23));
                         resultTable.middleRows((imageNum - 23) * 8, 8) = temp;
                     }
                     printf("awayGoalProb = %.2f\n", awayGoalProb);

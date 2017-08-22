@@ -85,6 +85,9 @@ namespace vision {
         float imageSetSize        = 33.0;  // float because this number is the denominator in divisions
         std::ofstream myfile;
         std::ofstream myfile2;
+        std::vector<int> query_awayGoalWidth{0,   0,   0,   0,  0,   0,   0,   0,   0,   0,   0,
+                                             0,   0,   0,   0,  0,   0,   0,   0,   143, 145, 145,
+                                             141, 131, 122, 95, 102, 107, 107, 106, 107, 104, 100};
 
     public:
         /// @brief Called by the powerplant to build and setup the GoalDetector reactor.

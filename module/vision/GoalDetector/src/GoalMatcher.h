@@ -42,7 +42,8 @@ public:
                  const message::localisation::Field& field,
                  float& awayGoalProb,
                  std::string mapFile,
-                 Eigen::MatrixXd* resultTable);
+                 Eigen::MatrixXd* resultTable,
+                 int queryGoalWidth);
 
     void setWasInitial(bool x) {
         wasInitial = x;
@@ -59,7 +60,8 @@ private:
                          std::unique_ptr<Eigen::VectorXf>& landmark_tf,
                          std::unique_ptr<std::vector<std::vector<float>>>& landmark_pixLoc,
                          message::vision::Goal::Team& type,
-                         Eigen::MatrixXd* resultTable);
+                         Eigen::MatrixXd* resultTable,
+                         int queryGoalWidth);
 
     Tfidf tfidf;
 
