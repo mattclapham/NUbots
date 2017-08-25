@@ -88,27 +88,8 @@ class Enum:
 
                 operator {protobuf_name}() const;
 
-                // Iterators
-                static std::set<{name}>::const_iterator begin() {{
-                    return values.begin();
-                }}
-
-                static std::set<{name}>::const_iterator end() {{
-                    return values.end();
-                }}
-
-                static std::set<{name}>::const_iterator cbegin() {{
-                    return values.cbegin();
-                }}
-
-                static std::set<{name}>::const_iterator cend() {{
-                    return values.cend();
-                }}
-
                 friend std::ostream& operator<< (std::ostream& out, const {name}& val);
 
-                private:
-                    static const std::set<{name}> values;
             }};""")
 
         impl_template = dedent("""\
