@@ -26,7 +26,7 @@ FUNCTION(NUCLEAR_MODULE)
     INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}/src)
     INCLUDE_DIRECTORIES(${CMAKE_CURRENT_BINARY_DIR}/src)
 
-    # Include our messages extensions and utilty folders
+    # Include our messages extensions and utility folders
     INCLUDE_DIRECTORIES(${NUCLEAR_MESSAGE_INCLUDE_DIRS})
     INCLUDE_DIRECTORIES(${NUCLEAR_UTILITY_INCLUDE_DIRS})
     INCLUDE_DIRECTORIES(${NUCLEAR_EXTENSION_INCLUDE_DIRS})
@@ -53,6 +53,7 @@ FUNCTION(NUCLEAR_MODULE)
             "${CMAKE_CURRENT_SOURCE_DIR}/src/**.c"
             "${CMAKE_CURRENT_SOURCE_DIR}/src/**.hpp"
             "${CMAKE_CURRENT_SOURCE_DIR}/src/**.ipp"
+            "${CMAKE_CURRENT_SOURCE_DIR}/src/**.hh"
             "${CMAKE_CURRENT_SOURCE_DIR}/src/**.h")
 
     # Python Code
