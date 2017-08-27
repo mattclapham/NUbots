@@ -36,8 +36,23 @@ with open(role_name, 'w') as file:
 
         # replace :: with /
         header = re.sub(r'::', r'/', module)
-        # replace last name with src/name.h
-        header = re.sub(r'([^\/]+)$', r'\1/src/\1.h', header)
+
+        # Try to deduce the extension for the reactor header.
+        # It must be called src/ReactorName.[h|hpp|hh]
+
+        # replace last name with src/name
+        header = re.sub(r'([^\/]+)$', r'\1/src/\1', header)
+
+        # Try several extensions (hpp, hh, h) to see if one exists
+        if os.path.isfile(os.path.join(module_path, '{}.hpp'.format(header))):
+            header = '{}.hpp'.format(header)
+        elif os.path.isfile(os.path.join(module_path, '{}.hh'.format(header))):
+            header = '{}.hh'.format(header)
+        elif os.path.isfile(os.path.join(module_path, '{}.h'.format(header))):
+            header = '{}.h'.format(header)
+        else:
+            raise Exception('Cannot find main header file for {}'.format(header))
+
         file.write('#include "{}"\n'.format(header))
 
     # Add our main function and include headers
